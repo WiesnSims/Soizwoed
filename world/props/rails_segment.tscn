@@ -1,0 +1,47 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://assets/materials/rust_iron.tres" id="1_iron"]
+[ext_resource type="Material" path="res://assets/materials/timber_wood.tres" id="2_wood"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_rail"]
+size = Vector3(0.06, 0.1, 4.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sleeper"]
+size = Vector3(1.0, 0.1, 0.2)
+
+[node name="RailsSegment" type="Node3D"]
+
+[node name="RailL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.13, 0)
+mesh = SubResource("BoxMesh_rail")
+surface_material_override/0 = ExtResource("1_iron")
+
+[node name="RailR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.13, 0)
+mesh = SubResource("BoxMesh_rail")
+surface_material_override/0 = ExtResource("1_iron")
+
+[node name="Sleeper1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -1.6)
+mesh = SubResource("BoxMesh_sleeper")
+surface_material_override/0 = ExtResource("2_wood")
+
+[node name="Sleeper2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9992, 0, 0.04, 0, 1, 0, -0.04, 0, 0.9992, 0.03, 0.04, -0.8)
+mesh = SubResource("BoxMesh_sleeper")
+surface_material_override/0 = ExtResource("2_wood")
+
+[node name="Sleeper3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+mesh = SubResource("BoxMesh_sleeper")
+surface_material_override/0 = ExtResource("2_wood")
+
+[node name="Sleeper4" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9988, 0, -0.05, 0, 1, 0, 0.05, 0, 0.9988, -0.02, 0.04, 0.8)
+mesh = SubResource("BoxMesh_sleeper")
+surface_material_override/0 = ExtResource("2_wood")
+
+[node name="Sleeper5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 1.6)
+mesh = SubResource("BoxMesh_sleeper")
+surface_material_override/0 = ExtResource("2_wood")

@@ -1,0 +1,132 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/props/flicker_light.gd" id="1_flicker"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_brass"]
+albedo_color = Color(0.62, 0.44, 0.2, 1)
+metallic = 0.9
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_iron"]
+albedo_color = Color(0.12, 0.11, 0.1, 1)
+metallic = 0.8
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_glass"]
+transparency = 1
+albedo_color = Color(1, 0.86, 0.6, 0.35)
+roughness = 0.08
+emission_enabled = true
+emission = Color(1, 0.62, 0.28, 1)
+emission_energy_multiplier = 2.2
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_flame"]
+shading_mode = 0
+albedo_color = Color(1, 0.86, 0.55, 1)
+emission_enabled = true
+emission = Color(1, 0.75, 0.4, 1)
+emission_energy_multiplier = 6.0
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_wire"]
+top_radius = 0.008
+bottom_radius = 0.008
+height = 0.5
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_cap"]
+top_radius = 0.04
+bottom_radius = 0.085
+height = 0.07
+radial_segments = 16
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_glass"]
+top_radius = 0.065
+bottom_radius = 0.065
+height = 0.16
+radial_segments = 16
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_rod"]
+top_radius = 0.006
+bottom_radius = 0.006
+height = 0.17
+radial_segments = 5
+rings = 1
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_base"]
+top_radius = 0.075
+bottom_radius = 0.07
+height = 0.09
+radial_segments = 16
+rings = 1
+
+[sub_resource type="SphereMesh" id="SphereMesh_flame"]
+radius = 0.014
+height = 0.05
+radial_segments = 8
+rings = 4
+
+[node name="HangingLantern" type="Node3D"]
+
+[node name="Wire" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+mesh = SubResource("CylinderMesh_wire")
+surface_material_override/0 = SubResource("StandardMaterial3D_iron")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.53, 0)
+mesh = SubResource("CylinderMesh_cap")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Glass" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.645, 0)
+cast_shadow = 0
+mesh = SubResource("CylinderMesh_glass")
+surface_material_override/0 = SubResource("StandardMaterial3D_glass")
+
+[node name="Flame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.65, 0)
+cast_shadow = 0
+mesh = SubResource("SphereMesh_flame")
+surface_material_override/0 = SubResource("StandardMaterial3D_flame")
+
+[node name="Rod1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.068, -0.645, 0)
+mesh = SubResource("CylinderMesh_rod")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Rod2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.068, -0.645, 0)
+mesh = SubResource("CylinderMesh_rod")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Rod3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.645, 0.068)
+mesh = SubResource("CylinderMesh_rod")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Rod4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.645, -0.068)
+mesh = SubResource("CylinderMesh_rod")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.77, 0)
+mesh = SubResource("CylinderMesh_base")
+surface_material_override/0 = SubResource("StandardMaterial3D_brass")
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.66, 0)
+light_color = Color(1, 0.7, 0.42, 1)
+light_energy = 1.4
+light_volumetric_fog_energy = 1.5
+light_size = 0.06
+shadow_enabled = true
+shadow_bias = 0.05
+omni_range = 8.0
+omni_attenuation = 1.4
+script = ExtResource("1_flicker")
+base_energy = 1.4
+flicker = 0.1

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/karbidpatrone.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"karbidpatrone"
+name_key = "ITEM_KARBIDPATRONE"
+kind = 2
+weight_class = 0
+value_min = 0
+value_max = 0
+fragile = false
+price = 15
+spawn_weight = 0.0
+min_depth = 0
+scene = ExtResource("2_scene")
+melee_damage = 0

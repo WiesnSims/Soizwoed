@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/kaiserlichesabzeichen.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"kaiserliches_abzeichen"
+name_key = "ITEM_KAISERLICHES_ABZEICHEN"
+kind = 0
+weight_class = 0
+value_min = 120
+value_max = 200
+fragile = false
+price = 0
+spawn_weight = 0.35
+min_depth = 4
+scene = ExtResource("2_scene")
+melee_damage = 0

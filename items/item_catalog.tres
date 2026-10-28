@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemCatalog" format=3]
+
+[ext_resource type="Script" path="res://items/item_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://items/data/salzkristall.tres" id="2_salzkristall"]
+[ext_resource type="Resource" path="res://items/data/alte_jausenbox.tres" id="3_alte_jausenbox"]
+[ext_resource type="Resource" path="res://items/data/antike_grubenlampe.tres" id="4_antike_grubenlampe"]
+[ext_resource type="Resource" path="res://items/data/steinsalz_block.tres" id="5_steinsalz_block"]
+[ext_resource type="Resource" path="res://items/data/kaiserliches_abzeichen.tres" id="6_kaiserliches_abzeichen"]
+[ext_resource type="Resource" path="res://items/data/spitzhacke.tres" id="7_spitzhacke"]
+[ext_resource type="Resource" path="res://items/data/karbidpatrone.tres" id="8_karbidpatrone"]
+[ext_resource type="Resource" path="res://items/data/schubkarre.tres" id="9_schubkarre"]
+
+[resource]
+script = ExtResource("1_catalog")
+items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre")])

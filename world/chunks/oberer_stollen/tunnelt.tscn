@@ -1,0 +1,65 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="1_chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="2_box"]
+[ext_resource type="PackedScene" path="res://world/props/crate.tscn" id="3_crate"]
+[ext_resource type="PackedScene" path="res://world/props/timber_set.tscn" id="4_timber"]
+
+[node name="TunnelT" type="Node3D"]
+script = ExtResource("1_chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Center" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+script = ExtResource("2_box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4)
+script = ExtResource("2_box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_E" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 4, 0, 0)
+script = ExtResource("2_box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_W" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -4, 0, 0)
+script = ExtResource("2_box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Timber_N" parent="Props" instance=ExtResource("4_timber")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4.5)
+
+[node name="Timber_E" parent="Props" instance=ExtResource("4_timber")]
+transform = Transform3D(0.0, 0, -1.0, 0, 1, 0, 1.0, 0, 0.0, 4.5, 0, 0)
+
+[node name="Timber_W" parent="Props" instance=ExtResource("4_timber")]
+transform = Transform3D(0.0, 0, -1.0, 0, 1, 0, 1.0, 0, 0.0, -4.5, 0, 0)
+
+[node name="Crate1" parent="Props" instance=ExtResource("3_crate")]
+transform = Transform3D(0.978148, 0, -0.207912, 0, 1, 0, 0.207912, 0, 0.978148, 0.9, 0, 1.4)
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -6)
+
+[node name="Nav_E" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 6, 0, 0)
+
+[node name="Nav_W" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -6, 0, 0)
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -1.3, 0.4, 1.3)
+
+[node name="Enemy1" type="Marker3D" parent="Markers" groups=["enemy_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0.1, 1.0)

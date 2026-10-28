@@ -1,0 +1,69 @@
+[gd_resource type="Resource" script_class="ChunkSet" format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk_set.gd" id="1_set"]
+[ext_resource type="Script" path="res://world/chunks/chunk_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/station.tscn" id="3_station"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelstraight.tscn" id="4_straight"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelrails.tscn" id="5_rails"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelcorner.tscn" id="6_corner"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelt.tscn" id="7_t"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelcross.tscn" id="8_cross"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/sideroom.tscn" id="9_sideroom"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/hall.tscn" id="10_hall"]
+
+[sub_resource type="Resource" id="Resource_station"]
+script = ExtResource("2_entry")
+scene = ExtResource("3_station")
+openings = 1
+is_station = true
+
+[sub_resource type="Resource" id="Resource_straight"]
+script = ExtResource("2_entry")
+scene = ExtResource("4_straight")
+openings = 5
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_rails"]
+script = ExtResource("2_entry")
+scene = ExtResource("5_rails")
+openings = 5
+weight = 0.8
+
+[sub_resource type="Resource" id="Resource_corner"]
+script = ExtResource("2_entry")
+scene = ExtResource("6_corner")
+openings = 3
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_t"]
+script = ExtResource("2_entry")
+scene = ExtResource("7_t")
+openings = 11
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_cross"]
+script = ExtResource("2_entry")
+scene = ExtResource("8_cross")
+openings = 15
+weight = 1.0
+
+[sub_resource type="Resource" id="Resource_sideroom"]
+script = ExtResource("2_entry")
+scene = ExtResource("9_sideroom")
+openings = 1
+weight = 1.0
+min_depth = 1
+
+[sub_resource type="Resource" id="Resource_hall"]
+script = ExtResource("2_entry")
+scene = ExtResource("10_hall")
+openings = 15
+weight = 0.7
+min_depth = 3
+
+[resource]
+script = ExtResource("1_set")
+biome_name_key = "BIOME_OBERER_STOLLEN"
+cell_size = 12.0
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall")])
+superset_weight = 0.25

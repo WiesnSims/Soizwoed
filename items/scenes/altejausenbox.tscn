@@ -1,0 +1,49 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_brass"]
+albedo_color = Color(0.6, 0.42, 0.18, 1)
+metallic = 0.92
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="mat_tin"]
+albedo_color = Color(0.36, 0.4, 0.34, 1)
+metallic = 0.75
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="box"]
+size = Vector3(0.24, 0.1, 0.15)
+
+[sub_resource type="BoxMesh" id="lid"]
+size = Vector3(0.25, 0.03, 0.16)
+
+[sub_resource type="BoxMesh" id="clasp"]
+size = Vector3(0.03, 0.04, 0.01)
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.25, 0.13, 0.16)
+
+[node name="AlteJausenbox" type="RigidBody3D"]
+mass = 1.0
+script = ExtResource("1_item")
+
+[node name="Box" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("box")
+surface_material_override/0 = SubResource("mat_tin")
+
+[node name="Lid" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.999, 0.03, 0, -0.03, 0.999, 0, 0, 0, 1, 0, 0.11, 0)
+mesh = SubResource("lid")
+surface_material_override/0 = SubResource("mat_tin")
+
+[node name="Clasp" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.09, 0.08)
+mesh = SubResource("clasp")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.065, 0)
+shape = SubResource("shape")
+

@@ -1,0 +1,19 @@
+[gd_resource type="ORMMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/metal_plate/albedo.jpg" id="1_albedo"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal_plate/normal.jpg" id="2_normal"]
+[ext_resource type="Texture2D" path="res://assets/textures/metal_plate/arm.jpg" id="3_arm"]
+
+[resource]
+resource_name = "metal_plate"
+albedo_texture = ExtResource("1_albedo")
+orm_texture = ExtResource("3_arm")
+roughness = 1.0
+metallic = 0.7
+normal_enabled = true
+normal_scale = 1.0
+normal_texture = ExtResource("2_normal")
+uv1_triplanar = true
+uv1_triplanar_sharpness = 4.0
+uv1_scale = Vector3(0.5, 0.5, 0.5)
+texture_filter = 5
