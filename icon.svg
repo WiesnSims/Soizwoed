@@ -1,30 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
   <defs>
-    <radialGradient id="glow" cx="128" cy="70" r="150" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7a4a1c"/>
-      <stop offset="0.45" stop-color="#2e1d10"/>
-      <stop offset="1" stop-color="#120d09"/>
-    </radialGradient>
-    <radialGradient id="flame" cx="128" cy="58" r="34" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff4c2" stop-opacity="0.95"/>
-      <stop offset="0.35" stop-color="#f6b13d" stop-opacity="0.55"/>
-      <stop offset="1" stop-color="#f6b13d" stop-opacity="0"/>
+    <radialGradient id="rock" cx="128" cy="150" r="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6e4420"/>
+      <stop offset="0.4" stop-color="#2c1b0e"/>
+      <stop offset="1" stop-color="#110c08"/>
     </radialGradient>
     <linearGradient id="tunnel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#0a0706"/>
-      <stop offset="1" stop-color="#020101"/>
+      <stop offset="0" stop-color="#0b0807"/>
+      <stop offset="1" stop-color="#030202"/>
     </linearGradient>
-    <linearGradient id="salt" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="0.5" stop-color="#f1e4d6"/>
-      <stop offset="1" stop-color="#c9a991"/>
-    </linearGradient>
-    <radialGradient id="reflector" cx="128" cy="40" r="17" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff6d8"/>
-      <stop offset="0.6" stop-color="#e2c17e"/>
-      <stop offset="1" stop-color="#b8893f"/>
+    <radialGradient id="halo" cx="128" cy="152" r="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd27a" stop-opacity="0.75"/>
+      <stop offset="0.3" stop-color="#f0a040" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#f0a040" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="eye"cx="0.5" cy="0.5" r="0.5">
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d98a2c"/>
+      <stop offset="0.5" stop-color="#ffe29a"/>
+      <stop offset="1" stop-color="#c97a22"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6b4316"/>
+      <stop offset="0.35" stop-color="#e0b25c"/>
+      <stop offset="0.6" stop-color="#b9842f"/>
+      <stop offset="1" stop-color="#5a3812"/>
+    </linearGradient>
+    <radialGradient id="eye" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0" stop-color="#f4ffd0"/>
       <stop offset="0.5" stop-color="#b8e05a"/>
       <stop offset="1" stop-color="#b8e05a" stop-opacity="0"/>
@@ -32,39 +33,41 @@
   </defs>
 
   <!-- background: rock lit warm from the lamp -->
-  <rect width="256" height="256" rx="44" fill="url(#glow)"/>
+  <rect width="256" height="256" rx="44" fill="url(#rock)"/>
 
   <!-- tunnel mouth -->
-  <path d="M58 236 L58 112 Q128 74 198 112 L198 236 Z" fill="url(#tunnel)"/>
+  <rect x="62" y="96" width="132" height="160" fill="url(#tunnel)"/>
 
-  <!-- eyes in the dark -->
-  <ellipse cx="108" cy="160" rx="16" ry="11" fill="url(#eye)"/>
-  <ellipse cx="146" cy="160" rx="16" ry="11" fill="url(#eye)"/>
-  <ellipse cx="108" cy="160" rx="5" ry="4" fill="#fbffe8"/>
-  <ellipse cx="146" cy="160" rx="5" ry="4" fill="#fbffe8"/>
+  <!-- eyes deep in the dark -->
+  <ellipse cx="88" cy="228" rx="13" ry="9" fill="url(#eye)"/>
+  <ellipse cx="114" cy="228" rx="13" ry="9" fill="url(#eye)"/>
+  <ellipse cx="88" cy="228" rx="4" ry="3" fill="#fbffe8"/>
+  <ellipse cx="114" cy="228" rx="4" ry="3" fill="#fbffe8"/>
 
   <!-- timber frame: posts and cap -->
-  <rect x="40" y="88" width="28" height="160" rx="3" fill="#6e4825"/>
-  <rect x="188" y="88" width="28" height="160" rx="3" fill="#5c3b1e"/>
-  <rect x="44" y="88" width="7" height="160" fill="#8a5d33"/>
-  <rect x="192" y="88" width="6" height="160" fill="#74502b"/>
-  <rect x="26" y="70" width="204" height="30" rx="4" fill="#7b5129"/>
-  <rect x="26" y="70" width="204" height="8" rx="4" fill="#a2713f"/>
-  <rect x="26" y="94" width="204" height="6" fill="#4a2f17"/>
+  <rect x="40" y="96" width="26" height="160" rx="3" fill="#6e4825"/>
+  <rect x="190" y="96" width="26" height="160" rx="3" fill="#5c3b1e"/>
+  <rect x="44" y="96" width="7" height="160" fill="#8a5d33"/>
+  <rect x="194" y="96" width="6" height="160" fill="#74502b"/>
+  <rect x="24" y="72" width="208" height="30" rx="4" fill="#7b5129"/>
+  <rect x="24" y="72" width="208" height="8" rx="4" fill="#a2713f"/>
+  <rect x="24" y="96" width="208" height="6" fill="#4a2f17"/>
 
-  <!-- carbide lamp hanging from the cap -->
-  <circle cx="128" cy="44" r="44" fill="url(#flame)"/>
-  <rect x="116" y="62" width="24" height="26" rx="5" fill="#b07a32"/>
-  <rect x="116" y="62" width="8" height="26" rx="3" fill="#d39c4b"/>
-  <circle cx="128" cy="42" r="21" fill="#9a6a2c"/>
-  <circle cx="128" cy="42" r="17" fill="url(#reflector)"/>
-  <path d="M128 26 Q137 38 132 47 Q128 51 124 47 Q119 38 128 26 Z" fill="#fff1b8"/>
-  <path d="M128 33 Q132 40 130 45 Q128 47 126 45 Q124 40 128 33 Z" fill="#ffffff"/>
+  <!-- the lamp's light -->
+  <circle cx="128" cy="152" r="74" fill="url(#halo)"/>
 
-  <!-- salt crystal in the lamp light -->
-  <path d="M150 238 L166 176 L190 160 L212 186 L204 238 Z" fill="url(#salt)"/>
-  <path d="M166 176 L190 160 L186 238 L150 238 Z" fill="#ffffff" fill-opacity="0.55"/>
-  <path d="M190 160 L212 186 L204 238 L186 238 Z" fill="#b58d74" fill-opacity="0.55"/>
-  <path d="M126 238 L138 204 L156 198 L162 238 Z" fill="url(#salt)"/>
-  <path d="M138 204 L156 198 L150 238 L126 238 Z" fill="#ffffff" fill-opacity="0.5"/>
+  <!-- old miner's lamp hanging from the cap beam -->
+  <path d="M128 100 L128 110" stroke="#3a2a18" stroke-width="4"/>
+  <circle cx="128" cy="113" r="6" fill="none" stroke="#c99a48" stroke-width="3.5"/>
+  <path d="M110 132 L114 120 L142 120 L146 132 Z" fill="url(#brass)"/>
+  <rect x="106" y="130" width="44" height="7" rx="2" fill="#8e6024"/>
+  <rect x="110" y="137" width="36" height="40" fill="url(#glass)"/>
+  <path d="M128 144 Q135 154 131 163 Q128 167 125 163 Q121 154 128 144 Z" fill="#fffbe8"/>
+  <rect x="109" y="137" width="4" height="40" fill="#4a3216"/>
+  <rect x="121" y="137" width="3" height="40" fill="#4a3216" fill-opacity="0.8"/>
+  <rect x="132" y="137" width="3" height="40" fill="#4a3216" fill-opacity="0.8"/>
+  <rect x="143" y="137" width="4" height="40" fill="#4a3216"/>
+  <rect x="104" y="176" width="48" height="8" rx="2" fill="#8e6024"/>
+  <rect x="106" y="183" width="44" height="22" rx="4" fill="url(#brass)"/>
+  <rect x="106" y="191" width="44" height="3" fill="#5a3812"/>
 </svg>
