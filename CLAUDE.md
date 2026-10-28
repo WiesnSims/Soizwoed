@@ -29,4 +29,10 @@ The full game design is here and must be followed:
 - Run tests: `godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -gexit`
 - Export Windows build: `godot --headless --export-release "Windows Desktop" build/Soizwoed.exe`
 - Local multiplayer test: start one instance with `-- --net=enet --host` and others with `-- --net=enet --join=127.0.0.1`
+- Script versions (PowerShell, logs in `build/logs/`, exit code 1 on any error or warning):
+  - `tools/run_tests.ps1` – GUT tests
+  - `tools/smoke_test.ps1` – headless main menu + solo session
+  - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients
+  - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it
+  - Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`
 - Before saying a task is done: run the tests and a headless smoke run, and fix any errors or warnings in the output.

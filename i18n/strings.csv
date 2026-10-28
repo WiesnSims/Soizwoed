@@ -1,0 +1,17 @@
+keys,de
+GAME_TITLE,Soizwöd
+MENU_SUBTITLE,Soizwöd GmbH – Mia suachn Leit!
+MENU_SOLO,Alloa einifoahn
+MENU_HOST,Partie aufmacha
+MENU_JOIN,Partie beitretn
+MENU_JOIN_ADDRESS,Adress vom Host
+MENU_QUIT,Feierabend
+NET_CONNECTING,Verbind…
+NET_CONNECT_FAILED,Koa Verbindung zum Host.
+NET_HOST_LEFT,Da Host is gangen – Partie aus.
+NET_HOST_FAILED,Partie hot si ned aufmacha lossn.
+NET_LEFT,Partie verlossn.
+HUB_TITLE,Gasthaus „Zum Salzstock“
+HUB_PLACEHOLDER,Do kummt in M1 as Gasthaus hin.
+HUB_PLAYERS,Kumpel do: %d
+HUB_LEAVE,Hamgeh

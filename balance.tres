@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BalanceConfig" format=3]
+
+[ext_resource type="Script" path="res://autoload/balance_config.gd" id="1_balance"]
+
+[resource]
+script = ExtResource("1_balance")
+quota_base = 150
+quota_growth = 1.4
+shifts_per_cycle = 3
+quota_mult_by_players = Array[float]([0.45, 0.65, 0.85, 1])
+shift_base_seconds = 780.0
+shift_bonus_seconds_by_players = Array[float]([120, 60, 0, 0])
+whistle_grace_seconds = 60.0
+enemy_budget_by_players = Array[float]([0.5, 0.7, 0.85, 1])
+loot_density_by_players = Array[float]([0.6, 0.75, 0.9, 1])
+player_max_health = 100
+inventory_slots = 4
+solo_free_schubkarre = true
+voice_cooldown_per_creature = 10.0
+voice_global_gap = 2.0
+voice_max_distance = 25.0
