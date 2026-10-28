@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.exe binary
+*.dll binary
+*.png binary
+*.ogg binary
+*.wav binary
+*.glb binary
