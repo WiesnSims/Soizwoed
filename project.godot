@@ -24,6 +24,7 @@ Balance="*res://autoload/balance.gd"
 GameState="*res://autoload/game_state.gd"
 NetworkManager="*res://autoload/network_manager.gd"
 Audio="*res://autoload/audio.gd"
+Settings="*res://autoload/settings.gd"
 
 [debug]
 

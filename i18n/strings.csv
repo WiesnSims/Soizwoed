@@ -104,3 +104,40 @@ INVITE_IN_GAME,(spüt grad)
 INVITE_SEND,Eiladn
 INVITE_SENT,Eiglodn!
 INVITE_FAILED,Hot ned highaut
+MENU_SETTINGS,Einstellungen
+SETTINGS_TITLE,Einstellungen
+SETTINGS_AUDIO,Ton
+SETTINGS_DISPLAY,Anzeige
+SETTINGS_GRAPHICS,Grafik
+SETTINGS_GAMEPLAY,Spü
+SET_MASTER,Gsamtlautstärke
+SET_MUSIC,Musi
+SET_EFFECTS,Gräusch
+SET_VOICE,Stimmen vo de Kumpl
+SET_CREATURE_LINES,Gegner redn
+SET_OPEN_MIC,"Mikro offn (sunst redst mit V)"
+SET_WINDOW_MODE,Fenster
+SET_WINDOWED,Im Fenster
+SET_BORDERLESS,Vollbild (randlos)
+SET_FULLSCREEN,Vollbild (exklusiv)
+SET_VSYNC,VSync
+SET_FPS,Bildrate
+SET_FPS_UNLIMITED,Unbegrenzt
+SET_FOV,Blickwinkel
+SET_BRIGHTNESS,Helligkeit
+SET_QUALITY,Qualität
+SET_Q_LOW,Niedrig
+SET_Q_MEDIUM,Mittel
+SET_Q_HIGH,Hoch
+SET_Q_ULTRA,Ultra
+SET_RENDER_SCALE,3D-Auflösung
+SET_FOG,Staub im Liacht (Nebel)
+SET_AA,Kantenglättung
+SET_AA_OFF,Aus
+SET_AA_FXAA,FXAA
+SET_AA_TAA,TAA
+SET_AA_MSAA,MSAA + TAA
+SET_SENSITIVITY,Maus-Empfindlichkeit
+SET_INVERT_Y,Maus aufwärts umdrahn
+SET_HEAD_BOB,Kopfwackln beim Gehn
+SET_DEFAULTS,Standard

@@ -16,7 +16,10 @@ static var _launch_options_applied: bool = false
 @onready var _join_button: Button = %JoinButton
 @onready var _find_button: Button = %FindButton
 @onready var _lobby_list: VBoxContainer = %LobbyList
+@onready var _settings_button: Button = %SettingsButton
 @onready var _quit_button: Button = %QuitButton
+@onready var _menu_box: Control = $Center
+var _settings: SettingsPanel
 @onready var _address_edit: LineEdit = %AddressEdit
 @onready var _status_label: Label = %StatusLabel
 @onready var _steam_label: Label = %SteamLabel
@@ -28,6 +31,12 @@ func _ready() -> void:
 	_join_button.pressed.connect(_on_join_pressed)
 	_find_button.pressed.connect(_on_find_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
+	_settings = SettingsPanel.new()
+	_settings.closed.connect(func() -> void: _menu_box.show())
+	add_child(_settings)
+	_settings_button.pressed.connect(func() -> void:
+		_menu_box.hide()
+		_settings.open())
 	NetworkManager.session_ended.connect(_on_session_ended)
 	NetworkManager.invite_pending.connect(_join_pending_invite)
 	NetworkManager.lobbies_found.connect(_show_lobbies)

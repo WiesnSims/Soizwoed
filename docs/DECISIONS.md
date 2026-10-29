@@ -144,3 +144,18 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 
 ### Testing
 - `tools/steam_test.ps1` (Steam running, one account): a headless host creates a public lobby, a second instance must find exactly it with the filtered search, and joining it must be refused (own account). Real joining and voice need a second account on another PC.
+
+## 2026-10-29 – M4 start (chosen by Claude unless marked, change any time)
+
+### Steam invites without the overlay
+- **"Freind eiladn" did nothing** (owner report): it only opened the Steam overlay's invite dialog, and Steam hooks its overlay into a Vulkan game only when Steam itself starts the game. Soizwoed.exe started from its folder (the normal case with App ID 480) has no overlay, so Shift+Tab does nothing either.
+- **Now:** if Steam reports the overlay as enabled, the button opens it as before; otherwise an in-game list of your Steam friends (online first, "(spüt grad)" for friends in Spacewar/Soizwöd) with an "Eiladn" button each, which sends a normal Steam lobby invite (`inviteUserToLobby`). The friend gets it in their Steam chat; accepting it starts or joins the game as before. DESIGN.md §9 already allowed "an in-game friends list".
+
+### Settings menu (owner request, moved from M5 to M4)
+- **"Einstellungen"** in the main menu and the Esc menu, four tabs, every change applied and saved right away to `user://settings.cfg` ("Standard" resets everything):
+  - **Ton:** overall volume, music, sounds (effects, creatures and ambience together), teammates' voices, "Gegner redn" (DESIGN.md §6), open mic.
+  - **Anzeige:** window / borderless fullscreen / exclusive fullscreen, VSync, frame rate cap (30–240 or none), field of view (60–100°, default 78), brightness (multiplies the tuned exposure; the mine stays meant to be dark).
+  - **Grafik:** quality preset Niedrig / Mittel / Hoch / Ultra (shadow atlas and soft-shadow quality, SSAO, SSIL, volumetric fog resolution; "Hoch" is the look the game was tuned with), 3D resolution 50–100 % (FSR below 100 %), dust in the light (volumetric fog) on/off, anti-aliasing (off, FXAA, TAA, MSAA + TAA = the old default).
+  - **Spü:** mouse sensitivity, invert mouse Y, head bob.
+- Default window mode stays "Im Fenster", so local multi-instance tests don't open fullscreen. Headless and `--shots` runs never touch the window.
+- Key rebinding and a language choice are left for M5 (only German exists so far).

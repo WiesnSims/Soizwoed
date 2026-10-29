@@ -115,6 +115,8 @@ func _ready() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if local:
 		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
+		_on_settings_changed()
+		Settings.changed.connect(_on_settings_changed)
 	if NetworkManager.voice_enabled():
 		voice_chat = VoiceChat.new()
 		voice_chat.name = "VoiceChat"
@@ -128,6 +130,10 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	lamp_sound.stop()
+
+
+func _on_settings_changed() -> void:
+	camera.fov = Settings.data.fov
 
 
 func is_local() -> bool:
@@ -149,8 +155,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var motion: InputEventMouseMotion = event
-		rotate_y(-motion.relative.x * MOUSE_SENSITIVITY)
-		head.rotation.x = clampf(head.rotation.x - motion.relative.y * MOUSE_SENSITIVITY, deg_to_rad(-85), deg_to_rad(85))
+		var sensitivity: float = MOUSE_SENSITIVITY * Settings.data.mouse_sensitivity
+		var pitch: float = motion.relative.y * sensitivity * (-1.0 if Settings.data.invert_y else 1.0)
+		rotate_y(-motion.relative.x * sensitivity)
+		head.rotation.x = clampf(head.rotation.x - pitch, deg_to_rad(-85), deg_to_rad(85))
 	elif event.is_action_pressed(&"lamp"):
 		_toggle_lamp()
 	elif event.is_action_pressed(&"drop"):
@@ -269,7 +277,8 @@ func _footsteps_and_bob(delta: float) -> void:
 			_play_footstep.rpc(global_position.y > Game.HUB_FLOOR_ABOVE)
 	else:
 		_bob_phase = lerpf(_bob_phase, roundf(_bob_phase / PI) * PI, clampf(6.0 * delta, 0.0, 1.0))
-	head.position.y = _head_height + absf(sin(_bob_phase)) * BOB_AMOUNT
+	var bob: float = BOB_AMOUNT if Settings.data.head_bob else 0.0
+	head.position.y = _head_height + absf(sin(_bob_phase)) * bob
 
 
 @rpc("authority", "call_local", "unreliable")

@@ -37,6 +37,7 @@ var _panel: PanelContainer
 var _panel_box: VBoxContainer
 var _panel_kind: String = ""
 var _run_info: Dictionary = {}
+var _settings: SettingsPanel
 
 
 func _ready() -> void:
@@ -49,6 +50,9 @@ func _ready() -> void:
 	_build_bottom()
 	_build_top()
 	_build_panel()
+	_settings = SettingsPanel.new()
+	_settings.closed.connect(_on_settings_closed)
+	_root.add_child(_settings)
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -92,7 +96,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"pause") or Game.instance == null or Game.instance.local_player() == null:
 		return
 	get_viewport().set_input_as_handled()
-	if modal_open():
+	if _settings.visible:
+		_settings.close()
+	elif modal_open():
 		if _panel_kind != "over":
 			close_panels()
 	else:
@@ -129,11 +135,12 @@ func update_run(info: Dictionary) -> void:
 
 
 func modal_open() -> bool:
-	return _panel.visible
+	return _panel.visible or _settings.visible
 
 
 func close_panels() -> void:
 	_panel.hide()
+	_settings.hide()
 	_panel_kind = ""
 	_apply_modal()
 
@@ -193,6 +200,7 @@ func _open_pause() -> void:
 	if NetworkManager.voice_enabled():
 		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT"), _toggle_open_mic)
 		_add_button(tr("PAUSE_MIC_TEST_ON") if VoiceChat.echo else tr("PAUSE_MIC_TEST_OFF"), _toggle_mic_test)
+	_add_button(tr("MENU_SETTINGS"), _open_settings)
 	_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
 	_apply_modal()
 
@@ -241,7 +249,18 @@ func _on_invite_pressed(friend_id: int, button: Button) -> void:
 
 
 func _toggle_open_mic() -> void:
-	Audio.voice_open_mic = not Audio.voice_open_mic
+	Settings.data.voice_open_mic = not Settings.data.voice_open_mic
+	Settings.apply()
+	_open_pause()
+
+
+func _open_settings() -> void:
+	_panel.hide()
+	_settings.open()
+	_apply_modal()
+
+
+func _on_settings_closed() -> void:
 	_open_pause()
 
 

@@ -1,21 +1,16 @@
 extends Node
-## Audio buses, audio settings, and one-shot sound helpers. Sounds are looked up by name in
+## Audio buses and one-shot sound helpers. Sounds are looked up by name in
 ## assets/audio/{sfx,ambience,voices/*}; "name.ogg" or variants "name_1.ogg", "name_2.ogg" ...
-## of which one is picked at random.
+## of which one is picked at random. Volumes and the switches below come from Settings.
 
 const BUSES: PackedStringArray = ["Music", "SFX", "Creatures", "Voice", "Ambience"]
 const ROOT: String = "res://assets/audio/"
 const FOLDERS: PackedStringArray = ["sfx", "ambience"]
 
-const SETTINGS_PATH: String = "user://settings.cfg"
-
 ## Setting "Gegner reden": creature speech on/off. Non-speech creature sounds always play.
 var creature_lines_enabled: bool = true
 ## Voice chat: open mic (Steam's voice detection decides) instead of push-to-talk (V).
-var voice_open_mic: bool = false:
-	set(value):
-		voice_open_mic = value
-		_save_settings()
+var voice_open_mic: bool = false
 
 var _variants: Dictionary = {}  # name -> Array[AudioStream]
 
@@ -28,7 +23,6 @@ func _ready() -> void:
 			AudioServer.set_bus_name(index, bus_name)
 			AudioServer.set_bus_send(index, "Master")
 	_add_voice_reverb()
-	_load_settings()
 
 
 ## A little cave reverb on the voice chat (DESIGN.md §9).
@@ -43,22 +37,6 @@ func _add_voice_reverb() -> void:
 	reverb.wet = 0.12
 	reverb.dry = 1.0
 	AudioServer.add_bus_effect(index, reverb)
-
-
-func _load_settings() -> void:
-	var file: ConfigFile = ConfigFile.new()
-	if file.load(SETTINGS_PATH) != OK:
-		return
-	voice_open_mic = bool(file.get_value("voice", "open_mic", false))
-
-
-func _save_settings() -> void:
-	if not is_inside_tree():
-		return
-	var file: ConfigFile = ConfigFile.new()
-	file.load(SETTINGS_PATH)
-	file.set_value("voice", "open_mic", voice_open_mic)
-	file.save(SETTINGS_PATH)
 
 
 ## A random variant of `name` (e.g. "footstep_gravel" or "voices/bergmandl/giggle"), or null.
