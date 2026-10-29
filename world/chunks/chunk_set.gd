@@ -13,3 +13,7 @@ extends Resource
 @export var creatures: Array[StringName] = []
 ## How much of the sound comes back from the rock (0 = dry tunnels, 1 = a cathedral).
 @export_range(0.0, 1.0) var echo: float = 0.2
+## The section has a rail track along its main path (Oberer Stollen).
+@export var has_rails: bool = false
+## Size of a passage between two chunks (width, height), for the salt walls that close one.
+@export var passage_size: Vector2 = Vector2(4.0, 3.5)

@@ -46,6 +46,12 @@ properties/4/replication_mode = 2
 properties/5/path = NodePath(".:net_slot")
 properties/5/spawn = true
 properties/5/replication_mode = 2
+properties/6/path = NodePath(".:lamp_electric")
+properties/6/spawn = true
+properties/6/replication_mode = 2
+properties/7/path = NodePath(".:battery")
+properties/7/spawn = true
+properties/7/replication_mode = 1
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

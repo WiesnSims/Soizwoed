@@ -200,3 +200,30 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Creature movement
 - A creature blocked by something (the parked mine cart, a crate) sidesteps for 0.7 s.
 - If it makes no progress for 4 s, it hops back to the nearest waypoint. Without this, a Bergmandl could stay wedged at one spot for good.
+
+### Tools (§7)
+- **Using a tool:** select it in a pocket slot and click (left mouse). The HUD shows what the click does. Prices:
+  - Stirnlampe 220 S, Alphorn 300 S, Funkgerät 120 S, Seil 90 S, Pfeiferl 80 S (tools: they stay yours for the run as long as they ride up with you).
+  - Böller 30 S, Rauchbombe 60 S, Obstler 45 S, Leberkässemmel 55 S (used up).
+  - Spitzhacke, Karbidpatrone and Schubkarre are unchanged.
+- **Elektrische Stirnlampe:** click switches between carbide and the Stirnlampe. While it is on: no flame (safe in firedamp), steady colder light, a little more reach, no hiss. Its battery lasts 12 min and is charged in the Gasthaus before every shift. Lose it and you're back on carbide. The Kasermandl freezes in either light.
+- **Alphorn** (a "travel size" one that fits a pocket): every creature within 20 m in a 70° cone in front, not behind rock, is stunned for 6 s and then reacts as if shouted at. The blast is a noise that carries 80 m, so a Tatzelwurm comes. 12 s until you have breath again.
+- **Böller:** lit and thrown. After 2.5 s it bangs:
+  - noise 35 m (draws the Tatzelwurm);
+  - Bergmandl within 12 m run;
+  - up to 20 damage within 3 m, to creatures and players, shielded by rock;
+  - it is a flame: firedamp goes up.
+- **Rauchbombe "Bierzelt":** thrown; 1.2 s later a 5 m cloud for 35 s. Creatures leave it and do not path into it. It does not hurt players.
+- **Funkgerät:** if both you and a teammate carry one and you are more than 12 m apart (40 % of the voice range), you also hear each other out of the radio: tinny, never quieter than −6 dB, with static while a creature is within 10 m of either end. Click = a crackle on every other Funkgerät plus "… funkt di an!", which works without voice chat (ENet) too.
+- **Obstler:** +25 health at once, the view sways and rolls for 20 s. **Leberkässemmel:** 4 s of eating (bar under the crosshair, cancelled if you switch slot or pick up something heavy), then +40.
+- **Seil & Kletterhaken:** click while looking at the floor near an edge with a drop of more than 1.8 m: the rope hangs down from there (up to 7 m) for the rest of the shift. Climb it like a ladder: forward = up (down while looking down), back = down, jump = let go. With something heavy in your hands you climb at 40 % speed; never with a Schubkarre. Hold E on the hook to take the rope back.
+- **Rail track and Hunt (Oberer Stollen):**
+  - A track runs from just outside the Förderkorb along the main path, as far as the chunks allow (pits and water stop it). The decorative rails and parked carts on that path make way for it.
+  - One Hunt stands at the lift. Press E to push it: it stays 1.4 m ahead of you on the track at 85 % walking speed, both ways; G or walking more than 3.2 m away lets go.
+  - It holds 6 units of loot (a heavy item counts 3). It is loud (noise 20 m), and Bergmandl steal from it too.
+  - It never rides up: unload it into the cage.
+  - The Grubenhund-Pfeiferl calls it: it rolls along the track to the point nearest you at 3 m/s and stops 1.6 m short.
+- **Salt walls:**
+  - The generator closes half of the loop passages (shortcuts) and a quarter of the dead-end entrances (niches) with a salt wall.
+  - The Spitzhacke breaks one in 3 hits (100 HP); bare hands only get "Do brauchst a Spitzhackn". A broken wall leaves 1–2 small salt crystals.
+  - Creatures do not path through an unbroken wall, except the Tatzelwurm underground.

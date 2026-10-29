@@ -53,6 +53,8 @@ func run(game: Game, scenario: String) -> void:
 			await _kaser()
 		"meister":
 			await _meister()
+		"tools":
+			await _tools()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -289,6 +291,131 @@ func _meister() -> void:
 	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(14.0)))
 	_game.shift_time_left = 0.5
 	await get_tree().create_timer(Balance.config.schichtmeister_delay + 20.0).timeout
+
+
+## Gives the local player a fresh `id` in the selected pocket slot.
+func _give(id: StringName) -> WorldItem:
+	var player: Player = _game.local_player()
+	var item: WorldItem = _game._spawn_item_at(id, 0, player.global_transform.translated(Vector3.UP * 1.0))
+	await get_tree().create_timer(0.3).timeout
+	player.inventory.select(player.inventory.slots.find(null))
+	_game.request_take(item.get_path(), player.peer_id)
+	await get_tree().create_timer(0.2).timeout
+	return item
+
+
+func _tools() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(8.0)))
+	await get_tree().create_timer(0.5).timeout
+	# Stirnlampe: switch over, the carbide lamp is no open flame any more.
+	await _give(&"stirnlampe")
+	player._use_active()
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] stirnlampe electric %s, open flame %s, battery %.0f" % [player.lamp_electric, player.has_open_flame(), player.battery])
+	player._use_cooldown = 0.0
+	# Obstler and Leberkässemmel heal.
+	player.set_health(30)
+	await _give(&"obstler")
+	player._use_active()
+	await get_tree().create_timer(0.4).timeout
+	print("[scenario] obstler: health %d, wobble %.0f s" % [player.health, player._wobble_left])
+	player._use_cooldown = 0.0
+	await _give(&"leberkaessemmel")
+	player._use_active()
+	await get_tree().create_timer(config.leberkaese_eat_seconds + 0.5).timeout
+	print("[scenario] leberkaessemmel: health %d" % player.health)
+	# Alphorn: a Bergmandl in front stands dazed.
+	var forward: Vector3 = -player.camera.global_basis.z
+	var mandl: Creature = _game.spawn_creature(&"bergmandl", Transform3D(Basis.IDENTITY, _game.mine.nav.get_point_position(_game.mine.nav.get_closest_point(player.global_position + forward * 6.0)) + Vector3.UP * 0.3))
+	await get_tree().create_timer(0.5).timeout
+	player.head.rotation.x = 0.0
+	player.look_at(Vector3(mandl.global_position.x, player.global_position.y, mandl.global_position.z))
+	await _give(&"alphorn")
+	var eyes: Vector3 = player.camera.global_position
+	print("[scenario] alphorn: mandl %.1f m ahead, in cone %s, clear %s" % [eyes.distance_to(mandl.global_position),
+			Game.in_cone(eyes, -player.camera.global_basis.z, mandl.global_position + Vector3.UP * 0.8, config.alphorn_range, config.alphorn_cone_degrees),
+			_game.clear_line(eyes, mandl.global_position + Vector3.UP * 0.8)])
+	player._use_active()
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] alphorn: mandl stunned %.1f s" % mandl.stunned_left)
+	# Böller: thrown, goes off, the Bergmandl runs.
+	player._use_cooldown = 0.0
+	await _give(&"boeller")
+	player._use_active()
+	await get_tree().create_timer(config.boeller_fuse_seconds + 0.5).timeout
+	print("[scenario] boeller gone off: %s" % (_count(&"boeller") == 0))
+	# Rauchbombe: a cloud creatures avoid.
+	player._use_cooldown = 0.0
+	await _give(&"rauchbombe")
+	player._use_active()
+	await get_tree().create_timer(config.rauchbombe_fuse_seconds + 1.0).timeout
+	print("[scenario] rauchbombe: smoke zones %d" % _game._smokes.size())
+	# Pfeiferl: the Hunt rolls over from the lift.
+	var cart: RailCart = null
+	for item: WorldItem in _game._items():
+		if item is RailCart:
+			cart = item
+	if cart == null:
+		print("[scenario] no rail cart in this mine")
+		return
+	var far: Vector3 = _game.mine.rails.transform_at(_game.mine.rails.length() * 0.6).origin
+	player.teleport(Transform3D(Basis.IDENTITY, far + Vector3(0.0, 0.1, 0.0)))
+	await get_tree().create_timer(0.5).timeout
+	var start: float = cart.global_position.distance_to(player.global_position)
+	player._use_cooldown = 0.0
+	await _give(&"pfeiferl")
+	player._use_active()
+	await get_tree().create_timer(0.5).timeout
+	for i: int in 200:
+		if not cart.moving:
+			break
+		await get_tree().create_timer(0.1).timeout
+	print("[scenario] pfeiferl: hunt came from %.1f m to %.1f m" % [start, cart.global_position.distance_to(player.global_position)])
+	# Load it and push it back towards the lift.
+	var block: WorldItem = _game._spawn_item_at(&"steinsalz_block", 100, player.global_transform.translated(Vector3.UP * 0.5))
+	await get_tree().create_timer(0.4).timeout
+	_game.request_load_cart(cart.get_path(), block.get_path())
+	await get_tree().create_timer(0.3).timeout
+	_game.request_push_rail(cart.get_path())
+	await get_tree().create_timer(0.2).timeout
+	var before: float = cart.s
+	var toward_lift: Vector3 = _game.mine.rails.transform_at(0.0).origin
+	for i: int in 60:
+		var step: Vector3 = (toward_lift - player.global_position)
+		step.y = 0.0
+		player.global_position += step.normalized() * config.walk_speed * 0.8 / 60.0
+		await get_tree().physics_frame
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] pushed hunt from %.1f to %.1f, pusher P%d, cargo %d" % [before, cart.s, cart.pusher_peer, cart.cargo.size()])
+	# A salt wall broken with the pick.
+	var walls: Array[Node] = get_tree().get_nodes_in_group(&"breakables")
+	if walls.is_empty():
+		var test_wall: Breakable = Breakable.new()
+		test_wall.name = "WallTest"
+		_game.mine.add_child(test_wall)
+		test_wall.global_position = player.global_position + Vector3(0.0, -0.1, -3.0)
+		walls.append(test_wall)
+		await get_tree().physics_frame
+	var wall: Breakable = walls[0] as Breakable
+	player.teleport(Transform3D(Basis.IDENTITY, wall.global_position + wall.global_basis.z * 1.2 + Vector3.UP * 0.1))
+	await _give(&"spitzhacke")
+	var hits: int = 0
+	while wall.health > 0 and hits < 10:
+		_game.request_break(wall.get_path(), 34)
+		hits += 1
+		await get_tree().create_timer(0.1).timeout
+	print("[scenario] salt wall broken after %d hits: %s" % [hits, wall.health <= 0])
+
+
+func _count(id: StringName) -> int:
+	var count: int = 0
+	for item: WorldItem in _game._items():
+		count += 1 if item.data.id == id else 0
+	return count
 
 
 func _coop_client() -> void:

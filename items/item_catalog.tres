@@ -10,7 +10,17 @@
 [ext_resource type="Resource" path="res://items/data/karbidpatrone.tres" id="8_karbidpatrone"]
 [ext_resource type="Resource" path="res://items/data/schubkarre.tres" id="9_schubkarre"]
 [ext_resource type="Resource" path="res://items/data/leiche.tres" id="10_leiche"]
+[ext_resource type="Resource" path="res://items/data/stirnlampe.tres" id="11_stirnlampe"]
+[ext_resource type="Resource" path="res://items/data/alphorn.tres" id="12_alphorn"]
+[ext_resource type="Resource" path="res://items/data/boeller.tres" id="13_boeller"]
+[ext_resource type="Resource" path="res://items/data/rauchbombe.tres" id="14_rauchbombe"]
+[ext_resource type="Resource" path="res://items/data/funkgeraet.tres" id="15_funkgeraet"]
+[ext_resource type="Resource" path="res://items/data/obstler.tres" id="16_obstler"]
+[ext_resource type="Resource" path="res://items/data/leberkaessemmel.tres" id="17_leberkaessemmel"]
+[ext_resource type="Resource" path="res://items/data/seil.tres" id="18_seil"]
+[ext_resource type="Resource" path="res://items/data/pfeiferl.tres" id="19_pfeiferl"]
+[ext_resource type="Resource" path="res://items/data/hunt.tres" id="20_hunt"]
 
 [resource]
 script = ExtResource("1_catalog")
-items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre"), ExtResource("10_leiche")])
+items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre"), ExtResource("10_leiche"), ExtResource("11_stirnlampe"), ExtResource("12_alphorn"), ExtResource("13_boeller"), ExtResource("14_rauchbombe"), ExtResource("15_funkgeraet"), ExtResource("16_obstler"), ExtResource("17_leberkaessemmel"), ExtResource("18_seil"), ExtResource("19_pfeiferl"), ExtResource("20_hunt")])

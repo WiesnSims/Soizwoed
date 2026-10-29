@@ -23,6 +23,26 @@ func _ready() -> void:
 			AudioServer.set_bus_name(index, bus_name)
 			AudioServer.set_bus_send(index, "Master")
 	_add_voice_reverb()
+	_add_radio_bus()
+
+
+## The Funkgerät: tinny and crackly, under the voice volume (it sends into Voice).
+func _add_radio_bus() -> void:
+	if AudioServer.get_bus_index(&"Radio") != -1:
+		return
+	var index: int = AudioServer.bus_count
+	AudioServer.add_bus(index)
+	AudioServer.set_bus_name(index, "Radio")
+	AudioServer.set_bus_send(index, "Voice")
+	var band: AudioEffectBandPassFilter = AudioEffectBandPassFilter.new()
+	band.cutoff_hz = 1800.0
+	band.resonance = 0.8
+	AudioServer.add_bus_effect(index, band)
+	var crunch: AudioEffectDistortion = AudioEffectDistortion.new()
+	crunch.mode = AudioEffectDistortion.MODE_CLIP
+	crunch.drive = 0.35
+	crunch.post_gain = -3.0
+	AudioServer.add_bus_effect(index, crunch)
 
 
 ## A little cave reverb on the voice chat (DESIGN.md §9).

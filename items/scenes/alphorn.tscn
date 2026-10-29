@@ -1,0 +1,69 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_wood"]
+albedo_color = Color(0.55, 0.36, 0.2, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="mat_wood_dark"]
+albedo_color = Color(0.3, 0.18, 0.1, 1)
+roughness = 0.6
+
+[sub_resource type="CylinderMesh" id="mesh_0"]
+top_radius = 0.014
+bottom_radius = 0.04
+height = 0.85
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_1"]
+top_radius = 0.04
+bottom_radius = 0.085
+height = 0.16
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.02
+bottom_radius = 0.02
+height = 0.05
+radial_segments = 12
+rings = 1
+
+[sub_resource type="TorusMesh" id="mesh_3"]
+inner_radius = 0.04
+outer_radius = 0.05
+rings = 20
+ring_segments = 8
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.18, 1.0, 0.18)
+
+[node name="Alphorn" type="RigidBody3D"]
+mass = 2.0
+script = ExtResource("1_item")
+
+[node name="Part1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_wood")
+
+[node name="Part2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_wood")
+
+[node name="Part3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.98, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_wood_dark")
+
+[node name="Part4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_wood_dark")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("shape")

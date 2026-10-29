@@ -10,8 +10,14 @@ extends Node
 ## louder up close and muffled through rock (MuffledAudio), with a little cave reverb on the
 ## Voice bus. Dead players can only talk to each other: the living do not hear them, the dead
 ## hear each other without position (they are spectating).
+## Funkgerät (DESIGN.md §7): when both carry one and are too far apart to hear each other
+## well, the voice also comes out of the radio, tinny but at any distance, with static while
+## a creature is close to either end.
 
-enum Hearing { NONE, POSITIONAL, FLAT }
+enum Hearing { NONE, POSITIONAL, FLAT, RADIO }
+
+## Beyond this share of the voice range the radio takes over.
+const RADIO_FROM_SHARE: float = 0.4
 
 const SAMPLE_RATE: int = 24000
 const BUFFER_SECONDS: float = 0.4
@@ -32,13 +38,19 @@ var _loud_time: float = 0.0
 var _last_sent_at: float = -100.0
 var _speaker: MuffledAudio
 var _speaker_flat: AudioStreamPlayer
+var _speaker_radio: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
 var _playback_flat: AudioStreamGeneratorPlayback
+var _playback_radio: AudioStreamGeneratorPlayback
 
 
-## Who hears a voice: dead players are heard only by the dead (DESIGN.md §9).
-static func hearing(speaker_alive: bool, listener_alive: bool) -> Hearing:
+## Who hears a voice: dead players are heard only by the dead (DESIGN.md §9); living players
+## who both carry a Funkgerät hear each other over the radio when far apart.
+static func hearing(speaker_alive: bool, listener_alive: bool, both_radio: bool = false,
+		distance: float = 0.0, voice_range: float = INF) -> Hearing:
 	if speaker_alive:
+		if both_radio and listener_alive and distance > voice_range * RADIO_FROM_SHARE:
+			return Hearing.RADIO
 		return Hearing.POSITIONAL
 	return Hearing.NONE if listener_alive else Hearing.FLAT
 
@@ -79,6 +91,12 @@ func _ready() -> void:
 	_speaker_flat.bus = &"Voice"
 	_speaker_flat.stream = _generator()
 	add_child(_speaker_flat)
+	_speaker_radio = AudioStreamPlayer.new()
+	_speaker_radio.name = "VoiceRadio"
+	_speaker_radio.bus = &"Radio"
+	_speaker_radio.volume_db = _config.funk_volume_db
+	_speaker_radio.stream = _generator()
+	add_child(_speaker_radio)
 
 
 func _exit_tree() -> void:
@@ -143,7 +161,20 @@ func _voice_packet(data: PackedByteArray) -> void:
 		return
 	var listener: Player = Game.instance.local_player() if Game.instance != null else null
 	var listener_alive: bool = listener == null or listener.alive
-	_play(data, hearing(_player.alive, listener_alive))
+	var both_radio: bool = listener != null and _player.has_tool(&"funkgeraet") and listener.has_tool(&"funkgeraet")
+	var distance: float = listener.global_position.distance_to(_player.global_position) if listener != null else 0.0
+	var how: Hearing = hearing(_player.alive, listener_alive, both_radio, distance, _config.voice_chat_range)
+	if how == Hearing.RADIO and (_creature_near(_player) or _creature_near(listener)):
+		listener.play_radio(0.3)
+	_play(data, how)
+
+
+## A creature close to this end of the radio puts static on the line.
+func _creature_near(player: Player) -> bool:
+	for creature: Creature in Game.instance.creatures():
+		if creature.global_position.distance_to(player.global_position) < _config.funk_static_distance:
+			return true
+	return false
 
 
 func _play(data: PackedByteArray, how: Hearing) -> void:
@@ -153,9 +184,23 @@ func _play(data: PackedByteArray, how: Hearing) -> void:
 	if int(pcm.get("result", -1)) != Steam.VOICE_RESULT_OK:
 		return
 	var frames: PackedVector2Array = pcm16_to_frames(pcm["uncompressed"], int(pcm["size"]))
-	var playback: AudioStreamGeneratorPlayback = _flat_playback() if how == Hearing.FLAT else _positional_playback()
+	var playback: AudioStreamGeneratorPlayback = _positional_playback()
+	if how == Hearing.FLAT:
+		playback = _flat_playback()
+	elif how == Hearing.RADIO:
+		# Still heard in the tunnel too (faintly, muffled), as well as out of the radio.
+		if playback != null and playback.can_push_buffer(frames.size()):
+			playback.push_buffer(frames)
+		playback = _radio_playback()
 	if playback != null and playback.can_push_buffer(frames.size()):
 		playback.push_buffer(frames)
+
+
+func _radio_playback() -> AudioStreamGeneratorPlayback:
+	if not _speaker_radio.playing:
+		_speaker_radio.play()
+		_playback_radio = _speaker_radio.get_stream_playback() as AudioStreamGeneratorPlayback
+	return _playback_radio
 
 
 func _positional_playback() -> AudioStreamGeneratorPlayback:

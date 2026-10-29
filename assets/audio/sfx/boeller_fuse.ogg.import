@@ -12,7 +12,7 @@ dest_files=["res://.godot/imported/boeller_fuse.ogg-b4180dcef96bea0ea72ffb3a38d5
 
 [params]
 
-loop=false
+loop=true
 loop_offset=0
 bpm=0
 beat_count=0

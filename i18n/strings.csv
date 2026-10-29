@@ -144,3 +144,47 @@ SET_DEFAULTS,Standard
 CREATURE_TATZELWURM,Tatzelwurm
 CREATURE_KASERMANDL,Kasermandl
 CREATURE_SCHICHTMEISTER,Da Schichtmeister
+ITEM_STIRNLAMPE,Elektrische Stirnlampe
+ITEM_STIRNLAMPE_DESC,"Ka Flamm, ka Explosion. Klick: umschoitn zwischn Karbid und Batterie."
+ITEM_ALPHORN,Alphorn (Reiseformat)
+ITEM_ALPHORN_DESC,"Klick: a Trumm vom Ton. Wos vor dir is, steht deppat do – und de ganze Grubn hört's."
+ITEM_BOELLER,Böller
+ITEM_BOELLER_DESC,"Klick: anzündn und schmeißn. Kracht, lockt, verscheucht Bergmandl."
+ITEM_RAUCHBOMBE,"Rauchbombe ""Bierzelt"""
+ITEM_RAUCHBOMBE_DESC,"Klick: schmeißn. Stinkt wia 's Bierzelt am Montag in da Fruah – do geht nix eini."
+ITEM_FUNKGERAET,Funkgerät
+ITEM_FUNKGERAET_DESC,"Wer ans hot, hört de ondern mit Funk a von weit weg. Klick: anfunkn. Rauscht, wenn wos in da Näh is."
+ITEM_OBSTLER,Obstler
+ITEM_OBSTLER_DESC,"Klick: a Stamperl. +25 Gsundheit, dann draht si's a bissl."
+ITEM_LEBERKAESSEMMEL,Leberkässemmel
+ITEM_LEBERKAESSEMMEL_DESC,"Klick: in Ruah essn (4 Sekundn). +40 Gsundheit."
+ITEM_SEIL,Seil & Kletterhakn
+ITEM_SEIL_DESC,"Klick auf a Kantn: Seil owi lossn, rauf- und runterklettern. E hoitn am Hakn: wieder einholn."
+ITEM_PFEIFERL,Grubenhund-Pfeiferl
+ITEM_PFEIFERL_DESC,"Klick: da Hunt kummt auf de Gleis daher. Laut!"
+ITEM_HUNT,Hunt
+MSG_BATTERY_EMPTY,De Batterie is laar.
+MSG_LAMP_ELECTRIC,Stirnlampe an – ka Flamm.
+MSG_LAMP_CARBIDE,Zruck zur Karbidlampn.
+MSG_OUT_OF_BREATH,"Z'weng Luft, wort a bissl."
+MSG_ROPE_NO_EDGE,Do geht's net weit gnua owi.
+MSG_RADIO_CALL,%s funkt di an!
+MSG_NO_RAILS,Do gibt's ka Gleis.
+MSG_RAILS_FAR,"Da Hunt kummt, oba bis zu de Gleis muasst scho selber."
+MSG_NEED_PICK,Do brauchst a Spitzhackn.
+PROMPT_RAIL_PUSH,Hunt schiabn
+PROMPT_RAIL_LET_GO,Hunt auslossn
+PROMPT_LOAD_HUNT,In Hunt legn
+PROMPT_HUNT_FULL,Da Hunt is voll.
+PROMPT_ROPE_TAKE,Seil einholn
+HUD_USE_KEY,Klick
+USE_NONE,–
+USE_REFILL_LAMP,Lampn nachfülln
+USE_HEADLAMP,Lampn umschoitn
+USE_ALPHORN,Blosn
+USE_THROW,Anzündn und schmeißn
+USE_DRINK,Trinkn
+USE_EAT,Essn
+USE_ROPE,Seil owi lossn
+USE_PFEIFERL,Pfeifn
+USE_RADIO,Anfunkn

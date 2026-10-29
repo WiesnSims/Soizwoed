@@ -399,6 +399,9 @@ func _descend() -> void:
 		player.teleport.rpc(mine_cage.player_spot(index))
 		index += 1
 	_spawn_loot(seed_value)
+	if mine.rails != null:
+		var cart: RailCart = _spawn_item_at(&"hunt", 0, mine.rails.transform_at(0.0)) as RailCart
+		cart.host_place(0.0)
 	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
 	_enemy_budget_left = _enemy_budget
 	_smokes.clear()
@@ -630,6 +633,8 @@ func _start_shift(seconds: float) -> void:
 	shift_time_left = seconds
 	mine_cage.stop_ride()
 	hub_cage.motor.stop()
+	if local_player() != null:
+		local_player().recharge_battery()
 	_update_clocks()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
@@ -746,7 +751,7 @@ func request_take(item_path: NodePath, peer: int) -> void:
 	var player: Player = player_by_peer(peer)
 	if item == null or player == null or not player.alive:
 		return
-	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED:
+	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED or item is RailCart:
 		return
 	var place: int = player.inventory.place_for(item.data.weight_class)
 	if place == Inventory.NONE:
@@ -814,14 +819,14 @@ func _host_check_carry_together() -> void:
 func request_load_cart(cart_path: NodePath, item_path: NodePath) -> void:
 	if not multiplayer.is_server():
 		return
-	var cart: Schubkarre = get_node_or_null(cart_path) as Schubkarre
+	var cart: CargoItem = get_node_or_null(cart_path) as CargoItem
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
 	if cart == null or item == null or item == cart or not item.is_loot() or item.state == WorldItem.State.CARTED:
 		return
 	if item.state == WorldItem.State.STOLEN:
 		return
 	if not cart.can_load(item):
-		_show_message_key.rpc_id(_sender(), "PROMPT_CART_FULL")
+		_show_message_key.rpc_id(_sender(), "PROMPT_HUNT_FULL" if cart is RailCart else "PROMPT_CART_FULL")
 		return
 	item.host_cart(cart.free_slot(item))
 	play_sound_everywhere.rpc("drop_thud" if item.data.weight_class == ItemData.WeightClass.HEAVY else "pickup", item.global_position)
@@ -832,9 +837,294 @@ func request_consume(item_path: NodePath, peer: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
-	if item != null and item.holder_peer == peer:
-		play_sound_everywhere.rpc("karbid_open", item.global_position)
-		item.host_vanish()
+	var player: Player = player_by_peer(peer)
+	if item == null or player == null or item.holder_peer != peer:
+		return
+	match item.data.use:
+		ItemData.Use.DRINK:
+			host_heal_player(player, _config.obstler_heal)
+			play_sound_everywhere.rpc("drink", item.global_position)
+		ItemData.Use.EAT:
+			host_heal_player(player, _config.leberkaese_heal)  # the chewing was heard already
+		_:
+			play_sound_everywhere.rpc("karbid_open", item.global_position)
+	item.host_vanish()
+
+
+func host_heal_player(player: Player, amount: int) -> void:
+	if player.alive and amount > 0:
+		player.set_health.rpc(mini(_config.player_max_health, player.health + amount))
+
+
+## Lit and thrown: a Böller or a Rauchbombe (Throwable) leaves the hand.
+@rpc("any_peer", "call_local", "reliable")
+func request_throw(item_path: NodePath, at: Transform3D, toss: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: Throwable = get_node_or_null(item_path) as Throwable
+	if item != null and not item.lit and item.holder_peer == _sender():
+		item.host_throw(at, toss.limit_length(_config.throw_tool_speed + _config.sprint_speed))
+
+
+## The Alphorn (DESIGN.md §7): stuns every creature in a cone in front, and the whole mine
+## hears it.
+@rpc("any_peer", "call_local", "reliable")
+func request_alphorn(from: Vector3, forward: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive:
+		return
+	play_sound_everywhere.rpc("alphorn", from, 6.0, 120.0)
+	host_noise(from, _config.noise_alphorn)
+	var stunned: int = 0
+	for creature: Creature in creatures():
+		if in_cone(from, forward, creature.global_position + Vector3.UP * 0.8, _config.alphorn_range, _config.alphorn_cone_degrees) \
+				and clear_line(from, creature.global_position + Vector3.UP * 0.8):
+			creature.host_stun(_config.alphorn_stun_seconds)
+			creature.host_shouted_at(from)
+			stunned += 1
+	print("[game] Alphorn by P%d stunned %d" % [player.peer_id, stunned])
+
+
+## Whether `point` lies within `reach` m of `from` and within a cone of `degrees` around `forward`.
+static func in_cone(from: Vector3, forward: Vector3, point: Vector3, reach: float, degrees: float) -> bool:
+	var to: Vector3 = point - from
+	if to.length() > reach:
+		return false
+	if to.length() < 0.5:
+		return true
+	return to.normalized().dot(forward.normalized()) >= cos(deg_to_rad(degrees / 2.0))
+
+
+## No rock between the two points.
+func clear_line(from: Vector3, to: Vector3) -> bool:
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, 1)
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+## A Böller going off (host): heard far through the mine, scares Bergmandl, hurts whatever is
+## right next to it, and sets off firedamp.
+func host_bang(where: Vector3) -> void:
+	_flash.rpc(where, "boeller_bang", Color(1.0, 0.8, 0.5), 6.0)
+	host_noise(where, _config.noise_boeller)
+	host_blast(where, _config.boeller_radius, _config.boeller_damage)
+	for creature: Creature in creatures():
+		if creature.global_position.distance_to(where) <= _config.boeller_scare_radius:
+			creature.host_shouted_at(where)
+
+
+## Damage around a blast: full at the centre, nothing at `radius` (host). Rock shields.
+func host_blast(where: Vector3, radius: float, damage: int) -> void:
+	for player: Player in players():
+		var chest: Vector3 = player.global_position + Vector3.UP
+		if clear_line(where + Vector3.UP * 0.2, chest):
+			host_damage_player(player, _config.explosion_damage(chest.distance_to(where), radius, damage))
+	for creature: Creature in creatures():
+		var body: Vector3 = creature.global_position + Vector3.UP * 0.5
+		var hurt: int = _config.explosion_damage(body.distance_to(where), radius, damage)
+		if hurt > 0:
+			creature.host_hit(hurt, where)
+	host_flame(where, radius)
+
+
+## An open flame or a blast at `where` reaching `radius` m (host): firedamp there goes up.
+## Hazards hook in here.
+func host_flame(_where: Vector3, _radius: float) -> void:
+	pass
+
+
+## The "Bierzelt" bomb bursts: a stinking cloud creatures keep out of (host).
+func host_smoke(where: Vector3) -> void:
+	add_smoke(where, _config.rauchbombe_radius, _config.rauchbombe_seconds)
+	_show_smoke.rpc(where)
+	print("[game] Bierzelt cloud at %s" % where.snapped(Vector3.ONE * 0.1))
+
+
+@rpc("authority", "call_local", "reliable")
+func _show_smoke(where: Vector3) -> void:
+	Audio.play_at("smoke_puff", where, &"SFX", 0.0, 30.0)
+	var cloud: SmokeCloud = SmokeCloud.new()
+	cloud.radius = _config.rauchbombe_radius
+	cloud.seconds = _config.rauchbombe_seconds
+	(mine if mine != null else mine_root).add_child(cloud)
+	cloud.global_position = where
+
+
+## A bang with a flash of light, on every peer.
+@rpc("authority", "call_local", "reliable")
+func _flash(where: Vector3, sound: String, color: Color, energy: float) -> void:
+	Audio.play_at(sound, where, &"SFX", 4.0, 60.0)
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = 9.0
+	mine_root.add_child(light)
+	light.global_position = where + Vector3.UP * 0.4
+	var tween: Tween = light.create_tween()
+	tween.tween_property(light, "light_energy", 0.0, 0.35)
+	tween.tween_callback(light.queue_free)
+
+
+## A pick hit on a salt wall or rubble (only the Spitzhacke breaks rock).
+@rpc("any_peer", "call_local", "reliable")
+func request_break(rock_path: NodePath, damage: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var rock: Breakable = get_node_or_null(rock_path) as Breakable
+	var player: Player = player_by_peer(_sender())
+	if rock == null or player == null or not player.alive or rock.health <= 0:
+		return
+	var tool: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
+	if tool == null or not tool.data.breaks_rock or player.global_position.distance_to(rock.global_position) > rock.size.x:
+		return
+	rock.host_hit(clampi(damage, 0, 100))
+
+
+## Host: a wall or pile just broke. A salt wall leaves a crystal or two in its rubble.
+func host_broke(rock: Breakable) -> void:
+	print("[game] %s broken" % rock.name)
+	if rock.kind != Breakable.Kind.SALT_WALL:
+		return
+	for i: int in randi_range(1, 2):
+		var at: Vector3 = rock.global_position + rock.global_basis.z * randf_range(-0.6, 0.6) + Vector3(randf_range(-1.0, 1.0), 0.6, 0.0)
+		_spawn_item_at(&"salzkristall", randi_range(8, 18), Transform3D(Basis.IDENTITY, at))
+
+
+## E on a rail cart: start or stop pushing it.
+@rpc("any_peer", "call_local", "reliable")
+func request_push_rail(cart_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var cart: RailCart = get_node_or_null(cart_path) as RailCart
+	var player: Player = player_by_peer(_sender())
+	if cart == null or player == null or not player.alive or player.inventory.hands_busy():
+		return
+	if cart.pusher_peer == player.peer_id:
+		cart.host_set_pusher(0)
+	elif cart.pusher_peer == 0 and player.global_position.distance_to(cart.global_position) < _config.interact_distance + 1.0:
+		cart.host_set_pusher(player.peer_id)
+
+
+## The Grubenhund-Pfeiferl: the nearest rail cart rolls over to whoever blew it.
+@rpc("any_peer", "call_local", "reliable")
+func request_call_cart(where: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive:
+		return
+	play_sound_everywhere.rpc("pfeiferl", where + Vector3.UP * 1.5, 2.0, 50.0)
+	var nearest: RailCart = null
+	for item: WorldItem in _items():
+		var cart: RailCart = item as RailCart
+		if cart != null and (nearest == null or cart.global_position.distance_to(where) < nearest.global_position.distance_to(where)):
+			nearest = cart
+	if nearest == null or mine == null or mine.rails == null:
+		_show_message_key.rpc_id(player.peer_id, "MSG_NO_RAILS")
+		return
+	if mine.rails.distance_to(where) > mine.chunk_set.cell_size:
+		_show_message_key.rpc_id(player.peer_id, "MSG_RAILS_FAR")
+	nearest.host_call(where)
+
+
+## The Seil: thrown down the edge at `point` (looking along `flat`), where there is a drop.
+@rpc("any_peer", "call_local", "reliable")
+func request_rope(item_path: NodePath, point: Vector3, flat: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var player: Player = player_by_peer(_sender())
+	if item == null or player == null or item.holder_peer != player.peer_id or mine == null:
+		return
+	if point.distance_to(player.global_position) > _config.interact_distance + 1.5:
+		return
+	var edge: Array[Vector3] = _find_drop(point, flat.normalized())
+	if edge.is_empty():
+		_show_message_key.rpc_id(player.peer_id, "MSG_ROPE_NO_EDGE")
+		return
+	item.host_vanish()
+	_next_item += 1
+	_place_rope.rpc("Rope%d" % _next_item, edge[0], edge[1])
+	play_sound_everywhere.rpc("rope", edge[0])
+
+
+## Walks from `point` along `flat` in small steps until the floor drops away by more than a
+## man's height: [top of the rope, bottom], or [] when there is no edge within reach.
+func _find_drop(point: Vector3, flat: Vector3) -> Array[Vector3]:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var depth: float = _config.seil_length + 1.5
+	for i: int in 14:
+		var probe: Vector3 = point + flat * (0.2 * i) + Vector3.UP * 0.4
+		if not clear_line(point + Vector3.UP * 0.4, probe):
+			return []  # a wall before any edge
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(probe, probe + Vector3.DOWN * depth, 1)
+		var hit: Dictionary = space.intersect_ray(query)
+		var floor_y: float = (hit.position as Vector3).y if not hit.is_empty() else probe.y - depth
+		if point.y - floor_y > 1.8:
+			var top: Vector3 = Vector3(probe.x, point.y, probe.z) + flat * 0.1
+			return [top, Vector3(top.x, maxf(floor_y, top.y - _config.seil_length), top.z)]
+	return []
+
+
+@rpc("authority", "call_local", "reliable")
+func _place_rope(rope_name: String, top: Vector3, bottom: Vector3) -> void:
+	if mine == null:
+		return
+	var rope: Rope = Rope.new()
+	rope.name = rope_name
+	mine.add_child(rope)
+	rope.setup(top, bottom)
+
+
+## Hold E on a rope's hook: the Seil comes back up into your pocket.
+@rpc("any_peer", "call_local", "reliable")
+func request_take_rope(rope_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var rope: Rope = get_node_or_null(rope_path) as Rope
+	var player: Player = player_by_peer(_sender())
+	if rope == null or player == null or not player.alive or player.inventory.place_for(ItemData.WeightClass.LIGHT) == Inventory.NONE:
+		return
+	if player.global_position.distance_to(rope.top) > _config.interact_distance + 1.5:
+		return
+	var top: Vector3 = rope.top
+	_remove_rope.rpc(rope.get_path())
+	play_sound_everywhere.rpc("rope", top)
+	var item: WorldItem = _spawn_item_at(&"seil", 0, Transform3D(Basis.IDENTITY, top + Vector3.UP * 0.3))
+	# Into the pocket once every peer has the new item.
+	await get_tree().create_timer(0.3).timeout
+	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
+	if is_instance_valid(item) and place != Inventory.NONE and item.state == WorldItem.State.FREE:
+		item.host_take(player.peer_id, place)
+
+
+@rpc("authority", "call_local", "reliable")
+func _remove_rope(rope_path: NodePath) -> void:
+	var rope: Node = get_node_or_null(rope_path)
+	if rope != null:
+		rope.queue_free()
+
+
+## The Funkgerät's call button: a crackle on every other Funkgerät in the crew.
+@rpc("any_peer", "call_local", "reliable")
+func request_radio_call() -> void:
+	if not multiplayer.is_server():
+		return
+	var caller: Player = player_by_peer(_sender())
+	if caller != null and caller.alive and caller.has_tool(&"funkgeraet"):
+		_radio_call.rpc(caller.peer_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func _radio_call(caller_peer: int) -> void:
+	var me: Player = local_player()
+	var caller: Player = player_by_peer(caller_peer)
+	if me == null or caller == null or not me.has_tool(&"funkgeraet"):
+		return
+	me.play_radio(0.9)
+	if me != caller:
+		show_message(tr("MSG_RADIO_CALL") % caller.display_name())
 
 
 ## The owner's character landed hard (movement is client-side, health is the host's).
@@ -899,8 +1189,8 @@ func _play_shout(peer: int) -> void:
 
 
 @rpc("any_peer", "call_local", "reliable")
-func play_sound_everywhere(sound: String, where: Vector3) -> void:
-	Audio.play_at(sound, where)
+func play_sound_everywhere(sound: String, where: Vector3, volume_db: float = 0.0, max_distance: float = 30.0) -> void:
+	Audio.play_at(sound, where, &"SFX", volume_db, max_distance)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -1036,6 +1326,9 @@ func _host_tick_noise(delta: float) -> void:
 	_noise_left = _config.noise_step_seconds
 	for player: Player in players():
 		host_noise(player.global_position, movement_noise(player))
+	for item: WorldItem in _items():
+		if item is RailCart and (item as RailCart).moving:
+			host_noise(item.global_position, _config.noise_rail_cart)
 	var now: float = Time.get_ticks_msec() / 1000.0
 	_smokes = _smokes.filter(func(smoke: Array) -> bool: return float(smoke[2]) > now)
 

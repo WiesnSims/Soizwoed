@@ -28,8 +28,8 @@ var state: State = State.FREE
 var holder_peer: int = 0
 ## Peer id of the second player carrying a heavy item together, 0 otherwise.
 var helper_peer: int = 0
-## The cart carrying this item (CARTED).
-var cart: Schubkarre
+## The Schubkarre or rail cart carrying this item (CARTED).
+var cart: CargoItem
 var follow: Node3D
 
 var _impact_cooldown: float = 0.0
@@ -189,7 +189,7 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 				player.ray.add_exception(self)
 		State.CARTED:
 			follow = get_node_or_null(follow_path) as Node3D
-			cart = follow.get_parent() as Schubkarre if follow != null else null
+			cart = follow.get_parent() as CargoItem if follow != null else null
 			if cart != null:
 				cart.cargo.append(self)
 		State.STOLEN:

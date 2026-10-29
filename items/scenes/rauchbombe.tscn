@@ -1,0 +1,88 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/throwable.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_keg"]
+albedo_color = Color(0.45, 0.3, 0.12, 1)
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="mat_black"]
+albedo_color = Color(0.06, 0.06, 0.06, 1)
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="mat_foam"]
+albedo_color = Color(0.95, 0.92, 0.82, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_fuse"]
+albedo_color = Color(0.85, 0.8, 0.65, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="mesh_0"]
+top_radius = 0.055
+bottom_radius = 0.06
+height = 0.12
+radial_segments = 12
+rings = 1
+
+[sub_resource type="TorusMesh" id="mesh_1"]
+inner_radius = 0.055
+outer_radius = 0.064
+rings = 20
+ring_segments = 8
+
+[sub_resource type="TorusMesh" id="mesh_2"]
+inner_radius = 0.052
+outer_radius = 0.061
+rings = 20
+ring_segments = 8
+
+[sub_resource type="SphereMesh" id="mesh_3"]
+radius = 0.05
+height = 0.05
+radial_segments = 16
+rings = 8
+
+[sub_resource type="CylinderMesh" id="mesh_4"]
+top_radius = 0.004
+bottom_radius = 0.004
+height = 0.05
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.13, 0.17, 0.13)
+
+[node name="Rauchbombe" type="RigidBody3D"]
+mass = 0.5
+script = ExtResource("1_item")
+effect = 1
+
+[node name="Part1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_keg")
+
+[node name="Part2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_black")
+
+[node name="Part3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.095, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_black")
+
+[node name="Part4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.125, 0)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_foam")
+
+[node name="Part5" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.93969, 0.34202, 0, -0.34202, 0.93969, 0, 0, 0, 1, 0, 0.16, 0)
+mesh = SubResource("mesh_4")
+surface_material_override/0 = SubResource("mat_fuse")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.085, 0)
+shape = SubResource("shape")

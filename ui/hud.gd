@@ -149,6 +149,14 @@ func open_shop() -> void:
 	_start_panel("shop", tr("SHOP_TITLE"))
 	_add_text(tr("SHOP_MONEY") % int(_run_info.get("money", 0)), ACCENT)
 	var money: int = int(_run_info.get("money", 0))
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(640, 430)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list: VBoxContainer = VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	scroll.add_child(list)
+	_panel_box.add_child(scroll)
 	for data: ItemData in Game.instance.catalog.shop():
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
@@ -161,7 +169,7 @@ func open_shop() -> void:
 		buy.disabled = data.price > money
 		buy.pressed.connect(_on_buy_pressed.bind(data.id))
 		row.add_child(buy)
-		_panel_box.add_child(row)
+		list.add_child(row)
 	_add_button(tr("PANEL_CLOSE"), close_panels)
 	_apply_modal()
 
@@ -320,8 +328,9 @@ func _update_prompt(player: Player) -> void:
 		text = ("[E …] " if hold else "[E] ") + text
 	_prompt.text = text
 	_prompt.visible = text != ""
-	_hold_bar.visible = player.hold_progress > 0.0
-	_hold_bar.value = player.hold_progress
+	var progress: float = maxf(player.hold_progress, player.use_progress)
+	_hold_bar.visible = progress > 0.0
+	_hold_bar.value = progress
 
 
 func _update_slots(player: Player) -> void:
@@ -331,7 +340,10 @@ func _update_slots(player: Player) -> void:
 		_slot_labels[i].text = "%d  %s" % [i + 1, item.display_name() if item != null else "–"]
 		_slot_panels[i].modulate = Color(1, 1, 1, 1) if i == inventory.selected else Color(1, 1, 1, 0.55)
 	var hands: WorldItem = inventory.hands as WorldItem
-	_hands_label.visible = hands != null
+	var pocket: WorldItem = inventory.slots[inventory.selected] as WorldItem
+	_hands_label.visible = hands != null or (pocket != null and pocket.data.use != ItemData.Use.NONE)
+	if hands == null and _hands_label.visible:
+		_hands_label.text = "[%s] %s" % [tr("HUD_USE_KEY"), tr("USE_" + ItemData.Use.keys()[pocket.data.use])]
 	if hands != null:
 		var text: String = tr("HUD_HANDS") % hands.display_name()
 		var cart: Schubkarre = hands as Schubkarre

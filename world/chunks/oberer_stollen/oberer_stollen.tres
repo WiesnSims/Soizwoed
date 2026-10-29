@@ -70,3 +70,4 @@ entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubRes
 superset_weight = 0.25
 creatures = Array[StringName]([&"bergmandl", &"tatzelwurm", &"kasermandl"])
 echo = 0.2
+has_rails = true

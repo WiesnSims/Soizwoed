@@ -13,7 +13,8 @@ $runs = @(
     @{ Name = "smoke_mandl"; Args = @("--headless", "--", "--solo", "--scenario=mandl", "--smoke=14"); Expect = @("RUN_OFF .* carrying I") },
     @{ Name = "smoke_tatzel"; Args = @("--headless", "--", "--solo", "--scenario=tatzel", "--smoke=16"); Expect = @("tatzelwurm HUNT", "tatzelwurm SURFACE emerge 1\.0", "tatzelwurm LUNGE emerge 1\.0", "player health ([0-9]|[1-9][0-9])$") },
     @{ Name = "smoke_kaser"; Args = @("--headless", "--", "--solo", "--scenario=kaser", "--smoke=16"); Expect = @("kasermandl lit true STALK", "kasermandl lit false RETREAT .* player health 65") },
-    @{ Name = "smoke_meister"; Args = @("--headless", "--", "--solo", "--scenario=meister", "--smoke=36"); Expect = @("Schichtmeister comes for P1", "P1 died") }
+    @{ Name = "smoke_tools"; Args = @("--headless", "--", "--solo", "--scenario=tools", "--smoke=45"); Expect = @("stirnlampe electric true, open flame false", "obstler: health 55", "leberkaessemmel: health 95", "boeller gone off: true", "rauchbombe: smoke zones 1", "pfeiferl: hunt came from [0-9.]+ m to [0-2]\.", "pusher P1, cargo 1", "salt wall broken after [1-9] hits: true") },
+    @{ Name = "smoke_meister";Args = @("--headless", "--", "--solo", "--scenario=meister", "--smoke=36"); Expect = @("Schichtmeister comes for P1", "P1 died") }
 )
 $allOk = $true
 foreach ($run in $runs) {

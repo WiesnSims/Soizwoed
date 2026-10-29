@@ -29,6 +29,10 @@ extends Resource
 @export var mine_branch_max_length: int = 3
 @export var mine_loop_chance: float = 0.4
 @export var mine_max_loops: int = 3
+## A loop's new passage is closed by a salt wall (a shortcut for the Spitzhacke) with this chance;
+## the way into a dead end (a hidden niche) with the other.
+@export var salt_wall_loop_chance: float = 0.5
+@export var salt_wall_dead_end_chance: float = 0.25
 
 @export_group("Spawning")
 @export var enemy_budget_by_players: Array[float] = [0.5, 0.7, 0.85, 1.0]
@@ -138,6 +142,10 @@ extends Resource
 @export var boeller_fuse_seconds: float = 2.5
 @export var boeller_radius: float = 3.0
 @export var boeller_damage: int = 20
+## Bergmandl this close to a bang run off like after a shout.
+@export var boeller_scare_radius: float = 12.0
+@export var throw_tool_speed: float = 9.0
+@export var rauchbombe_fuse_seconds: float = 1.2
 @export var obstler_heal: int = 25
 @export var obstler_wobble_seconds: float = 20.0
 @export var leberkaese_heal: int = 40
@@ -153,8 +161,11 @@ extends Resource
 @export var pfeiferl_cart_speed: float = 3.0
 @export var salt_wall_health: int = 100
 @export var rubble_health: int = 60
+@export var pfeiferl_cooldown: float = 4.0
 ## Funkgerät: creatures this close to either end put static on the line.
 @export var funk_static_distance: float = 10.0
+## Teammates' voices over the Funkgerät never get quieter than this (dB), at any distance.
+@export var funk_volume_db: float = -6.0
 
 @export_group("Hazards")
 ## Share of hazard spots that hold a firedamp pocket, plus this much per cycle.

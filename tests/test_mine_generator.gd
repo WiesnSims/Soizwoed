@@ -74,3 +74,22 @@ func test_later_cycles_make_bigger_mines() -> void:
 	var small: MineLayout = MineGenerator.generate(9, MineParams.from_balance(BalanceConfig.new(), 0), CHUNKS)
 	var big: MineLayout = MineGenerator.generate(9, MineParams.from_balance(BalanceConfig.new(), 5), CHUNKS)
 	assert_gt(big.cells.size(), small.cells.size())
+
+
+func test_salt_walls_close_open_passages_only() -> void:
+	var walls: int = 0
+	for seed_value: int in range(40):
+		var layout: MineLayout = MineGenerator.generate(seed_value, params, CHUNKS)
+		for wall: Vector3i in layout.walls:
+			var cell: Vector2i = Vector2i(wall.x, wall.y)
+			assert_true(layout.is_open(cell, wall.z), "seed %d wall %s on a closed side" % [seed_value, wall])
+			assert_ne(cell, layout.start, "seed %d walls in the station" % seed_value)
+			walls += 1
+	assert_gt(walls, 0, "no salt walls in 40 mines")
+
+
+func test_no_salt_walls_when_switched_off() -> void:
+	params.wall_loop_chance = 0.0
+	params.wall_dead_end_chance = 0.0
+	for seed_value: int in range(10):
+		assert_eq(MineGenerator.generate(seed_value, params, CHUNKS).walls.size(), 0)
