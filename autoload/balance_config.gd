@@ -88,6 +88,15 @@ extends Resource
 @export var shout_radius: float = 14.0
 @export var shout_cooldown: float = 3.0
 
+@export_group("Voice chat")
+## Proximity voice: full volume up close, silent beyond this distance (m).
+@export var voice_chat_range: float = 30.0
+@export var voice_chat_volume_db: float = 4.0
+## Speaking louder than this (peak, 0–1) for `voice_shout_seconds` counts as a shout
+## ("Plärren") and scares Bergmandl, like the shout key.
+@export var voice_shout_level: float = 0.6
+@export var voice_shout_seconds: float = 0.25
+
 @export_group("Bergmandl")
 @export var bergmandl_health: int = 30
 @export var bergmandl_speed: float = 3.2

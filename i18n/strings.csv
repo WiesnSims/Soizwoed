@@ -59,7 +59,7 @@ PANEL_CONTINUE,Weiter
 PAUSE_TITLE,Brotzeit
 PAUSE_KEYS,"WASD gehn · Shift laufn · Strg/C duckn · Leertaste hupfn
 E nehma/benutzn · G ablegn · Klick haun/benutzn · 1–4 Fächer
-F Lampn · Q plärrn · T Taschnuhr"
+F Lampn · Q plärrn · T Taschnuhr · V redn"
 RESULTS_TITLE,Schicht vorbei
 RESULTS_LEFT_BEHIND,Du bist unten blieben!
 RESULTS_NOTHING,Nix verkauft.
@@ -80,3 +80,21 @@ HUD_DEAD,Du bist hin.
 HUD_CREW,Kumpl dabei: %d
 RESULTS_DIED,Du bist hin worn!
 HUD_TOGETHER,(zu zweit)
+MENU_PUBLIC,Für olle sichtbor
+MENU_FIND,Partien suachn
+MENU_LOBBY,%s – %d/%d Kumpl
+MENU_LOBBY_FRIEND,%s (Freind) – %d/%d Kumpl
+MENU_STEAM_AS,Angmeldt ois %s
+NET_OPENING,Partie wird aufgmocht…
+NET_SEARCHING,"I schau, wer grad eifoahrt…"
+NET_NO_LOBBIES,Koa Partie gfundn. Lass di vo am Freind eiladn!
+NET_LOBBY_FULL,De Partie is scho voll.
+NET_WRONG_VERSION,De Partie lauft auf ana ondern Version vom Spü.
+NET_NOT_SOIZWOED,Des is koa Soizwöd-Partie.
+NET_JOINING_INVITE,Du gehst zu deim Freind…
+HUD_TALKING,Du redst…
+PAUSE_INVITE,Freind eiladn
+PAUSE_VOICE_PTT,"Redn: mit V (drucka)"
+PAUSE_VOICE_OPEN,"Redn: Mikro offn"
+PAUSE_MIC_TEST_OFF,"Mikro probiern: aus"
+PAUSE_MIC_TEST_ON,"Mikro probiern: ein (du hörst di selber)"

@@ -115,3 +115,32 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Your own lamp and the fog:** your own lamp lights the volumetric fog at 0.15 of its strength (others still see the full glow around your lamp). At full strength it hazed over the top third of your own screen.
 - **Less bloom and a dimmer lamp:** mine glow intensity 0.4 (was 0.55), strength 0.8 (0.9), no bloom (was 0.04), only from HDR 1.6 up (was 1.2); lamp energy 1.9 (was 2.3).
 - **Throw check:** `mp_test.ps1 -Coop` now throws a crystal while walking, once from the host and once from the client, and fails when the flight differs between the peers by more than 0.5 m. The reported "drops straight down on the other screen" is how the M1 build behaved (clients ran their own item physics without the throw speed); the M2 build passes this check headless and in real windows.
+
+## 2026-10-29 – M3 Steam (chosen by Claude, change any time)
+
+### GodotSteam
+- **GodotSteam GDExtension 4.23.2** (Steamworks 1.65, from Codeberg, built for Godot 4.4+, works with 4.7.2) as a plain addon: the stock Godot editor and export templates keep working. Only the Windows x64 libraries are in the repo; the addon's editor updater plugin is left out (it would check the web every time the editor opens).
+- **Transport:** `SteamMultiplayerPeer` with `server_relay`: clients connect only to the host (lobby owner), the host relays – the same star layout as ENet. Steam's relay network handles NAT.
+
+### Lobbies
+- **Hosting** creates a **friends-only** lobby for 4. "Für olle sichtbor" next to the host button (or `--public`) makes it public. Every lobby carries `game=soizwoed`, `ver=<version>` and `name=<host's Steam name>`.
+- **Joining:** "Partien suachn" lists public Soizwöd lobbies of the same version (search filtered on `game` and `ver`) plus the lobbies Steam friends are in (also checked for `game` and `ver`), marked "(Freind)". Joining a lobby of another game or version is refused with a message.
+- **Invites:** in the game, Esc → "Freind eiladn" opens the Steam overlay invite dialog (Shift+Tab → friends list works too). Accepting an invite or "Spiel beitreten" on a friend: if the game is running, it leaves the current session (also solo) and joins; if not, Steam starts it with `+connect_lobby <id>` and it joins right away.
+- **Late join:** the host makes the lobby unjoinable while the crew is down the mine, and joinable again in the Gasthaus (the old refusal stays as a safety net).
+- **Version:** `application/config/version` is now **0.3.0** (M3). Builds of different versions never see each other's lobbies.
+- **Without Steam** (not running, or `--net=enet`) the menu shows the old address field and everything runs over ENet. Headless runs default to ENet, so automated tests never show the Steam account as "playing Spacewar"; `--net=steam` forces Steam.
+
+### Names
+- With Steam, players show their **Steam name** (nameplate, spectator line, "… is hin!"). Without Steam they stay "Kumpl 1–4".
+
+### Proximity voice
+- **Push-to-talk on V** by default; Esc → "Redn: Mikro offn" switches to open mic (Steam's voice detection only sends while you speak). The choice is saved in `user://settings.cfg`.
+- Heard from the speaker's head: full volume close by, fading out to 30 m (`voice_chat_range`), **muffled through rock** (same check as creature voices), a little cave reverb on the Voice bus.
+- **Dead players** are heard only by other dead players (without position, they are spectating); the dead still hear the living.
+- **Shouting into the mic counts as "Plärren":** louder than `voice_shout_level` (0.6 peak) for 0.25 s scares Bergmandl, with the shout key's cooldown. (The Tatzelwurm in M4 will use the same loudness.)
+- **"Mikro probiern"** in the Esc menu plays your own voice back to you, to check the mic alone.
+- "Du redst…" bottom right while your voice goes out.
+- **ENet sessions have no voice** (DESIGN.md §11 allows that).
+
+### Testing
+- `tools/steam_test.ps1` (Steam running, one account): a headless host creates a public lobby, a second instance must find exactly it with the filtered search, and joining it must be refused (own account). Real joining and voice need a second account on another PC.

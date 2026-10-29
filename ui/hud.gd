@@ -27,6 +27,8 @@ var _stamina_bar: ProgressBar
 var _lamp_bar: ProgressBar
 var _watch: Label
 var _spectate_label: Label
+## "Redst" while your voice goes out (Steam voice chat).
+var _mic_label: Label
 ## Shown only while the local player is alive.
 var _alive_nodes: Array[Control] = []
 var _fade: ColorRect
@@ -65,6 +67,7 @@ func _process(_delta: float) -> void:
 	for node: Control in _alive_nodes:
 		node.visible = player.alive
 	_spectate_label.visible = not player.alive
+	_mic_label.visible = player.voice_chat != null and player.voice_chat.talking
 	if not player.alive:
 		var target: Player = player.spectating
 		_spectate_label.text = tr("HUD_SPECTATING") % target.display_name() if target != null and is_instance_valid(target) else tr("HUD_DEAD")
@@ -185,8 +188,23 @@ func _open_pause() -> void:
 	_start_panel("pause", tr("PAUSE_TITLE"))
 	_add_text(tr("PAUSE_KEYS"), DIM_COLOR, 15)
 	_add_button(tr("PANEL_CONTINUE"), close_panels)
+	if NetworkManager.can_invite():
+		_add_button(tr("PAUSE_INVITE"), NetworkManager.invite_friends)
+	if NetworkManager.voice_enabled():
+		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT"), _toggle_open_mic)
+		_add_button(tr("PAUSE_MIC_TEST_ON") if VoiceChat.echo else tr("PAUSE_MIC_TEST_OFF"), _toggle_mic_test)
 	_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
 	_apply_modal()
+
+
+func _toggle_open_mic() -> void:
+	Audio.voice_open_mic = not Audio.voice_open_mic
+	_open_pause()
+
+
+func _toggle_mic_test() -> void:
+	VoiceChat.echo = not VoiceChat.echo
+	_open_pause()
 
 
 func _on_buy_pressed(id: StringName) -> void:
@@ -350,6 +368,14 @@ func _build_top() -> void:
 	_run_label.position = Vector2(24, 20)
 	_run_label.add_theme_color_override("font_color", ACCENT)
 	_root.add_child(_run_label)
+	_mic_label = _label(tr("HUD_TALKING"), 18)
+	_mic_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_mic_label.position = Vector2(-224, -60)
+	_mic_label.size = Vector2(200, 30)
+	_mic_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_mic_label.add_theme_color_override("font_color", ACCENT)
+	_mic_label.hide()
+	_root.add_child(_mic_label)
 
 
 func _build_panel() -> void:

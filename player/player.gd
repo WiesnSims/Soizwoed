@@ -32,6 +32,10 @@ const OWN_LAMP_FOG_ENERGY: float = 0.15
 var peer_id: int = 1
 ## 1..4 in order of joining, for the name other players see ("Kumpl 2").
 var player_number: int = 1
+## The Steam name ("" without Steam, then "Kumpl N" is shown). Set by the host at spawn.
+var steam_name: String = ""
+## Proximity voice (Steam sessions only), else null.
+var voice_chat: VoiceChat
 var inventory: Inventory
 var health: int = 100
 var stamina: float = 1.0
@@ -111,6 +115,10 @@ func _ready() -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if local:
 		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
+	if NetworkManager.voice_enabled():
+		voice_chat = VoiceChat.new()
+		voice_chat.name = "VoiceChat"
+		add_child(voice_chat)
 	if not local:
 		_build_nameplate()
 		sync.synchronized.connect(_on_synchronized)
@@ -364,7 +372,7 @@ func _spectate(target: Player) -> void:
 # --- nameplate (other players) ----------------------------------------------------------------------
 
 func display_name() -> String:
-	return tr("PLAYER_NAME") % player_number
+	return steam_name if steam_name != "" else tr("PLAYER_NAME") % player_number
 
 
 func _build_nameplate() -> void:
@@ -557,6 +565,14 @@ func _shout() -> void:
 		return
 	_shout_cooldown = _config.shout_cooldown
 	game().request_shout.rpc_id(1, peer_id, global_position)
+
+
+## Shouted into the voice chat (VoiceChat): scares Bergmandl like the shout key, same cooldown.
+func voice_shout() -> void:
+	if _shout_cooldown > 0.0:
+		return
+	_shout_cooldown = _config.shout_cooldown
+	game().request_shout.rpc_id(1, peer_id, global_position, false)
 
 
 func play_shout() -> void:
