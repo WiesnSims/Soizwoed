@@ -24,6 +24,10 @@ SETTINGS = {
     "hub_logs": {"normal_scale": 1.2, "triplanar": 0.3, "world": True},
     "hub_plaster": {"triplanar": 0.4, "world": True},
     "hub_planks": {"triplanar": 0.5},
+    "mandl_coat": {"triplanar": 3.0, "albedo_color": "Color(0.62, 0.46, 0.31, 1)"},
+    "mandl_hat": {"triplanar": 3.0, "albedo_color": "Color(0.72, 0.1, 0.07, 1)"},
+    "mandl_beard": {"triplanar": 4.0, "albedo_color": "Color(0.85, 0.83, 0.8, 1)", "normal_scale": 1.5},
+    "mandl_leather": {"triplanar": 3.0},
 }
 
 
@@ -38,6 +42,8 @@ def material(name: str) -> str:
     for i, (map_name, kind) in enumerate(ext, 1):
         lines.append(f'[ext_resource type="{kind}" path="{folder}/{map_name}.jpg" id="{i}_{map_name}"]')
     lines += ["", "[resource]", f'resource_name = "{name}"']
+    if "albedo_color" in opts:
+        lines.append(f"albedo_color = {opts['albedo_color']}")
     lines.append('albedo_texture = ExtResource("1_albedo")')
     lines.append('orm_texture = ExtResource("3_arm")')
     lines.append(f"roughness = {opts.get('roughness', 1.0)}")

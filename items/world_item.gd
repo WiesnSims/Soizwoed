@@ -10,6 +10,9 @@ signal state_changed
 enum State { FREE, HELD, STORED, CARTED, STOLEN }
 
 const IMPACT_SPEED: float = 4.5
+## How quickly an item in hand catches up with the hand (higher = stiffer). Following happens
+## every rendered frame, so it never lags the camera by a physics step.
+const HAND_SHARPNESS: float = 28.0
 const LAYER_ITEMS: int = 4  # physics layer 3
 
 var data: ItemData
@@ -51,10 +54,21 @@ func is_loot() -> bool:
 	return data.kind == ItemData.Kind.LOOT
 
 
+func _process(delta: float) -> void:
+	if follow == null or not is_instance_valid(follow):
+		return
+	var target: Transform3D = follow.global_transform
+	if state == State.HELD or state == State.STORED:
+		var weight: float = 1.0 - exp(-HAND_SHARPNESS * delta)
+		if global_position.distance_to(target.origin) > 2.0:
+			weight = 1.0  # teleported: no swoosh across the world
+		global_transform = global_transform.interpolate_with(target, weight)
+	else:
+		global_transform = target
+
+
 func _physics_process(delta: float) -> void:
 	_impact_cooldown = maxf(0.0, _impact_cooldown - delta)
-	if follow != null and is_instance_valid(follow):
-		global_transform = follow.global_transform
 	if data.fragile and state == State.FREE and multiplayer.is_server():
 		_check_impacts()
 

@@ -18,6 +18,10 @@ Fetched by `tools/textures/fetch.py`.
 | hub_logs (2k) | Gasthaus log walls | [beam_wall_01](https://polyhaven.com/a/beam_wall_01) | Rob Tuytel |
 | hub_plaster (1k) | Gasthaus plaster | [plastered_wall](https://polyhaven.com/a/plastered_wall) | Amal Kumar |
 | hub_planks (1k) | Gasthaus counter, tables, panelling | [dark_wooden_planks](https://polyhaven.com/a/dark_wooden_planks) | Amal Kumar |
+| mandl_coat (1k) | Bergmandl coat (wool, tinted brown) | [caban](https://polyhaven.com/a/caban) | colormass, Rico Cilliers |
+| mandl_hat (1k) | Bergmandl cap (tinted red) | [polar_fleece](https://polyhaven.com/a/polar_fleece) | colormass, Rico Cilliers |
+| mandl_beard (1k) | Bergmandl beard | [curly_teddy_natural](https://polyhaven.com/a/curly_teddy_natural) | colormass, Rico Cilliers |
+| mandl_leather (1k) | Bergmandl belt, boots and bag | [brown_leather](https://polyhaven.com/a/brown_leather) | Rob Tuytel |
 
 ## Music
 

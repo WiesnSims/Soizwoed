@@ -13,8 +13,11 @@ const STAND_HEAD: float = 1.62
 const CROUCH_HEAD: float = 1.0
 const STAND_HEIGHT: float = 1.75
 const CROUCH_HEIGHT: float = 1.15
-const STEP_DISTANCE: float = 0.7
-const BOB_AMOUNT: float = 0.035
+## Stride length grows with speed (metres per step): about two steps a second walking.
+const STRIDE_MIN: float = 1.2
+const STRIDE_MAX: float = 2.4
+const STRIDE_PER_SPEED: float = 0.25
+const BOB_AMOUNT: float = 0.03
 const MELEE_DISTANCE: float = 2.2
 
 var peer_id: int = 1
@@ -72,7 +75,7 @@ func _ready() -> void:
 	var local: bool = is_local()
 	camera.current = local
 	body_mesh.visible = not local
-	if local:
+	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_update_lamp()
 
@@ -172,8 +175,9 @@ func _footsteps_and_bob(delta: float) -> void:
 	var horizontal: float = Vector2(velocity.x, velocity.z).length()
 	if is_on_floor() and horizontal > 0.3:
 		_step_accum += horizontal * delta
-		_bob_phase += horizontal * delta * PI / STEP_DISTANCE
-		if _step_accum >= STEP_DISTANCE:
+		var stride: float = clampf(0.9 + horizontal * STRIDE_PER_SPEED, STRIDE_MIN, STRIDE_MAX)
+		_bob_phase += horizontal * delta * PI / stride
+		if _step_accum >= stride:
 			_step_accum = 0.0
 			_play_footstep.rpc(global_position.y > Game.HUB_FLOOR_ABOVE)
 	else:
@@ -232,7 +236,8 @@ func _update_lamp() -> void:
 	lamp.omni_range = _config.lamp_range * (0.6 + 0.4 * minf(1.0, share / _config.lamp_low_fuel_share))
 	lamp.base_energy = _config.lamp_energy * (0.55 if low else 1.0)
 	lamp.flicker = 0.35 if low else 0.07
-	if lamp_on and not lamp_sound.playing:
+	# Only other players' lamps hiss: your own would be a constant noise in your ear.
+	if lamp_on and not lamp_sound.playing and not is_local():
 		lamp_sound.play()
 	elif not lamp_on and lamp_sound.playing:
 		lamp_sound.stop()
@@ -308,6 +313,11 @@ func _try_take(item: WorldItem) -> void:
 func _drop_active() -> void:
 	var item: WorldItem = inventory.active_item() as WorldItem
 	if item == null:
+		return
+	# Aimed at a Schubkarre: put it in instead of on the floor.
+	var aimed_cart: Schubkarre = focus as Schubkarre
+	if aimed_cart != null and aimed_cart != item and item.is_loot():
+		game().request_load_cart.rpc_id(1, aimed_cart.get_path(), item.get_path())
 		return
 	var heavy: bool = item.data.weight_class != ItemData.WeightClass.LIGHT
 	var at: Transform3D = (hold_point if heavy else hand_point).global_transform

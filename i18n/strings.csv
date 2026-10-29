@@ -68,3 +68,4 @@ RESULTS_TOTAL,Verkauft um %d Schilling
 RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.
 RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!
 RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S
+PROMPT_CART_DROP_IN,[G] %s einilegn

@@ -34,6 +34,9 @@ const SCENARIO_ARG: String = "--scenario="
 const SCENARIO_SCRIPT: String = "res://tools/dev/dev_scenario.gd"
 
 static var instance: Game
+## Set for automated windowed runs (--shots): no focus, no mouse capture, no sound, so a test
+## window never gets in the way of the person at the computer.
+static var dev_quiet: bool = false
 
 var phase: Phase = Phase.MENU
 var whistle_blown: bool = false
@@ -95,6 +98,7 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with(SHOTS_ARG):
+			_go_quiet()
 			_take_shots(arg.trim_prefix(SHOTS_ARG))
 		elif arg.begins_with(SCENARIO_ARG) and not ResourceLoader.exists(SCENARIO_SCRIPT):
 			print("[game] dev scenarios are not part of this build")
@@ -385,6 +389,17 @@ func _ascend() -> void:
 	results.score = run.score()
 	_end_shift.rpc(results)
 	_broadcast_run()
+
+
+func _go_quiet() -> void:
+	dev_quiet = true
+	AudioServer.set_bus_mute(AudioServer.get_bus_index(&"Master"), true)
+	DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_NO_FOCUS, true)
+	# Parked in the corner of the screen, small: still renders, never in the way.
+	var screen: Rect2i = DisplayServer.screen_get_usable_rect()
+	DisplayServer.window_set_size(Vector2i(640, 360))
+	DisplayServer.window_set_position(screen.end - Vector2i(660, 400))
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
 func _take_shots(dir: String) -> void:

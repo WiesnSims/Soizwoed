@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / "assets" / "textures"
 
 # Albedo colour grading: saturation and brightness factors (1 = as photographed).
-GRADE = {"salt_rock": (0.42, 0.78)}
+GRADE = {"salt_rock": (0.42, 0.78), "mandl_coat": (0.0, 1.0), "mandl_hat": (0.0, 1.15), "mandl_beard": (0.0, 1.05)}
 
 # name: (Poly Haven asset, resolution, with height map, what it is for)
 TEXTURES = {
@@ -33,6 +33,10 @@ TEXTURES = {
     "hub_logs": ("beam_wall_01", "2k", False, "Gasthaus log walls"),
     "hub_plaster": ("plastered_wall", "1k", False, "Gasthaus plaster"),
     "hub_planks": ("dark_wooden_planks", "1k", False, "Gasthaus counter, tables, panelling"),
+    "mandl_coat": ("caban", "1k", False, "Bergmandl coat (wool, tinted brown)"),
+    "mandl_hat": ("polar_fleece", "1k", False, "Bergmandl cap (tinted red)"),
+    "mandl_beard": ("curly_teddy_natural", "1k", False, "Bergmandl beard"),
+    "mandl_leather": ("brown_leather", "1k", False, "Bergmandl belt, boots and bag"),
 }
 MAPS = {"albedo": "Diffuse", "normal": "nor_gl", "arm": "arm", "height": "Displacement"}
 
@@ -75,6 +79,9 @@ def credits() -> None:
         info = json.loads(get("https://api.polyhaven.com/info/" + asset))
         authors = ", ".join(info.get("authors", {}))
         lines.append(f"| {name} ({res}) | {use} | [{asset}](https://polyhaven.com/a/{asset}) | {authors} |")
+    lines += ["", "## Music", "",
+              "The Gasthaus waltz (`assets/audio/music/stubenmusi.ogg`) is synthesised by `tools/audio/music.py`"
+              " (our own, no third-party material)."]
     (ROOT / "docs" / "ASSETS.md").write_text("\n".join(lines) + "\n", encoding="utf8")
 
 

@@ -1,13 +1,26 @@
 class_name Schubkarre
 extends WorldItem
 ## The wheelbarrow: pushed with both hands, carries one heavy or up to three smaller loot
-## items at near-normal speed (DESIGN.md §7). Loot is loaded by looking at it while pushing,
-## or by looking at the parked barrow while holding loot. Loud on gravel.
+## items at near-normal speed (DESIGN.md §7). Loot gets in by looking at it while pushing,
+## by looking at the parked barrow and pressing E (hands) or G (anything), or simply by
+## landing in the bed. Loud on gravel.
+
+## The bed in the barrow's own space: loot that comes to rest here is loaded.
+const BED: AABB = AABB(Vector3(-0.45, 0.2, -0.55), Vector3(0.9, 0.8, 1.1))
+const CATCH_SECONDS: float = 0.25
 
 var cargo: Array[WorldItem] = []
 
+var _catch_left: float = 0.0
+
 @onready var slots: Array[Node3D] = [$Slot1, $Slot2, $Slot3]
 @onready var rattle: AudioStreamPlayer3D = $Rattle
+
+
+func _ready() -> void:
+	super()
+	# Moves before its cargo each frame, so the load never trails behind.
+	process_priority = -1
 
 
 func interaction_text(player: Player) -> String:
@@ -16,6 +29,9 @@ func interaction_text(player: Player) -> String:
 	var carried: WorldItem = player.inventory.hands as WorldItem
 	if carried != null and carried.is_loot():
 		return tr("PROMPT_LOAD_CART") if can_load(carried) else tr("PROMPT_CART_FULL")
+	var pocket: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
+	if carried == null and pocket != null and pocket.is_loot() and can_load(pocket):
+		return tr("PROMPT_PUSH_CART") + "   " + tr("PROMPT_CART_DROP_IN") % pocket.display_name()
 	return tr("PROMPT_PUSH_CART")
 
 
@@ -59,6 +75,11 @@ func free_slot(item: WorldItem) -> Node3D:
 
 func _physics_process(delta: float) -> void:
 	super(delta)
+	if multiplayer.is_server() and (state == State.FREE or state == State.HELD):
+		_catch_left -= delta
+		if _catch_left <= 0.0:
+			_catch_left = CATCH_SECONDS
+			_catch_loot()
 	var moving: bool = state == State.HELD and follow != null
 	if moving:
 		var player: Player = Game.instance.player_by_peer(holder_peer)
@@ -67,3 +88,15 @@ func _physics_process(delta: float) -> void:
 		rattle.play()
 	elif not moving and rattle.playing:
 		rattle.stop()
+
+
+## Host: loot lying still in the bed (dropped or thrown in) gets loaded properly.
+func _catch_loot() -> void:
+	for node: Node in get_tree().get_nodes_in_group(&"items"):
+		var item: WorldItem = node as WorldItem
+		if item == null or item == self or item.state != State.FREE or not item.is_loot():
+			continue
+		if item.linear_velocity.length() > 1.5 or not BED.has_point(to_local(item.global_position)):
+			continue
+		if can_load(item):
+			item.host_cart(free_slot(item))

@@ -3,6 +3,9 @@ extends Node
 ## human at the keyboard. Added by Game when started with `-- --solo --scenario=<name>`; pair
 ## it with `--shots=<dir>` (screenshots) and `--smoke=<seconds>` (quit).
 ##   mandl  – a salt crystal in the station, a Bergmandl comes for it; later the player shouts.
+##   cart   – in the Gasthaus: loads loot into the Schubkarre (E, G, dropped onto it), pushes it
+##            around, checks the load stays on.
+##   look   – a Bergmandl standing still right in front of the player (for screenshots).
 ##   loot   – the player fetches the three nearest loot items into the Förderkorb, rides up,
 ##            and they get sold.
 
@@ -15,6 +18,9 @@ func run(game: Game, scenario: String) -> void:
 	print("[scenario] %s" % scenario)
 	while _game.phase != Game.Phase.HUB:
 		await get_tree().process_frame
+	if scenario == "cart":
+		await _cart()
+		return
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
@@ -24,6 +30,8 @@ func run(game: Game, scenario: String) -> void:
 			await _mandl()
 		"loot":
 			await _loot()
+		"look":
+			await _look()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -92,3 +100,60 @@ func _loot() -> void:
 		await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
 	print("[scenario] back in the Gasthaus, money %d, inventory %d" % [GameState.run.money, player.inventory.all_items().size()])
+
+
+func _cart() -> void:
+	await get_tree().create_timer(0.5).timeout
+	var player: Player = _game.local_player()
+	var cart: Schubkarre = null
+	for item: WorldItem in _game._items():
+		if item is Schubkarre:
+			cart = item
+	var spot: Transform3D = cart.global_transform.translated(Vector3(0, 0.5, 0))
+	var lamp: WorldItem = _game._spawn_item_at(&"antike_grubenlampe", 50, spot.translated(Vector3(1.5, 0, 0)))
+	var crystal: WorldItem = _game._spawn_item_at(&"salzkristall", 20, spot.translated(Vector3(-1.5, 0, 0)))
+	await get_tree().create_timer(1.0).timeout
+	_game.request_take(lamp.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	cart.try_load_from(player)
+	await get_tree().create_timer(0.3).timeout
+	# Dropped onto the parked barrow: lands in the bed and gets loaded.
+	var dropped: WorldItem = _game._spawn_item_at(&"salzkristall", 15, cart.global_transform.translated(Vector3(0, 1.0, 0)))
+	# From the pocket with G, aimed at the barrow.
+	var pocket: WorldItem = _game._spawn_item_at(&"kaiserliches_abzeichen", 150, player.global_transform.translated(Vector3(0, 0.5, 0)))
+	await get_tree().create_timer(1.5).timeout
+	_game.request_take(pocket.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	player.focus = cart
+	player._drop_active()
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] dropped onto barrow: %s, pocket with G: %s, cargo %d" % [WorldItem.State.keys()[dropped.state], WorldItem.State.keys()[pocket.state], cart.cargo.size()])
+	if pocket.state == WorldItem.State.CARTED:
+		_game.request_take(pocket.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	_game.request_take(cart.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	_game.request_load_cart(cart.get_path(), crystal.get_path())
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] cargo %d, lamp %s, crystal %s" % [cart.cargo.size(), WorldItem.State.keys()[lamp.state], WorldItem.State.keys()[crystal.state]])
+	var start: Vector3 = player.global_position
+	for i: int in 120:
+		player.velocity = Vector3(3.0, 0.0, 0.0) if i < 60 else Vector3(-3.0, 0.0, 0.0)
+		player.global_position = start + Vector3(0.05 * (i if i < 60 else 120 - i), 0.0, 0.0)
+		player.rotate_y(0.03)
+		await get_tree().physics_frame
+	await get_tree().create_timer(0.5).timeout
+	for item: WorldItem in [lamp, crystal, dropped]:
+		print("[scenario] %s %s, %.2f m from its slot" % [item.data.id, WorldItem.State.keys()[item.state], item.global_position.distance_to(item.follow.global_position) if item.follow != null else -1.0])
+
+
+func _look() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var cage: Foerderkorb = _game.mine_cage
+	var player: Player = _game.local_player()
+	var forward: Vector3 = -cage.global_basis.z
+	var at: Vector3 = player.global_position + forward * 1.6
+	var mandl: Creature = _game._creature_spawner.spawn(["CLook", &"bergmandl", Transform3D(cage.global_basis.rotated(Vector3.UP, PI), at)]) as Creature
+	mandl.set_physics_process(false)
+	player.head.rotation.x = -0.45

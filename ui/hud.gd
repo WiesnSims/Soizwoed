@@ -207,7 +207,8 @@ func _apply_modal() -> void:
 	var game: Game = Game.instance
 	var player: Player = game.local_player() if game != null else null
 	var riding: bool = game != null and (game.phase == Game.Phase.DESCENDING or game.phase == Game.Phase.ASCENDING)
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if modal_open() or player == null else Input.MOUSE_MODE_CAPTURED
+	var free_mouse: bool = modal_open() or player == null or Game.dev_quiet
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if free_mouse else Input.MOUSE_MODE_CAPTURED
 	if player != null:
 		player.input_enabled = not modal_open() and not riding
 

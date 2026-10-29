@@ -68,7 +68,7 @@ extends Resource
 @export_group("Lamp")
 @export var lamp_fuel_seconds: float = 480.0
 @export var lamp_low_fuel_share: float = 0.15
-@export var lamp_energy: float = 1.9
+@export var lamp_energy: float = 2.3
 @export var lamp_range: float = 11.0
 ## A Karbidpatrone refills this share of the tank.
 @export var karbid_refill_share: float = 0.6

@@ -68,3 +68,16 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Presentation
 - **Gasthaus music:** a short accordion waltz ("Stubenmusi") rendered by `tools/audio/music.py`, playing from a corner of the room. No music in the mine (§10).
 - **Dev flags** (after `--`): `--auto-shift` (ride down, play, ride up), `--scenario=mandl|loot` (scripted checks in `tools/dev/dev_scenario.gd`), `--shots=<dir>` (screenshots every 1.5 s, needs a window). The smoke test runs the shift and both scenarios headless.
+
+## 2026-10-29 – M1 playtest feedback
+
+### Confirmed by the owner
+- **Bergmandl voice:** variant A ("Kobold") is final.
+
+### Chosen by Claude (change any time)
+- **Loading the Schubkarre:** besides E (loot in your hands, or loot on the floor while pushing), you can aim at the barrow and press G to put in whatever you hold, pocket items included. Loot that lands in the bed and lies still is loaded on its own, so dropping or throwing it in works too.
+- **Held items** follow the hand every rendered frame with a little smoothing, instead of every physics step. That was what made them shake when turning.
+- **Your own lamp is silent;** you only hear other players' lamps hiss.
+- **Footsteps:** the stride grows with speed: about 2 steps/s walking, 2.5 sprinting, 1.3 crouching. Head bob follows the steps.
+- **Light falloff:** lamp and lantern attenuation 2.0 (was 1.3/1.4), ambient light in the mine cut to a third, less bounce light. Darker away from light sources.
+- **Bergmandl look:** Poly Haven fabric/leather textures (wool coat, fleece cap, fur beard, leather boots, belt and bag) plus moustache and brows.
