@@ -51,7 +51,7 @@ func _on_host_pressed() -> void:
 
 func _on_join_pressed() -> void:
 	if NetworkManager.join(_address_edit.text.strip_edges()):
-		_status_label.text = "NET_CONNECTING"
+		_status_label.text = tr("NET_CONNECTING")
 		_set_buttons_disabled(true)
 	else:
 		_status_label.text = tr(NetworkManager.last_end_reason)

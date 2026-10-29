@@ -3,6 +3,8 @@ extends CharacterBody3D
 ## First-person miner. Each player owns its own movement (client-authoritative, see
 ## DESIGN.md §11); everything that changes the world (items, hits, shouts) is a request to
 ## the host through Game. Solo is the same code with the local player being the host.
+## Other peers see this player through the Sync node (`net_*` values, about 20 Hz) and show
+## it smoothed by a NetInterpolator. Health and death belong to the host.
 
 signal inventory_changed
 
@@ -19,17 +21,40 @@ const STRIDE_MAX: float = 2.4
 const STRIDE_PER_SPEED: float = 0.25
 const BOB_AMOUNT: float = 0.03
 const MELEE_DISTANCE: float = 2.2
+## After dying you lie on the floor for this long, then watch a living teammate.
+const DEATH_VIEW_SECONDS: float = 2.5
+## Another player's name shows when you look at them from this close.
+const NAMEPLATE_DISTANCE: float = 10.0
+## Your own lamp hangs right in front of your eyes: at full strength it would light the fog
+## there and wash out the top of the screen. Others still see its full glow in the dust.
+const OWN_LAMP_FOG_ENERGY: float = 0.15
 
 var peer_id: int = 1
+## 1..4 in order of joining, for the name other players see ("Kumpl 2").
+var player_number: int = 1
 var inventory: Inventory
 var health: int = 100
 var stamina: float = 1.0
 var lamp_fuel: float = 0.0
-var lamp_on: bool = true
+var lamp_on: bool = true:
+	set(value):
+		lamp_on = value
+		if is_node_ready():
+			_update_lamp()
 var crouching: bool = false
 var input_enabled: bool = true
-## False while out of the shift (dead or left behind); back at the next ride.
+## False after dying, until the next ride (host-authoritative).
 var alive: bool = true
+## Synced from the owner to every other peer (Sync node).
+var net_position: Vector3 = Vector3.ZERO
+var net_angles: Vector2 = Vector2.ZERO  # body yaw, head pitch
+var net_slot: int = 0:
+	set(value):
+		net_slot = value
+		if inventory != null and is_inside_tree() and not is_local() and inventory.selected != value:
+			inventory.select(value)
+## Local player while dead: the teammate whose eyes we look through (null: our own body).
+var spectating: Player
 ## The interactable under the crosshair (local player only).
 var focus: Node
 ## 0..1 progress of a held interaction (local player only).
@@ -44,6 +69,12 @@ var _shout_cooldown: float = 0.0
 var _use_cooldown: float = 0.0
 var _hold_target: Node
 var _hold_time: float = 0.0
+var _net: NetInterpolator = NetInterpolator.new()
+## After a teleport, snapshots from the old place may still be on the way: ignore them.
+var _teleported_to: Vector3 = Vector3.INF
+var _teleport_ignore_until: float = 0.0
+var _dead_time: float = 0.0
+var _nameplate: Label3D
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
@@ -57,6 +88,7 @@ var _hold_time: float = 0.0
 @onready var voice: AudioStreamPlayer3D = $Head/Voice
 @onready var shape: CollisionShape3D = $Shape
 @onready var body_mesh: Node3D = $Body
+@onready var sync: MultiplayerSynchronizer = $Sync
 
 
 func _enter_tree() -> void:
@@ -77,6 +109,12 @@ func _ready() -> void:
 	body_mesh.visible = not local
 	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if local:
+		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
+	if not local:
+		_build_nameplate()
+		sync.synchronized.connect(_on_synchronized)
+		inventory.select(net_slot)
 	_update_lamp()
 
 
@@ -94,6 +132,12 @@ func game() -> Game:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_local() or not input_enabled:
+		return
+	if not alive:
+		if event.is_action_pressed(&"use") or event.is_action_pressed(&"slot_next"):
+			spectate_next(1)
+		elif event.is_action_pressed(&"slot_prev"):
+			spectate_next(-1)
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var motion: InputEventMouseMotion = event
@@ -122,9 +166,36 @@ func _physics_process(delta: float) -> void:
 	_use_cooldown = maxf(0.0, _use_cooldown - delta)
 	_tick_lamp(delta)
 	if not is_local():
+		_update_crouch(delta)
+		return
+	if not alive:
+		focus = null
+		hold_progress = 0.0
+		_update_death_view(delta)
 		return
 	_move(delta)
 	_update_focus(delta)
+	net_position = global_position
+	net_angles = Vector2(rotation.y, head.rotation.x)
+
+
+func _process(_delta: float) -> void:
+	if is_local():
+		return
+	if _net.sample(Time.get_ticks_msec() / 1000.0):
+		global_position = _net.position
+		rotation.y = Basis(_net.rotation).get_euler().y
+		head.rotation.x = _net.aux
+		velocity = _net.velocity
+	_update_nameplate()
+
+
+## A new snapshot of a remote player arrived.
+func _on_synchronized() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if now < _teleport_ignore_until and net_position.distance_to(_teleported_to) > _net.snap_distance:
+		return
+	_net.push(now, net_position, Quaternion(Vector3.UP, net_angles.x), net_angles.y)
 
 
 func _move(delta: float) -> void:
@@ -147,7 +218,12 @@ func _move(delta: float) -> void:
 		velocity.y -= _gravity * delta
 	elif controls and Input.is_action_just_pressed(&"jump") and not crouching and not inventory.hands_busy():
 		velocity.y = _config.jump_velocity
+	var falling: float = -velocity.y if not is_on_floor() else 0.0
 	move_and_slide()
+	if falling > 0.0 and is_on_floor():
+		var damage: int = _config.fall_damage(falling)
+		if damage > 0:
+			game().request_fall_damage.rpc_id(1, damage)
 	_update_crouch(delta)
 	_footsteps_and_bob(delta)
 
@@ -169,6 +245,9 @@ func _update_crouch(delta: float) -> void:
 	var capsule: CapsuleShape3D = shape.shape as CapsuleShape3D
 	capsule.height = CROUCH_HEIGHT if crouching else STAND_HEIGHT
 	shape.position.y = capsule.height / 2.0
+	if not is_local():
+		head.position.y = _head_height
+		body_mesh.scale.y = _head_height / STAND_HEAD
 
 
 func _footsteps_and_bob(delta: float) -> void:
@@ -196,12 +275,119 @@ func teleport(to: Transform3D) -> void:
 	global_transform = to
 	velocity = Vector3.ZERO
 	head.rotation.x = 0.0
+	net_position = to.origin
+	net_angles = Vector2(rotation.y, 0.0)
+	_net.clear()
+	_teleported_to = to.origin
+	_teleport_ignore_until = Time.get_ticks_msec() / 1000.0 + 0.5
+
+
+## Back in the game at the ride (after dying or being left behind).
+@rpc("any_peer", "call_local", "reliable")
+func revive() -> void:
+	health = _config.player_max_health
+	if alive:
+		return
+	alive = true
+	shape.set_deferred(&"disabled", false)
+	body_mesh.visible = not is_local()
+	if is_local():
+		_spectate(null)
+		head.rotation.z = 0.0
 
 
 @rpc("any_peer", "call_local", "reliable")
-func revive() -> void:
-	alive = true
-	health = _config.player_max_health
+func set_health(value: int) -> void:
+	health = value
+
+
+## Died (the host decided; Game turns the body into a corpse item). The player watches the
+## others until the next ride.
+@rpc("any_peer", "call_local", "reliable")
+func die() -> void:
+	if not alive:
+		return
+	alive = false
+	health = 0
+	_dead_time = 0.0
+	shape.set_deferred(&"disabled", true)
+	body_mesh.visible = false
+	if _nameplate != null:
+		_nameplate.visible = false
+	print("[player] P%d died" % peer_id)
+
+
+# --- death and spectating (local player) ------------------------------------------------------------
+
+func _update_death_view(delta: float) -> void:
+	_dead_time += delta
+	if _dead_time < DEATH_VIEW_SECONDS:
+		# Sink to the floor and tip over.
+		head.position.y = lerpf(head.position.y, 0.25, clampf(3.0 * delta, 0.0, 1.0))
+		head.rotation.z = lerpf(head.rotation.z, 1.2, clampf(2.0 * delta, 0.0, 1.0))
+		return
+	var living: Array[Player] = _living_teammates()
+	if spectating == null or not is_instance_valid(spectating) or not spectating in living:
+		_spectate(living[0] if not living.is_empty() else null)
+
+
+func _living_teammates() -> Array[Player]:
+	var result: Array[Player] = []
+	for player: Player in game().players():
+		if player != self and player.alive:
+			result.append(player)
+	return result
+
+
+## Switches to the next (step 1) or previous (-1) living teammate.
+func spectate_next(step: int) -> void:
+	var living: Array[Player] = _living_teammates()
+	if living.is_empty() or _dead_time < DEATH_VIEW_SECONDS:
+		return
+	_spectate(living[posmod(living.find(spectating) + step, living.size())])
+
+
+func _spectate(target: Player) -> void:
+	if target == spectating:
+		return
+	if spectating != null and is_instance_valid(spectating):
+		spectating.body_mesh.visible = spectating.alive
+	spectating = target
+	if target != null:
+		target.camera.current = true
+		target.body_mesh.visible = false
+		print("[player] spectating P%d" % target.peer_id)
+	else:
+		camera.current = true
+
+
+# --- nameplate (other players) ----------------------------------------------------------------------
+
+func display_name() -> String:
+	return tr("PLAYER_NAME") % player_number
+
+
+func _build_nameplate() -> void:
+	_nameplate = Label3D.new()
+	_nameplate.text = display_name()
+	_nameplate.position = Vector3(0.0, 2.0, 0.0)
+	_nameplate.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_nameplate.pixel_size = 0.0035
+	_nameplate.font_size = 40
+	_nameplate.outline_size = 10
+	_nameplate.modulate = Color(0.96, 0.9, 0.78, 0.85)
+	_nameplate.visible = false
+	add_child(_nameplate)
+
+
+## Shown only while you look right at the player from close by, so it never lights up the dark.
+func _update_nameplate() -> void:
+	var viewer: Camera3D = get_viewport().get_camera_3d()
+	if viewer == null or viewer == camera or not alive:
+		_nameplate.visible = false
+		return
+	var to_me: Vector3 = global_position + Vector3.UP * 1.6 - viewer.global_position
+	_nameplate.visible = to_me.length() < NAMEPLATE_DISTANCE and to_me.normalized().dot(-viewer.global_basis.z) > 0.97
 
 
 # --- lamp ------------------------------------------------------------------------------------------
@@ -220,8 +406,11 @@ func _set_lamp(on: bool) -> void:
 
 
 func _tick_lamp(delta: float) -> void:
-	# The carbide only burns down in the mine.
+	# The carbide only burns down in the mine. Other players' fuel comes with their sync.
 	if not lamp_on or global_position.y > Game.HUB_FLOOR_ABOVE:
+		return
+	if not is_local():
+		_update_lamp()
 		return
 	lamp_fuel = maxf(0.0, lamp_fuel - delta)
 	if lamp_fuel <= 0.0:
@@ -298,6 +487,9 @@ func _interact(target: Node) -> void:
 
 
 func _try_take(item: WorldItem) -> void:
+	if item.can_help_carry(self):
+		game().request_help_carry.rpc_id(1, item.get_path())
+		return
 	if item is Schubkarre and (item as Schubkarre).try_load_from(self):
 		return
 	var cart: Schubkarre = inventory.hands as Schubkarre
@@ -386,4 +578,6 @@ func _on_inventory_changed() -> void:
 		var item: WorldItem = inventory.slots[i] as WorldItem
 		if item != null:
 			item.visible = i == inventory.selected and not inventory.hands_busy()
+	if is_local():
+		net_slot = inventory.selected
 	inventory_changed.emit()

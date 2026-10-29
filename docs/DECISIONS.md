@@ -81,3 +81,37 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Footsteps:** the stride grows with speed: about 2 steps/s walking, 2.5 sprinting, 1.3 crouching. Head bob follows the steps.
 - **Light falloff:** lamp and lantern attenuation 2.0 (was 1.3/1.4), ambient light in the mine cut to a third, less bounce light. Darker away from light sources.
 - **Bergmandl look:** Poly Haven fabric/leather textures (wool coat, fleece cap, fur beard, leather boots, belt and bag) plus moustache and brows.
+
+## 2026-10-29 – M2 multiplayer via ENet (chosen by Claude, change any time)
+
+### Sync
+- **Players** send their position, body yaw and head pitch about 20 times a second; everyone else shows them 100 ms in the past, blended between snapshots (`net/net_interpolator.gd`). Lamp on/off, carbide left, crouching and the selected pocket slot are synced too, so you see another miner's lamp, crouch and the tool in their hand. Creatures use the same smoothing (host → clients).
+- **Free items** are simulated on the host only. Clients keep them still and follow the host's transforms (moving items ~20×/s, a final reliable update when they come to rest). Held, carted and stolen items follow their hand / slot on every peer as before. This is how "held items are owned by the holder" from DESIGN.md §11 works out: the holder's own hand moves them, with no network delay.
+- **Joining in the Gasthaus:** the host sends the joiner where every item is and who holds it.
+- **Teleports** (the lift ride): position packets from the old place still on the way are ignored for half a second, so nobody gets yanked back.
+
+### Carrying together
+- Look at a heavy item another miner holds and press E: you take the other end. Both of you then walk at 95 % speed (alone: 50 %). No sprinting with it.
+- More than 2.8 m apart and the helper loses their grip ("Auskemma!"). G lets go of your end; when the main carrier lets go, the helper carries on alone.
+- A Bergmandl does not try to snatch what two miners carry.
+
+### Health, death and spectating
+- **Health belongs to the host.** In M2 the only way to die is a hard fall (landing faster than 8 m/s, about a 3.3 m drop; 12 health per m/s above that). The deadly creatures in M4 use the same path (`Game.host_damage_player`). Nobody gets hurt in the Gasthaus.
+- **Death:** everything you carry drops, your body becomes a heavy loot item, "Hiniger Kumpl (Sterbegeld)", worth 60 S when it rides up (it can be carried together or wheeled in the Schubkarre). You sink to the floor, and after 2.5 s you watch a living teammate through their eyes; click or the mouse wheel switches between them.
+- **Everybody dead:** 4 s later the lift goes up and the shift ends (solo: 4 s after your death).
+- **Names:** players are "Kumpl 1–4" in the order they joined (Steam names come with M3). A name shows over a teammate's head only while you look right at them from up to 10 m, so it never lights up the dark.
+
+### Player count
+- **Scaling (§8) uses the players present when the lift goes down.** In the Gasthaus it follows joins and leaves, so the quota on the notice board changes when someone joins. A cycle's quota can therefore change between shifts if the crew changes.
+- **The free Schubkarre** is a solo extra: a host who opens a multiplayer game does not get it, even before anyone joins.
+
+### Testing
+- `tools/mp_test.ps1 -Clients 3` now plays a short shift: the host waits for all clients (`--wait-peers=<n>`), rides down, rides up after a few seconds (`--auto-shift=<s>`), and every peer must have built the same mine.
+- `tools/mp_test.ps1 -Coop` runs the scripted co-op scenario (`--scenario=coop` on the host, `coopclient` on the client): a falling item seen on the client, carrying together, hand-over, death and spectating.
+
+## 2026-10-29 – M2 playtest feedback
+
+### Chosen by Claude (change any time)
+- **Your own lamp and the fog:** your own lamp lights the volumetric fog at 0.15 of its strength (others still see the full glow around your lamp). At full strength it hazed over the top third of your own screen.
+- **Less bloom and a dimmer lamp:** mine glow intensity 0.4 (was 0.55), strength 0.8 (0.9), no bloom (was 0.04), only from HDR 1.6 up (was 1.2); lamp energy 1.9 (was 2.3).
+- **Throw check:** `mp_test.ps1 -Coop` now throws a crystal while walking, once from the host and once from the client, and fails when the flight differs between the peers by more than 0.5 m. The reported "drops straight down on the other screen" is how the M1 build behaved (clients ran their own item physics without the throw speed); the M2 build passes this check headless and in real windows.

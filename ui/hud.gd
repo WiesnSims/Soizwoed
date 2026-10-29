@@ -2,7 +2,8 @@ class_name Hud
 extends CanvasLayer
 ## Everything on screen during the game: crosshair, interaction prompt, inventory slots, bars
 ## (health, stamina, carbide), pocket watch, messages, fades, and the panels (shop, shift
-## results, pause). Built in code; all texts go through tr().
+## results, pause). While dead it only says whom you are watching. Built in code; all texts go
+## through tr().
 
 signal leave_requested
 
@@ -25,6 +26,9 @@ var _health_bar: ProgressBar
 var _stamina_bar: ProgressBar
 var _lamp_bar: ProgressBar
 var _watch: Label
+var _spectate_label: Label
+## Shown only while the local player is alive.
+var _alive_nodes: Array[Control] = []
 var _fade: ColorRect
 var _fade_tween: Tween
 var _panel: PanelContainer
@@ -57,6 +61,16 @@ func _process(_delta: float) -> void:
 	var player: Player = game.local_player() if game != null else null
 	_root.visible = player != null
 	if player == null:
+		return
+	for node: Control in _alive_nodes:
+		node.visible = player.alive
+	_spectate_label.visible = not player.alive
+	if not player.alive:
+		var target: Player = player.spectating
+		_spectate_label.text = tr("HUD_SPECTATING") % target.display_name() if target != null and is_instance_valid(target) else tr("HUD_DEAD")
+		_prompt.visible = false
+		_hold_bar.visible = false
+		_watch.visible = false
 		return
 	_update_prompt(player)
 	_update_slots(player)
@@ -105,6 +119,8 @@ func fade_in(seconds: float) -> void:
 func update_run(info: Dictionary) -> void:
 	_run_info = info
 	_run_label.text = "%s\n%s" % [tr("HUD_MONEY") % int(info.money), tr("HUD_QUOTA") % [int(info.quota), int(info.shifts_left)]]
+	if int(info.get("players", 1)) > 1:
+		_run_label.text += "\n" + tr("HUD_CREW") % int(info.players)
 	if _panel_kind == "shop":
 		open_shop()
 
@@ -140,9 +156,10 @@ func open_shop() -> void:
 	_apply_modal()
 
 
-func show_results(results: Dictionary, left_behind: bool) -> void:
+func show_results(results: Dictionary, left_behind: bool, dead: bool = false) -> void:
 	var fired: bool = results.fired
-	_start_panel("over" if fired else "results", tr("RESULTS_LEFT_BEHIND") if left_behind else tr("RESULTS_TITLE"))
+	var title: String = tr("RESULTS_DIED") if dead else (tr("RESULTS_LEFT_BEHIND") if left_behind else tr("RESULTS_TITLE"))
+	_start_panel("over" if fired else "results", title)
 	var sold: Array = results.sold
 	if sold.is_empty():
 		_add_text(tr("RESULTS_NOTHING"), DIM_COLOR)
@@ -240,6 +257,8 @@ func _update_slots(player: Player) -> void:
 		var cart: Schubkarre = hands as Schubkarre
 		if cart != null:
 			text += "  (%d/%d)" % [cart.used_units(), Balance.config.schubkarre_capacity_medium]
+		elif inventory.shared_carry:
+			text += "  " + tr("HUD_TOGETHER")
 		_hands_label.text = text + "   [G] " + tr("HUD_DROP")
 
 
@@ -253,6 +272,14 @@ func _build_center() -> void:
 	_crosshair.position = Vector2(-2, -2)
 	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_crosshair)
+	_alive_nodes.append(_crosshair)
+	_spectate_label = _label("", 22)
+	_spectate_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_spectate_label.position = Vector2(-400, -90)
+	_spectate_label.size = Vector2(800, 60)
+	_spectate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spectate_label.hide()
+	_root.add_child(_spectate_label)
 	_prompt = _label("", 20)
 	_prompt.set_anchors_preset(Control.PRESET_CENTER)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -280,6 +307,7 @@ func _build_bottom() -> void:
 	bars.size = Vector2(220, 90)
 	bars.add_theme_constant_override("separation", 4)
 	_root.add_child(bars)
+	_alive_nodes.append(bars)
 	_health_bar = _labelled_bar(bars, tr("HUD_HEALTH"), Color(0.75, 0.2, 0.15))
 	_lamp_bar = _labelled_bar(bars, tr("HUD_LAMP"), Color(0.95, 0.75, 0.35))
 	_stamina_bar = _labelled_bar(bars, tr("HUD_STAMINA"), Color(0.85, 0.85, 0.8))
@@ -289,6 +317,7 @@ func _build_bottom() -> void:
 	bottom.size = Vector2(660, 80)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	_root.add_child(bottom)
+	_alive_nodes.append(bottom)
 	_hands_label = _label("", 17)
 	_hands_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(_hands_label)

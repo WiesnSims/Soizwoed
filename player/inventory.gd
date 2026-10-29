@@ -13,6 +13,8 @@ var slots: Array = []
 var slot_weights: PackedInt32Array = []
 var hands: Object = null
 var hands_weight: int = ItemData.WeightClass.LIGHT
+## True while the item in the hands is carried by two players together.
+var shared_carry: bool = false
 var selected: int = 0
 
 
@@ -59,6 +61,7 @@ func put(item: Object, weight: int, place: int) -> void:
 func remove(item: Object) -> bool:
 	if hands == item:
 		hands = null
+		shared_carry = false
 		changed.emit()
 		return true
 	var index: int = slots.find(item)
@@ -88,7 +91,7 @@ func speed_factor(config: BalanceConfig) -> float:
 	if hands == null:
 		return 1.0
 	if hands_weight == ItemData.WeightClass.HEAVY:
-		return config.carry_heavy_speed
+		return config.carry_together_speed if shared_carry else config.carry_heavy_speed
 	return config.carry_medium_speed
 
 
@@ -108,6 +111,7 @@ func all_items() -> Array:
 
 func clear() -> void:
 	hands = null
+	shared_carry = false
 	for i: int in slots.size():
 		slots[i] = null
 	changed.emit()

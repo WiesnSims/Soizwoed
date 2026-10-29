@@ -45,6 +45,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	super(delta)
 	# Footsteps and a waddle from how far it moved (works the same on clients).
 	var moved: float = Vector2(global_position.x - _last_position.x, global_position.z - _last_position.z).length()
 	_last_position = global_position
@@ -174,6 +175,8 @@ func _loot_in_hands(player: Player) -> WorldItem:
 	if player == null or not is_instance_valid(player):
 		return null
 	var hands: WorldItem = player.inventory.hands as WorldItem
+	if hands != null and hands.helper_peer != 0:
+		return null  # two miners holding on: too much for a Bergmandl
 	if hands is Schubkarre:
 		var cart: Schubkarre = hands as Schubkarre
 		return null if cart.cargo.is_empty() else cart.cargo.back()

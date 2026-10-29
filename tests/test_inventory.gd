@@ -68,3 +68,20 @@ func test_all_items_and_clear() -> void:
 	assert_eq(inventory.all_items().size(), 2)
 	inventory.clear()
 	assert_eq(inventory.all_items().size(), 0)
+
+
+func test_heavy_carried_together_is_almost_normal_speed() -> void:
+	var config: BalanceConfig = BalanceConfig.new()
+	inventory.add(_thing(), HEAVY)
+	assert_eq(inventory.speed_factor(config), config.carry_heavy_speed)
+	inventory.shared_carry = true
+	assert_eq(inventory.speed_factor(config), config.carry_together_speed)
+	assert_false(inventory.can_sprint(), "no sprinting with a salt block, even together")
+
+
+func test_letting_go_ends_carrying_together() -> void:
+	var block: RefCounted = _thing()
+	inventory.add(block, HEAVY)
+	inventory.shared_carry = true
+	inventory.remove(block)
+	assert_false(inventory.shared_carry)

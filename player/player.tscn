@@ -28,15 +28,24 @@ height = 0.2
 is_hemisphere = true
 
 [sub_resource type="SceneReplicationConfig" id="sync"]
-properties/0/path = NodePath(".:position")
+properties/0/path = NodePath(".:net_position")
 properties/0/spawn = true
 properties/0/replication_mode = 1
-properties/1/path = NodePath(".:rotation")
+properties/1/path = NodePath(".:net_angles")
 properties/1/spawn = true
 properties/1/replication_mode = 1
-properties/2/path = NodePath("Head:rotation")
+properties/2/path = NodePath(".:lamp_fuel")
 properties/2/spawn = true
 properties/2/replication_mode = 1
+properties/3/path = NodePath(".:crouching")
+properties/3/spawn = true
+properties/3/replication_mode = 2
+properties/4/path = NodePath(".:lamp_on")
+properties/4/spawn = true
+properties/4/replication_mode = 2
+properties/5/path = NodePath(".:net_slot")
+properties/5/spawn = true
+properties/5/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

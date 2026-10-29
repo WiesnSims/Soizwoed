@@ -24,8 +24,14 @@ const HUB_ENVIRONMENT: Environment = preload("res://hub/hub_environment.tres")
 const CATALOG_PATH: String = "res://items/item_catalog.tres"
 const CREATURE_PATHS: PackedStringArray = ["res://enemies/bergmandl/bergmandl.tres"]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
-## Dev/smoke flag: ride down right away, play a few seconds, ride up again.
+## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
+## ride up again. With `--wait-peers=<n>` the host first waits for n clients.
 const AUTO_SHIFT_ARG: String = "--auto-shift"
+const WAIT_PEERS_ARG: String = "--wait-peers="
+## How often the host sends the transforms of moving free items to the clients.
+const ITEM_SYNC_SECONDS: float = 0.05
+## Floats per item in an item transform batch: position (3) + rotation quaternion (4).
+const ITEM_SYNC_STRIDE: int = 7
 ## Dev flag: save a screenshot every SHOT_SECONDS into this folder (needs a window).
 const SHOTS_ARG: String = "--shots="
 const SHOT_SECONDS: float = 1.5
@@ -58,6 +64,9 @@ var _enemy_budget_left: float = 0.0
 var _trickle_left: float = 0.0
 var _ambience_left: float = 5.0
 var _voice_quiet_until: float = 0.0
+var _item_sync_left: float = 0.0
+## Seconds since the last living player died in this shift (host).
+var _all_dead_time: float = 0.0
 
 @onready var hub: Gasthaus = $Hub
 @onready var hub_cage: Foerderkorb = $Hub/Foerderkorb
@@ -110,6 +119,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_environment()
+	if multiplayer.is_server() and NetworkManager.in_session():
+		_host_sync_items(delta)
+		_host_check_carry_together()
 	if phase == Phase.SHIFT:
 		shift_time_left -= delta
 		_update_clocks()
@@ -126,13 +138,14 @@ func _on_session_started() -> void:
 	if NetworkManager.is_host():
 		if GameState.run == null:
 			GameState.start_run(NetworkManager.player_count())
-			if NetworkManager.player_count() == 1 and _config.solo_free_schubkarre:
+			# Solo extra (DESIGN.md §8). A host waiting for friends does not get it.
+			if NetworkManager.mode == NetworkManager.Mode.SOLO and _config.solo_free_schubkarre:
 				_spawn_item_at(&"schubkarre", 0, hub.free_cart_spot())
 		_ready_peers[1] = true
 		_spawn_player_for(1)
 		_broadcast_run()
 		print("[game] hub ready")
-		if AUTO_SHIFT_ARG in OS.get_cmdline_user_args():
+		if _has_arg(AUTO_SHIFT_ARG):
 			_auto_shift()
 	else:
 		_client_loaded.rpc_id(1)
@@ -147,7 +160,16 @@ func _client_loaded() -> void:
 		return
 	_ready_peers[peer] = true
 	_spawn_player_for(peer)
+	# The spawner only knows where each item was first spawned: send where it is now.
+	for item: WorldItem in _items():
+		var place: int = 0
+		var holder: Player = player_by_peer(item.holder_peer)
+		if holder != null:
+			place = Inventory.HANDS if holder.inventory.hands == item else holder.inventory.slots.find(item)
+		item.host_send_state_to(peer, place)
+	_update_player_count()
 	_broadcast_run()
+	print("[game] peer %d is in the Gasthaus" % peer)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -163,6 +185,8 @@ func _on_peer_left(peer: int) -> void:
 	if player != null:
 		_drop_everything(player)
 		player.queue_free()
+	_update_player_count()
+	_broadcast_run()
 
 
 func _on_session_ended() -> void:
@@ -182,8 +206,14 @@ func leave_session() -> void:
 func _spawn_player_for(peer: int) -> void:
 	if player_by_peer(peer) != null:
 		return
-	var index: int = players_root.get_child_count()
-	_player_spawner.spawn([peer, hub.player_spot(index)])
+	# The lowest free number, so "Kumpl 2" stays "Kumpl 2" when someone else leaves.
+	var number: int = 1
+	var taken: Array[int] = []
+	for player: Player in players():
+		taken.append(player.player_number)
+	while number in taken:
+		number += 1
+	_player_spawner.spawn([peer, hub.player_spot(number - 1), number])
 
 
 func _spawn_player(spawn_data: Array) -> Node:
@@ -191,12 +221,15 @@ func _spawn_player(spawn_data: Array) -> Node:
 	player.peer_id = int(spawn_data[0])
 	player.name = "P%d" % player.peer_id
 	player.transform = spawn_data[1]
+	player.player_number = int(spawn_data[2])
+	player.net_position = player.transform.origin
+	player.net_angles = Vector2(player.rotation.y, 0.0)
 	return player
 
 
-func _spawn_item_at(id: StringName, value: int, xform: Transform3D) -> WorldItem:
+func _spawn_item_at(id: StringName, value: int, xform: Transform3D, item_name: String = "") -> WorldItem:
 	_next_item += 1
-	return _item_spawner.spawn(["I%d" % _next_item, id, value, xform]) as WorldItem
+	return _item_spawner.spawn([item_name if item_name != "" else "I%d" % _next_item, id, value, xform]) as WorldItem
 
 
 func _spawn_item(spawn_data: Array) -> Node:
@@ -218,6 +251,8 @@ func _spawn_creature(spawn_data: Array) -> Node:
 	creature.name = spawn_data[0]
 	creature.data = data
 	creature.transform = spawn_data[2]
+	creature.net_position = creature.transform.origin
+	creature.net_yaw = creature.rotation.y
 	return creature
 
 
@@ -297,7 +332,10 @@ func request_lift() -> void:
 
 func _descend() -> void:
 	var run: RunState = GameState.run
+	_update_player_count()
+	_broadcast_run()
 	var seed_value: int = randi()
+	_all_dead_time = 0.0
 	_begin_ride.rpc(true, seed_value, run.cycle)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	if phase != Phase.DESCENDING:
@@ -307,8 +345,8 @@ func _descend() -> void:
 		if item.state == WorldItem.State.FREE and hub_cage.contains(item.global_position):
 			item.host_move(hub_cage.carry_to(mine_cage, item.global_transform))
 	for player: Player in players():
-		player.teleport.rpc(mine_cage.player_spot(index))
 		player.revive.rpc()
+		player.teleport.rpc(mine_cage.player_spot(index))
 		index += 1
 	_spawn_loot(seed_value)
 	_enemy_budget_left = _config.enemy_budget(run.cycle, run.player_count)
@@ -328,10 +366,12 @@ func _host_tick_shift(delta: float) -> void:
 		if _trickle_left <= 0.0:
 			_trickle_left = _config.enemy_trickle_seconds
 			_spawn_creatures_up_to(1.0)
-	var anyone_down: bool = false
+	var anyone_alive: bool = false
 	for player: Player in players():
-		anyone_down = anyone_down or player.alive
-	if not anyone_down:
+		anyone_alive = anyone_alive or player.alive
+	# Everybody dead: a few seconds to take it in, then the lift goes up without them.
+	_all_dead_time = 0.0 if anyone_alive else _all_dead_time + delta
+	if _all_dead_time >= _config.all_dead_delay:
 		_ascend()
 
 
@@ -342,7 +382,7 @@ func _ascend() -> void:
 			riders.append(player)
 	_begin_ride.rpc(false, 0, 0)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
-	var results: Dictionary = {"sold": [], "total": 0, "left_behind": []}
+	var results: Dictionary = {"sold": [], "total": 0, "left_behind": [], "dead": []}
 	var rider_peers: Array[int] = []
 	for player: Player in riders:
 		rider_peers.append(player.peer_id)
@@ -352,7 +392,7 @@ func _ascend() -> void:
 	for item: WorldItem in _items():
 		if item.global_position.y > HUB_FLOOR_ABOVE and item.state == WorldItem.State.FREE:
 			continue
-		var held_by_rider: bool = item.holder_peer in rider_peers
+		var held_by_rider: bool = item.holder_peer in rider_peers or item.helper_peer in rider_peers
 		var free_in_cage: bool = item.state == WorldItem.State.FREE and mine_cage.contains(item.global_position)
 		var carted_up: bool = item.state == WorldItem.State.CARTED and item.cart != null and (item.cart.holder_peer in rider_peers or mine_cage.contains(item.cart.global_position))
 		if held_by_rider or free_in_cage or carted_up:
@@ -366,6 +406,8 @@ func _ascend() -> void:
 		else:
 			_drop_everything(player)
 			(results.left_behind as Array).append(player.peer_id)
+			if not player.alive:
+				(results.dead as Array).append(player.peer_id)
 			player.teleport.rpc(hub.player_spot(index))
 		player.revive.rpc()
 		index += 1
@@ -412,22 +454,51 @@ func _take_shots(dir: String) -> void:
 
 
 func _auto_shift() -> void:
+	var wait_peers: int = _arg_value(WAIT_PEERS_ARG).to_int()
+	var seconds: float = 5.0
+	if _arg_value(AUTO_SHIFT_ARG + "=") != "":
+		seconds = _arg_value(AUTO_SHIFT_ARG + "=").to_float()
+	while _ready_peers.size() < wait_peers + 1:
+		await get_tree().process_frame
 	await get_tree().create_timer(1.0).timeout
 	request_lift()
 	while phase != Phase.SHIFT:
 		await get_tree().process_frame
-	await get_tree().create_timer(5.0).timeout
+	await get_tree().create_timer(seconds).timeout
 	var player: Player = local_player()
 	player.teleport(mine_cage.player_spot(0))
 	await get_tree().create_timer(0.5).timeout
 	request_lift()
 
 
+## Everything the player carries falls to the floor. Something carried together stays with
+## the other carrier.
 func _drop_everything(player: Player) -> void:
 	for item: Object in player.inventory.all_items():
 		var world_item: WorldItem = item as WorldItem
-		if world_item != null:
+		if world_item == null:
+			continue
+		if world_item.helper_peer == player.peer_id:
+			world_item.host_set_helper(0)
+		elif world_item.helper_peer != 0:
+			world_item.host_take(world_item.helper_peer, Inventory.HANDS)
+		else:
 			world_item.host_release(Transform3D(Basis.IDENTITY, player.global_position + Vector3.UP), Vector3.ZERO)
+
+
+func _has_arg(prefix: String) -> bool:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix):
+			return true
+	return false
+
+
+## The value of a `--name=value` command line argument ("" when not given).
+func _arg_value(prefix: String) -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix):
+			return arg.trim_prefix(prefix)
+	return ""
 
 
 # --- shift flow (every peer) ----------------------------------------------------------------------
@@ -503,7 +574,8 @@ func _end_shift(results: Dictionary) -> void:
 	hub_cage.stop_ride()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
-	hud.show_results(results, multiplayer.get_unique_id() in (results.left_behind as Array))
+	var me: int = multiplayer.get_unique_id()
+	hud.show_results(results, me in (results.left_behind as Array), me in (results.dead as Array))
 	print("[game] shift ended, sold %d" % int(results.total))
 
 
@@ -531,6 +603,13 @@ func _update_clocks() -> void:
 
 # --- run state ------------------------------------------------------------------------------------
 
+## Scaling follows the players in the game (DESIGN.md §8). It is fixed for a shift when the
+## lift goes down; in the Gasthaus it follows joins and leaves.
+func _update_player_count() -> void:
+	if GameState.run != null and (phase == Phase.HUB or phase == Phase.MENU):
+		GameState.run.player_count = maxi(1, players().size())
+
+
 func _broadcast_run() -> void:
 	var run: RunState = GameState.run
 	if run == null:
@@ -541,6 +620,7 @@ func _broadcast_run() -> void:
 		"cycle": run.cycle,
 		"shifts_left": run.shifts_left_in_cycle(),
 		"fired": run.fired,
+		"players": run.player_count,
 	}
 	for peer: int in _ready_peers:
 		if peer == multiplayer.get_unique_id():
@@ -595,11 +675,53 @@ func request_drop(item_path: NodePath, at: Transform3D, toss: Vector3) -> void:
 	if not multiplayer.is_server():
 		return
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
-	if item == null or item.holder_peer != _sender():
+	var sender: int = _sender()
+	if item == null:
+		return
+	if item.helper_peer == sender:
+		item.host_set_helper(0)  # lets go of their end
+		return
+	if item.holder_peer != sender:
+		return
+	if item.helper_peer != 0:
+		item.host_take(item.helper_peer, Inventory.HANDS)  # the other one carries on alone
 		return
 	item.host_release(at, toss)
 	if item.data.weight_class == ItemData.WeightClass.HEAVY and not item is Schubkarre:
 		play_sound_everywhere.rpc("drop_thud", at.origin)
+
+
+## Takes the other end of a heavy item another player carries (DESIGN.md §3).
+@rpc("any_peer", "call_local", "reliable")
+func request_help_carry(item_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var player: Player = player_by_peer(_sender())
+	if item != null and player != null:
+		host_help_carry(item, player)
+
+
+func host_help_carry(item: WorldItem, player: Player) -> void:
+	if not item.can_help_carry(player):
+		return
+	if player.global_position.distance_to(item.global_position) > _config.interact_distance + 1.5:
+		return
+	item.host_set_helper(player.peer_id)
+	play_sound_everywhere.rpc("pickup", item.global_position)
+
+
+## Carrying together only works close together: the helper loses their grip further apart.
+func _host_check_carry_together() -> void:
+	for player: Player in players():
+		var item: WorldItem = player.inventory.hands as WorldItem
+		if item == null or item.helper_peer == 0 or item.holder_peer != player.peer_id:
+			continue
+		var helper: Player = player_by_peer(item.helper_peer)
+		if helper == null or helper.global_position.distance_to(player.global_position) > _config.carry_together_max_distance:
+			if helper != null:
+				_show_message_key.rpc_id(helper.peer_id, "MSG_LOST_GRIP")
+			item.host_set_helper(0)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -627,6 +749,36 @@ func request_consume(item_path: NodePath, peer: int) -> void:
 	if item != null and item.holder_peer == peer:
 		play_sound_everywhere.rpc("karbid_open", item.global_position)
 		item.host_vanish()
+
+
+## The owner's character landed hard (movement is client-side, health is the host's).
+@rpc("any_peer", "call_local", "reliable")
+func request_fall_damage(amount: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player != null:
+		host_damage_player(player, clampi(amount, 0, _config.player_max_health))
+
+
+## Every source of damage to players goes through here (host).
+func host_damage_player(player: Player, amount: int) -> void:
+	if not player.alive or phase != Phase.SHIFT or amount <= 0:
+		return
+	var health: int = maxi(0, player.health - amount)
+	player.set_health.rpc(health)
+	if health == 0:
+		_kill_player(player)
+
+
+func _kill_player(player: Player) -> void:
+	_drop_everything(player)
+	# The body stays down there as heavy loot: carried to the lift, it pays Sterbegeld (§3).
+	var at: Transform3D = Transform3D(Basis(Vector3.UP, player.rotation.y), player.global_position + Vector3.UP * 0.3)
+	_spawn_item_at(&"leiche", _config.sterbegeld, at)
+	player.die.rpc()
+	_player_message.rpc("MSG_PLAYER_DIED", player.player_number, player.peer_id)
+	print("[game] P%d died, corpse spawned" % player.peer_id)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -664,6 +816,78 @@ func play_sound_everywhere(sound: String, where: Vector3) -> void:
 @rpc("authority", "call_local", "reliable")
 func _show_message_key(key: String) -> void:
 	show_message(tr(key))
+
+
+## A message about a player ("Kumpl 2 is hin!"), not shown to that player themselves.
+@rpc("authority", "call_local", "reliable")
+func _player_message(key: String, number: int, about_peer: int) -> void:
+	if about_peer == multiplayer.get_unique_id():
+		show_message(tr("MSG_YOU_DIED"), 5.0)
+	else:
+		show_message(tr(key) % (tr("PLAYER_NAME") % number), 4.0)
+
+
+# --- free item physics (host simulates, clients follow) -----------------------------------------
+
+## Sends the transforms of free items that moved since the last send. Moving items go out
+## unreliably about 20 times a second; once an item comes to rest its final transform goes
+## out reliably, so every client ends up with exactly where it lies.
+func _host_sync_items(delta: float) -> void:
+	_item_sync_left -= delta
+	if _item_sync_left > 0.0:
+		return
+	_item_sync_left = ITEM_SYNC_SECONDS
+	if multiplayer.get_peers().is_empty():
+		return
+	var moving_names: PackedStringArray = []
+	var moving: PackedFloat32Array = []
+	var resting_names: PackedStringArray = []
+	var resting: PackedFloat32Array = []
+	for item: WorldItem in _items():
+		if item.state != WorldItem.State.FREE:
+			continue
+		var xform: Transform3D = item.global_transform
+		var moved: bool = not xform.is_equal_approx(item.sent_transform)
+		if item.sleeping and (moved or not item.sent_reliably):
+			_pack_item(item, resting_names, resting)
+			item.sent_reliably = true
+		elif not item.sleeping and moved:
+			_pack_item(item, moving_names, moving)
+			item.sent_reliably = false
+	if not moving_names.is_empty():
+		_item_transforms.rpc(moving_names, moving)
+	if not resting_names.is_empty():
+		_item_transforms_resting.rpc(resting_names, resting)
+
+
+func _pack_item(item: WorldItem, names: PackedStringArray, values: PackedFloat32Array) -> void:
+	var xform: Transform3D = item.global_transform
+	var turn: Quaternion = xform.basis.get_rotation_quaternion()
+	item.sent_transform = xform
+	names.append(item.name)
+	values.append_array([xform.origin.x, xform.origin.y, xform.origin.z, turn.x, turn.y, turn.z, turn.w])
+
+
+@rpc("authority", "call_remote", "unreliable_ordered")
+func _item_transforms(names: PackedStringArray, values: PackedFloat32Array) -> void:
+	_apply_item_transforms(names, values)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _item_transforms_resting(names: PackedStringArray, values: PackedFloat32Array) -> void:
+	_apply_item_transforms(names, values)
+
+
+func _apply_item_transforms(names: PackedStringArray, values: PackedFloat32Array) -> void:
+	if values.size() != names.size() * ITEM_SYNC_STRIDE:
+		return
+	for i: int in names.size():
+		var item: WorldItem = items_root.get_node_or_null(NodePath(names[i])) as WorldItem
+		if item == null:
+			continue
+		var o: int = i * ITEM_SYNC_STRIDE
+		var turn: Quaternion = Quaternion(values[o + 3], values[o + 4], values[o + 5], values[o + 6])
+		item.net_push(Transform3D(Basis(turn), Vector3(values[o], values[o + 1], values[o + 2])))
 
 
 func show_message(text: String, seconds: float = 2.5) -> void:

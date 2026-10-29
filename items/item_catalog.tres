@@ -9,7 +9,8 @@
 [ext_resource type="Resource" path="res://items/data/spitzhacke.tres" id="7_spitzhacke"]
 [ext_resource type="Resource" path="res://items/data/karbidpatrone.tres" id="8_karbidpatrone"]
 [ext_resource type="Resource" path="res://items/data/schubkarre.tres" id="9_schubkarre"]
+[ext_resource type="Resource" path="res://items/data/leiche.tres" id="10_leiche"]
 
 [resource]
 script = ExtResource("1_catalog")
-items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre")])
+items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre"), ExtResource("10_leiche")])
