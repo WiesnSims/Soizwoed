@@ -1,0 +1,68 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://enemies/voice_line.gd" id="2_line"]
+[ext_resource type="PackedScene" path="res://enemies/schichtmeister/schichtmeister.tscn" id="3_scene"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/appear_aus.ogg" id="s0"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/appear_aufi.ogg" id="s1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/spot_siag.ogg" id="s2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/spot_troedl.ogg" id="s3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/idle_wo.ogg" id="s4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/idle_stempl.ogg" id="s5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/die_zspat.ogg" id="s6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/schichtmeister/hit_vorgsetzt.ogg" id="s7"]
+
+[sub_resource type="Resource" id="line_appear_aus"]
+script = ExtResource("2_line")
+id = &"appear_aus"
+moment = 2
+stream = ExtResource("s0")
+
+[sub_resource type="Resource" id="line_appear_aufi"]
+script = ExtResource("2_line")
+id = &"appear_aufi"
+moment = 2
+stream = ExtResource("s1")
+
+[sub_resource type="Resource" id="line_spot_siag"]
+script = ExtResource("2_line")
+id = &"spot_siag"
+moment = 0
+stream = ExtResource("s2")
+
+[sub_resource type="Resource" id="line_spot_troedl"]
+script = ExtResource("2_line")
+id = &"spot_troedl"
+moment = 0
+stream = ExtResource("s3")
+
+[sub_resource type="Resource" id="line_idle_wo"]
+script = ExtResource("2_line")
+id = &"idle_wo"
+moment = 1
+stream = ExtResource("s4")
+
+[sub_resource type="Resource" id="line_idle_stempl"]
+script = ExtResource("2_line")
+id = &"idle_stempl"
+moment = 1
+stream = ExtResource("s5")
+
+[sub_resource type="Resource" id="line_die_zspat"]
+script = ExtResource("2_line")
+id = &"die_zspat"
+moment = 4
+stream = ExtResource("s6")
+
+[sub_resource type="Resource" id="line_hit_vorgsetzt"]
+script = ExtResource("2_line")
+id = &"hit_vorgsetzt"
+moment = 3
+stream = ExtResource("s7")
+
+[resource]
+script = ExtResource("1_data")
+id = &"schichtmeister"
+name_key = "CREATURE_SCHICHTMEISTER"
+scene = ExtResource("3_scene")
+voice_lines = Array[ExtResource("2_line")]([SubResource("line_appear_aus"), SubResource("line_appear_aufi"), SubResource("line_spot_siag"), SubResource("line_spot_troedl"), SubResource("line_idle_wo"), SubResource("line_idle_stempl"), SubResource("line_die_zspat"), SubResource("line_hit_vorgsetzt")])

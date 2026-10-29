@@ -10,7 +10,10 @@ $runs = @(
     @{ Name = "smoke_shift"; Args = @("--headless", "--", "--solo", "--auto-shift", "--smoke=16"); Expect = @("\[game\] mine built", "\[game\] shift started", "\[game\] shift ended") },
     @{ Name = "smoke_loot"; Args = @("--headless", "--", "--solo", "--scenario=loot", "--smoke=20"); Expect = @("\[scenario\] back in the Gasthaus, money [1-9]") },
     @{ Name = "smoke_cart"; Args = @("--headless", "--", "--solo", "--scenario=cart", "--smoke=12"); Expect = @("dropped onto barrow: CARTED, pocket with G: CARTED", "salzkristall CARTED, 0.00 m") },
-    @{ Name = "smoke_mandl"; Args = @("--headless", "--", "--solo", "--scenario=mandl", "--smoke=14"); Expect = @("RUN_OFF .* carrying I") }
+    @{ Name = "smoke_mandl"; Args = @("--headless", "--", "--solo", "--scenario=mandl", "--smoke=14"); Expect = @("RUN_OFF .* carrying I") },
+    @{ Name = "smoke_tatzel"; Args = @("--headless", "--", "--solo", "--scenario=tatzel", "--smoke=16"); Expect = @("tatzelwurm HUNT", "tatzelwurm SURFACE emerge 1\.0", "tatzelwurm LUNGE emerge 1\.0", "player health ([0-9]|[1-9][0-9])$") },
+    @{ Name = "smoke_kaser"; Args = @("--headless", "--", "--solo", "--scenario=kaser", "--smoke=16"); Expect = @("kasermandl lit true STALK", "kasermandl lit false RETREAT .* player health 65") },
+    @{ Name = "smoke_meister"; Args = @("--headless", "--", "--solo", "--scenario=meister", "--smoke=36"); Expect = @("Schichtmeister comes for P1", "P1 died") }
 )
 $allOk = $true
 foreach ($run in $runs) {

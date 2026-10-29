@@ -47,6 +47,12 @@ func run(game: Game, scenario: String) -> void:
 			await _look()
 		"coop":
 			await _coop()
+		"tatzel":
+			await _tatzel()
+		"kaser":
+			await _kaser()
+		"meister":
+			await _meister()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -58,10 +64,21 @@ func _process(delta: float) -> void:
 	if _log_left > 0.0:
 		return
 	_log_left = 0.5
+	var player: Player = _game.local_player()
 	for creature: Creature in _game.creatures():
 		var mandl: Bergmandl = creature as Bergmandl
+		var where: Vector3 = creature.global_position.snapped(Vector3.ONE * 0.1)
+		var distance: float = creature.global_position.distance_to(player.global_position) if player != null else -1.0
 		if mandl != null:
-			print("[scenario] %s %s at %s carrying %s" % [mandl.name, Bergmandl.State.keys()[mandl.state], mandl.global_position.snapped(Vector3.ONE * 0.1), mandl.carried.name if mandl.carried != null else "-"])
+			print("[scenario] %s %s at %s carrying %s" % [mandl.name, Bergmandl.State.keys()[mandl.state], where, mandl.carried.name if mandl.carried != null else "-"])
+		elif creature is Tatzelwurm:
+			var wurm: Tatzelwurm = creature as Tatzelwurm
+			print("[scenario] tatzelwurm %s emerge %.1f %.1f m away, player health %d" % [Tatzelwurm.State.keys()[wurm.state], wurm.net_emerge, distance, player.health])
+		elif creature is Kasermandl:
+			var kaser: Kasermandl = creature as Kasermandl
+			print("[scenario] kasermandl lit %s %s %.1f m away, player health %d" % [kaser.net_lit, Kasermandl.State.keys()[kaser.state], distance, player.health])
+		elif creature is Schichtmeister:
+			print("[scenario] schichtmeister %.1f m away, in cage %s, player alive %s" % [distance, _game.in_mine_cage(creature.global_position), player.alive])
 
 
 func _mandl() -> void:
@@ -221,6 +238,57 @@ func _coop() -> void:
 	host.teleport(cage.player_spot(0))
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
+
+
+## A point along the tunnel out of the station, `metres` from the cage (on the waypoint graph).
+func _out_of_station(metres: float) -> Vector3:
+	var cage: Foerderkorb = _game.mine_cage
+	var target: Vector3 = cage.global_position - cage.global_basis.z * metres
+	var nav: AStar3D = _game.mine.nav
+	return nav.get_point_position(nav.get_closest_point(target)) + Vector3.UP * 0.1
+
+
+func _tatzel() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var stand: Vector3 = _out_of_station(8.0)
+	player.teleport(Transform3D(_game.mine_cage.global_basis, stand))
+	await get_tree().create_timer(0.5).timeout
+	_game.spawn_creature(&"tatzelwurm", Transform3D(Basis.IDENTITY, _out_of_station(20.0) + Vector3.UP * 0.3))
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] player sprints")
+	for i: int in 3:
+		_game.host_noise(player.global_position, Balance.config.noise_sprint)
+		await get_tree().create_timer(0.5).timeout
+	await get_tree().create_timer(5.0).timeout
+	print("[scenario] player runs past it")
+	for i: int in 40:
+		player.velocity = Vector3(Balance.config.sprint_speed, 0.0, 0.0)
+		await get_tree().physics_frame
+
+
+func _kaser() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(8.0)))
+	for light: OmniLight3D in _game.mine.lights:
+		light.visible = false  # only the lamp counts in this check
+	await get_tree().create_timer(0.5).timeout
+	_game.spawn_creature(&"kasermandl", Transform3D(Basis.IDENTITY, _out_of_station(24.0) + Vector3.UP * 0.3))
+	await get_tree().create_timer(7.0).timeout
+	print("[scenario] lamp off")
+	player.lamp_on = false
+
+
+func _meister() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(14.0)))
+	_game.shift_time_left = 0.5
+	await get_tree().create_timer(Balance.config.schichtmeister_delay + 20.0).timeout
 
 
 func _coop_client() -> void:

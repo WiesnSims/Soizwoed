@@ -3,7 +3,7 @@
     pip install numpy scipy soundfile
     python tools/audio/build.py              # everything
     python tools/audio/build.py drip swing   # only these names
-    python tools/audio/build.py --samples    # voice sample pack to build/samples/ (sample check)
+    python tools/audio/build.py --samples [creature ...]   # voice sample pack to build/samples/
 
 Folders: sfx/, ambience/, music/, voices/<creature>/. A sound with several variants is written as
 name_1.ogg, name_2.ogg ...; one with a single variant as name.ogg. The game picks a variant at
@@ -58,10 +58,10 @@ def jobs():
         print("eSpeak NG not found: voice lines are left as they are")
 
 
-def samples():
+def samples(creatures):
     if not voices.espeak():
         sys.exit("eSpeak NG is needed for the sample pack")
-    for folder, name, fn in voices.sample_jobs():
+    for folder, name, fn in voices.sample_jobs(creatures):
         path = SAMPLES / folder / f"{name}.ogg"
         print(f"{path.relative_to(ROOT)}  {render(path, fn, 0, False):.2f} s")
 
@@ -76,6 +76,6 @@ def main(names: set) -> None:
 
 if __name__ == "__main__":
     if "--samples" in sys.argv:
-        samples()
+        samples({a for a in sys.argv[1:] if a != "--samples"})
     else:
         main(set(sys.argv[1:]))

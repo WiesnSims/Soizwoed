@@ -11,6 +11,8 @@ const ARRIVE_DISTANCE: float = 0.6
 const REPATH_SECONDS: float = 1.0
 const STUCK_SECONDS: float = 1.2
 const WEDGED_SECONDS: float = 4.0
+const DODGE_AFTER: float = 0.25
+const DODGE_SECONDS: float = 0.7
 
 var data: EnemyData
 var health: int = 1
@@ -27,6 +29,8 @@ var _repath_left: float = 0.0
 var _stuck_time: float = 0.0
 var _progress_from: Vector3 = Vector3.INF
 var _progress_time: float = 0.0
+var _dodge_left: float = 0.0
+var _dodge_side: float = 1.0
 var _last_line_at: float = -INF
 var _net: NetInterpolator = NetInterpolator.new()
 ## Host: seconds left of being stunned (Alphorn); the AI does nothing meanwhile.
@@ -139,13 +143,21 @@ func _step_towards(target: Vector3, speed: float, delta: float) -> void:
 	var dir: Vector3 = target - global_position
 	dir.y = 0.0
 	dir = dir.normalized()
+	var facing: Vector3 = dir
+	# Something in the way (a cart, a crate, another creature): step around it for a moment.
+	_dodge_left -= delta
+	if _dodge_left > 0.0:
+		dir = (dir + dir.cross(Vector3.UP) * _dodge_side * 1.3).normalized()
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	velocity.y = 0.0 if is_on_floor() else velocity.y - _gravity * delta
 	var before: Vector3 = global_position
 	move_and_slide()
-	if dir.length_squared() > 0.0:
-		rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), clampf(10.0 * delta, 0.0, 1.0))
+	if facing.length_squared() > 0.0:
+		rotation.y = lerp_angle(rotation.y, atan2(-facing.x, -facing.z), clampf(10.0 * delta, 0.0, 1.0))
+	if _dodge_left <= 0.0 and before.distance_to(global_position) < speed * delta * 0.25 and _stuck_time > DODGE_AFTER:
+		_dodge_side = -_dodge_side
+		_dodge_left = DODGE_SECONDS
 	# Wedged for good (re-pathing keeps sending it into the same rock): back onto the graph.
 	_progress_time += delta
 	if global_position.distance_to(_progress_from) > 0.5:

@@ -141,3 +141,6 @@ SET_SENSITIVITY,Maus-Empfindlichkeit
 SET_INVERT_Y,Maus aufwärts umdrahn
 SET_HEAD_BOB,Kopfwackln beim Gehn
 SET_DEFAULTS,Standard
+CREATURE_TATZELWURM,Tatzelwurm
+CREATURE_KASERMANDL,Kasermandl
+CREATURE_SCHICHTMEISTER,Da Schichtmeister

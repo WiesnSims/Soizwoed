@@ -462,6 +462,11 @@ func refill_lamp(share: float) -> void:
 		_set_lamp.rpc(true)
 
 
+## How far this player's lamp lights right now (0 when it is off), on every peer.
+func light_range() -> float:
+	return lamp.omni_range if lamp_on and lamp.visible and alive else 0.0
+
+
 func lamp_share() -> float:
 	return lamp_fuel / _config.lamp_fuel_seconds
 

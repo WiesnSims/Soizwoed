@@ -229,7 +229,244 @@ def poof(v):
     return cave(d.mix(puff * 0.7, click(1500, 0.01, 0.6)), 1.2, 0.3)
 
 
+# --- M4 creatures (non-speech) ---------------------------------------------------------------------
+
+def tatzel_scrape(v):
+    """The Tatzelwurm burrowing: grinding salt and scraping scales inside the rock (loop)."""
+    s = 3.0
+    grind = d.lowpass(d.brown(s), 260) * (0.6 + 0.4 * d.smooth_noise(s, 2.5))
+    scrape = d.bandpass(d.noise(s), 700 + 150 * v, 3200) * np.maximum(0, d.smooth_noise(s, 3.0 + v)) * 0.5
+    crumbs = d.mix(*[(d.rng.uniform(0, s - 0.1), click(2200 + d.rng.uniform(-600, 600), 0.01, 0.2)) for _ in range(14)])
+    return d.loopable(d.mix(grind, scrape, crumbs), 0.3)
+
+
+def tatzel_hiss(v):
+    """A long, wet, cat-like hiss from a big throat."""
+    s = 1.4 + 0.3 * v
+    hiss = d.bandpass(d.noise(s), 1800, 8500) * d.env_points(s, [(0, 0), (0.08, 1), (s * 0.7, 0.8), (s, 0)])
+    throat = d.vowel(d.glottal(d.glide(s, 95, 70), s, 0.04, 0.4), "a", 0.7) * d.env_points(s, [(0, 0), (0.1, 0.4), (s, 0)])
+    return cave(d.mix(hiss * 0.8, throat * 0.35), 1.6, 0.35)
+
+
+def tatzel_burst(v):
+    """Bursting out of the rock: a crack, a slide of rubble, dust."""
+    s = 1.8
+    crack = d.mix(click(1600, 0.03, 1.0, ring=0.3), thud(55, 0.2, 1.0))
+    slide = d.bandpass(d.noise(s), 400, 4000) * d.env_points(s, [(0, 0), (0.05, 1), (1.8, 0)])
+    stones = d.mix(*[(d.rng.uniform(0.05, 1.4), thud(200 + d.rng.uniform(0, 300), 0.02, 0.4)) for _ in range(10)])
+    return cave(d.mix(crack, slide * 0.5, stones), 2.0, 0.4)
+
+
+def tatzel_bite(v):
+    """Jaws snapping shut."""
+    return cave(d.mix(thud(150, 0.03, 1.0), click(3000, 0.006, 0.9), d.bandpass(d.noise(0.3), 500, 3000) * d.env_exp(0.3, 0.04) * 0.6), 1.0, 0.25)
+
+
+def meister_steps(v):
+    """Heavy hobnailed boots, too fast for a living man."""
+    s = 0.3
+    return d.mix(thud(70 + 8 * v, 0.05, 1.0), click(2800 + 200 * v, 0.004, 0.5, ring=0.4), d.bandpass(d.noise(s), 600, 3000) * d.env_exp(s, 0.03) * 0.4)
+
+
+def kaser_breath(v):
+    """A cold breath right by your ear (the Kasermandl in the dark)."""
+    s = 1.6
+    breath = d.bandpass(d.noise(s), 500, 3500) * d.env_points(s, [(0, 0), (0.6, 0.8), (0.8, 1.0), (1.6, 0)])
+    return cave(breath, 2.0, 0.45)
+
+
+# --- M4 tools --------------------------------------------------------------------------------------
+
+def alphorn(v):
+    """The Alphorn: a huge wooden horn blowing a deafening open fifth."""
+    s = 3.0
+    env = d.env_points(s, [(0, 0), (0.12, 0.9), (0.3, 1.0), (2.4, 0.9), (3.0, 0)])
+    vib = 1.0 + 0.006 * d.sine(4.5, s)
+    tone = d.harmonics(116.5 * vib, s, [1.0, 0.9, 0.7, 0.55, 0.4, 0.3, 0.2, 0.12]) + 0.6 * d.harmonics(174.6 * vib, s, [1.0, 0.7, 0.5, 0.3, 0.2])
+    breath = d.bandpass(d.noise(s), 600, 3000) * 0.08
+    return d.echo(cave(d.drive((tone * 0.3 + breath) * env, 1.6), 2.6, 0.35), 0.5, 0.35, 3)
+
+
+def boeller_fuse(v):
+    """A lit fuse sputtering (loop)."""
+    s = 1.0
+    spits = d.mix(*[(d.rng.uniform(0, s - 0.02), click(4000 + d.rng.uniform(-1500, 1500), 0.003, d.rng.uniform(0.2, 0.7))) for _ in range(40)])
+    fizz = d.bandpass(d.noise(s), 3000, 9000) * 0.25
+    return d.loopable(d.mix(spits, fizz), 0.1)
+
+
+def boeller_bang(v):
+    """A firecracker going off in a tunnel."""
+    s = 0.8
+    bang = d.mix(d.lowpass(d.noise(s), 2500) * d.env_exp(s, 0.03), thud(70, 0.08, 1.0), click(3000, 0.004, 1.0))
+    return d.echo(cave(d.drive(bang, 2.0), 2.4, 0.45), 0.3, 0.3, 3)
+
+
+def explosion(v):
+    """Firedamp going up: a deep blast, a pressure wave, rock coming down."""
+    s = 3.5
+    blast = d.lowpass(d.noise(s), 900) * d.env_points(s, [(0, 0), (0.01, 1), (0.4, 0.5), (3.5, 0)])
+    boom = d.sine(d.glide(s, 60, 28), s) * d.env_exp(s, 0.6)
+    debris = d.mix(*[(d.rng.uniform(0.3, 3.0), thud(150 + d.rng.uniform(0, 400), 0.03, 0.3)) for _ in range(24)])
+    return cave(d.drive(d.mix(blast, boom, debris * 0.6), 2.5), 3.0, 0.45)
+
+
+def gas_flare(v):
+    """The carbide flame flaring up in firedamp: a rising, roaring whoosh."""
+    s = 1.0
+    roar = d.bandpass(d.noise(s), 300, 3000) * d.env_points(s, [(0, 0), (0.6, 0.7), (1.0, 1.0)])
+    return d.mix(roar, d.lowpass(d.brown(s), 200) * 0.4)
+
+
+def smoke_puff(v):
+    """The "Bierzelt" bomb: a pop and a long hissing cloud."""
+    s = 2.5
+    hiss = d.bandpass(d.noise(s), 1500, 7000) * d.env_points(s, [(0, 0), (0.1, 1), (2.5, 0)])
+    return cave(d.mix(click(900, 0.02, 0.8), hiss * 0.5), 1.4, 0.3)
+
+
+def eat(v):
+    """Biting into a Leberkässemmel: crunch, chew, chew."""
+    s = 1.2
+    bites = d.mix(*[(i * 0.35, d.bandpass(d.noise(0.15), 1500, 6000) * d.env_exp(0.15, 0.03)) for i in range(3)])
+    return d.mix(bites * 0.6, thud(200, 0.03, 0.3))
+
+
+def drink(v):
+    """A pull from a schnapps bottle: gulp gulp, and a satisfied "ah"."""
+    s = 1.4
+    gulps = d.mix(*[(0.1 + i * 0.32, d.sine(d.glide(0.12, 300, 180), 0.12) * d.env_exp(0.12, 0.04)) for i in range(3)])
+    ah = d.vowel(d.glottal(d.glide(0.4, 160, 120), 0.4), "a") * d.env_points(0.4, [(0, 0), (0.05, 0.6), (0.4, 0)])
+    return d.mix(gulps, (1.0, ah * 0.5))
+
+
+def pfeiferl(v):
+    """The Grubenhund whistle: a shrill two-note trill."""
+    s = 1.2
+    f = np.where(np.arange(d.n_of(s)) % d.n_of(0.12) < d.n_of(0.06), 2900, 3400)
+    tone = d.sine(f, s) * d.env_points(s, [(0, 0), (0.03, 1), (1.0, 1), (1.2, 0)])
+    return cave(d.mix(tone * 0.5, d.bandpass(d.noise(s), 2000, 6000) * 0.1), 1.6, 0.35)
+
+
+def rope(v):
+    """A rope thrown down and an iron hook biting into rock."""
+    s = 0.9
+    whoosh = d.bandpass(d.pink(s), 300, 2500) * d.env_points(s, [(0, 0), (0.3, 1), (0.6, 0)])
+    return d.mix(whoosh * 0.5, (0.55, click(2600, 0.008, 0.8, ring=0.6)))
+
+
+def radio_static(v):
+    """Funkgerät static (loop)."""
+    s = 2.0
+    crackle = d.mix(*[(d.rng.uniform(0, s - 0.02), click(3000 + d.rng.uniform(-1000, 2000), 0.002, d.rng.uniform(0.1, 0.5))) for _ in range(60)])
+    return d.loopable(d.mix(d.bandpass(d.noise(s), 800, 5000) * 0.35 * (0.6 + 0.4 * d.smooth_noise(s, 6.0)), crackle), 0.2)
+
+
+def wall_break(v):
+    """A salt wall giving way under the pick."""
+    s = 1.8
+    return cave(d.mix(click(1800, 0.04, 1.0, ring=0.5), thud(65, 0.15, 1.0),
+                      d.mix(*[(d.rng.uniform(0.05, 1.2), thud(220 + d.rng.uniform(0, 500), 0.02, 0.4)) for _ in range(14)])), 2.0, 0.4)
+
+
+# --- M4 hazards and the lake -----------------------------------------------------------------------
+
+def rockfall_warn(v):
+    """Rock creaking and grit trickling from the roof: get out from under it."""
+    s = 2.4
+    groan = stick_slip(s, 14 + 8 * d.smooth_noise(s, 1.0), [(180, 10, 1.0), (430, 12, 0.6), (900, 14, 0.3)], 0.5)
+    trickle = d.bandpass(d.noise(s), 2500, 8000) * np.maximum(0, d.smooth_noise(s, 4.0)) * 0.3
+    x = d.mix(groan, trickle)
+    env = d.env_points(s, [(0, 0), (0.4, 0.8), (s, 1.0)])
+    n = min(len(x), len(env))
+    return cave(x[:n] * env[:n], 1.8, 0.35)
+
+
+def rockfall(v):
+    """Rock crashing down from the roof."""
+    s = 2.6
+    crash = d.lowpass(d.noise(s), 1500) * d.env_points(s, [(0, 0), (0.02, 1), (2.6, 0)])
+    stones = d.mix(*[(d.rng.uniform(0, 2.0), thud(120 + d.rng.uniform(0, 500), 0.03, 0.6)) for _ in range(20)])
+    return cave(d.drive(d.mix(crash * 0.6, stones, thud(45, 0.3, 1.0)), 1.6), 2.4, 0.4)
+
+
+def plank_crack(v):
+    """Rotten wood splintering and giving way."""
+    s = 1.0
+    splinter = stick_slip(0.6, 120, WOOD, 1.0)
+    return cave(d.mix(splinter, (0.35, click(1300, 0.03, 1.0, ring=0.4)), (0.4, thud(110, 0.06, 0.8))), 1.4, 0.3)
+
+
+def plank_creak(v):
+    """A rotten plank or rung complaining under a foot."""
+    s = 0.9
+    return cave(stick_slip(s, 30 + 15 * v, WOOD, 0.5) * d.env_points(s, [(0, 0), (0.2, 1), (s, 0)]), 1.2, 0.3)
+
+
+def splash(v):
+    """Something heavy going into deep brine."""
+    s = 1.4
+    body = d.lowpass(d.noise(s), 2500) * d.env_points(s, [(0, 0), (0.02, 1), (0.5, 0.3), (1.4, 0)])
+    drops = d.mix(*[(d.rng.uniform(0.1, 1.0), d.sine(d.glide(0.08, 900, 1700), 0.08) * d.env_exp(0.08, 0.02) * 0.4) for _ in range(10)])
+    return cave(d.mix(body, thud(90, 0.08, 0.7), drops), 2.0, 0.4)
+
+
+def wade(v):
+    """A boot sloshing through ankle-deep brine."""
+    s = 0.35
+    return d.mix(d.bandpass(d.noise(s), 400, 3000) * d.env_points(s, [(0, 0), (0.05, 1), (0.35, 0)]) * 0.6, thud(140, 0.03, 0.4))
+
+
+def gurgle(v):
+    """Something under the water, close: bubbles and a wet grunt."""
+    s = 1.8
+    bubbles = d.mix(*[(d.rng.uniform(0, 1.5), d.sine(d.glide(0.06, 300, 700), 0.06) * d.env_exp(0.06, 0.02)) for _ in range(18)])
+    grunt = d.lowpass(d.glottal(d.glide(s, 70, 50), s, 0.08, 0.5), 600) * d.env_points(s, [(0, 0), (0.6, 0.8), (s, 0)])
+    return cave(d.mix(bubbles * 0.5, grunt * 0.5), 1.8, 0.4)
+
+
+def ferry_bell(v):
+    """The bell at the landing: "Hol über!" – a bright little bronze bell rung three times."""
+    parts = lambda: [(1250, 1.0, 1.0), (2980, 0.5, 0.6), (4500, 0.25, 0.3)]
+    return cave(d.mix(*[(i * 0.5, d.partials(1.4, parts())) for i in range(3)]), 3.0, 0.45)
+
+
+def row(v):
+    """An oar dipping and pulling, the boat creaking (loop)."""
+    s = 2.0
+    strokes = d.mix(*[(i * 1.0, d.bandpass(d.noise(0.5), 300, 2000) * d.env_points(0.5, [(0, 0), (0.1, 1), (0.5, 0)])) for i in range(2)])
+    creak_ = stick_slip(s, 20 + 8 * d.smooth_noise(s, 1.0), WOOD, 0.15)
+    return d.loopable(d.mix(strokes * 0.5, creak_), 0.2)
+
+
 SOUNDS = {
+    "tatzel_scrape": (tatzel_scrape, 1),
+    "tatzel_hiss": (tatzel_hiss, 2),
+    "tatzel_burst": (tatzel_burst, 1),
+    "tatzel_bite": (tatzel_bite, 1),
+    "meister_steps": (meister_steps, 3),
+    "kaser_breath": (kaser_breath, 1),
+    "alphorn": (alphorn, 1),
+    "boeller_fuse": (boeller_fuse, 1),
+    "boeller_bang": (boeller_bang, 1),
+    "explosion": (explosion, 1),
+    "gas_flare": (gas_flare, 1),
+    "smoke_puff": (smoke_puff, 1),
+    "eat": (eat, 1),
+    "drink": (drink, 1),
+    "pfeiferl": (pfeiferl, 1),
+    "rope": (rope, 1),
+    "radio_static": (radio_static, 1),
+    "wall_break": (wall_break, 1),
+    "rockfall_warn": (rockfall_warn, 1),
+    "rockfall": (rockfall, 1),
+    "plank_crack": (plank_crack, 1),
+    "plank_creak": (plank_creak, 2),
+    "splash": (splash, 1),
+    "wade": (wade, 3),
+    "gurgle": (gurgle, 1),
+    "ferry_bell": (ferry_bell, 1),
+    "row": (row, 1),
     "footstep_gravel": (footstep_gravel, 6),
     "footstep_wood": (footstep_wood, 4),
     "pickup": (pickup, 3),
@@ -256,5 +493,5 @@ SOUNDS = {
     "mandl_steps": (mandl_steps, 3),
     "poof": (poof, 1),
 }
-LOOPS = {"lamp_hiss", "lift_motor", "cart_rattle"}
+LOOPS = {"lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row"}
 AMBIENCE = {"drip", "creak", "rumble"}

@@ -8,6 +8,8 @@ var chunk_set: ChunkSet
 var chunks: Dictionary = {}  # Vector2i -> Chunk
 var nav: AStar3D = AStar3D.new()
 var station: Chunk
+## The lanterns hanging in the mine (their light freezes the Kasermandl).
+var lights: Array[OmniLight3D] = []
 
 
 func build(seed_value: int, params: MineParams, new_chunk_set: ChunkSet) -> void:
@@ -28,6 +30,8 @@ func build(seed_value: int, params: MineParams, new_chunk_set: ChunkSet) -> void
 		chunks[cell] = chunk
 		if cell == layout.start:
 			station = chunk
+	for node: Node in find_children("*", "OmniLight3D", true, false):
+		lights.append(node as OmniLight3D)
 	_build_nav()
 
 

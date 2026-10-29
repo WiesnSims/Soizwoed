@@ -25,6 +25,9 @@ const HUB_ENVIRONMENT: Environment = preload("res://hub/hub_environment.tres")
 const CATALOG_PATH: String = "res://items/item_catalog.tres"
 const CREATURE_PATHS: PackedStringArray = [
 	"res://enemies/bergmandl/bergmandl.tres",
+	"res://enemies/tatzelwurm/tatzelwurm.tres",
+	"res://enemies/kasermandl/kasermandl.tres",
+	"res://enemies/schichtmeister/schichtmeister.tres",
 ]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
@@ -68,6 +71,8 @@ var _ready_peers: Dictionary = {}
 var _enemy_budget: float = 0.0
 var _enemy_budget_left: float = 0.0
 var _noise_left: float = 0.0
+## The Schichtmeister was sent this shift (once per shift).
+var _meister_came: bool = false
 ## Host: smoke clouds creatures avoid, [centre: Vector3, radius: float, until: float (s)].
 var _smokes: Array[Array] = []
 var _trickle_left: float = 0.0
@@ -397,6 +402,7 @@ func _descend() -> void:
 	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
 	_enemy_budget_left = _enemy_budget
 	_smokes.clear()
+	_meister_came = false
 	_spawn_creatures_up_to(_config.enemy_start_share)
 	_trickle_left = _config.enemy_trickle_seconds
 	_start_shift.rpc(_config.shift_seconds(run.player_count))
@@ -408,6 +414,8 @@ func _host_tick_shift(delta: float) -> void:
 	elif whistle_blown and shift_time_left <= -_config.whistle_grace_seconds:
 		_ascend()
 		return
+	if whistle_blown and shift_time_left <= -_config.schichtmeister_delay and alive_count(&"schichtmeister") == 0 and not _meister_came:
+		_send_schichtmeister()
 	if not whistle_blown and _enemy_budget_left > 0.0:
 		_trickle_left -= delta
 		if _trickle_left <= 0.0:
@@ -420,6 +428,32 @@ func _host_tick_shift(delta: float) -> void:
 	_all_dead_time = 0.0 if anyone_alive else _all_dead_time + delta
 	if _all_dead_time >= _config.all_dead_delay:
 		_ascend()
+
+
+## Whoever is still down after the whistle gets a visit (DESIGN.md §6): he comes out of the dark
+## behind the straggler nearest the lift, from the side away from the cage.
+func _send_schichtmeister() -> void:
+	var straggler: Player = null
+	for player: Player in players():
+		if player.alive and player.global_position.y < HUB_FLOOR_ABOVE and not mine_cage.contains(player.global_position):
+			if straggler == null or player.global_position.distance_to(mine_cage.global_position) < straggler.global_position.distance_to(mine_cage.global_position):
+				straggler = player
+	if straggler == null:
+		return
+	_meister_came = true
+	var best: Vector3 = straggler.global_position
+	var best_score: float = -INF
+	for id: int in mine.nav.get_point_ids():
+		var point: Vector3 = mine.nav.get_point_position(id)
+		var from_straggler: float = point.distance_to(straggler.global_position)
+		if from_straggler < 15.0 or from_straggler > 40.0:
+			continue
+		var score: float = point.distance_to(mine_cage.global_position) - absf(from_straggler - 25.0)
+		if score > best_score:
+			best_score = score
+			best = point
+	spawn_creature(&"schichtmeister", Transform3D(Basis.IDENTITY, best + Vector3.UP * 0.3))
+	print("[game] Schichtmeister comes for P%d" % straggler.peer_id)
 
 
 func _ascend() -> void:
