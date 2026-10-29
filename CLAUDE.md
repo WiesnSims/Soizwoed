@@ -9,7 +9,7 @@ The full game design is here and must be followed:
 ## How to work
 - Work milestone by milestone (DESIGN.md §12). Finish and test one milestone before starting the next.
 - At the end of each milestone, produce a working Windows build and summarise what to playtest.
-- Work on a milestone branch. When I approve the milestone, merge it into `main` and then delete the branch (no tags needed).
+- Work on a milestone branch. When I approve the milestone, merge it into `main` and then delete the branch (no tags needed). Always push `main` to GitHub after completing a milestone or merging into `main`.
 - If you need something from me (installing Godot export templates, Steam client running, a second Steam account, a design decision), ask clearly and specifically instead of guessing.
 - When a design question is not answered in DESIGN.md, make a sensible choice, note it in `docs/DECISIONS.md`, and tell me.
 
