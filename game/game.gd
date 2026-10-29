@@ -15,14 +15,17 @@ enum Phase { MENU, HUB, DESCENDING, SHIFT, ASCENDING, OVER }
 const HUB_FLOOR_ABOVE: float = 200.0
 const RIDE_SECONDS: float = 3.5
 const FADE_SECONDS: float = 0.6
-const CHUNKS: ChunkSet = preload("res://world/chunks/oberer_stollen/oberer_stollen.tres")
+## The mine sections, in the order they unlock (DESIGN.md §4).
+const BIOMES: Array[ChunkSet] = [preload("res://world/chunks/oberer_stollen/oberer_stollen.tres")]
 const PLAYER_SCENE: PackedScene = preload("res://player/player.tscn")
 const CAGE_SCENE: PackedScene = preload("res://world/lift/foerderkorb.tscn")
 const MINE_ENVIRONMENT: Environment = preload("res://world/mine_environment.tres")
 const HUB_ENVIRONMENT: Environment = preload("res://hub/hub_environment.tres")
 ## Loaded at runtime, not preloaded: their scenes' scripts refer back to Game.
 const CATALOG_PATH: String = "res://items/item_catalog.tres"
-const CREATURE_PATHS: PackedStringArray = ["res://enemies/bergmandl/bergmandl.tres"]
+const CREATURE_PATHS: PackedStringArray = [
+	"res://enemies/bergmandl/bergmandl.tres",
+]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
 ## ride up again. With `--wait-peers=<n>` the host first waits for n clients.
@@ -55,12 +58,18 @@ var mine_cage: Foerderkorb
 var run_info: Dictionary = {}
 var catalog: ItemCatalog
 var creature_types: Array[EnemyData] = []
+## The mine section picked in the Gasthaus (index into BIOMES; host decides, sent to all).
+var biome_index: int = 0
 
 var _config: BalanceConfig
 var _next_item: int = 0
 var _next_creature: int = 0
 var _ready_peers: Dictionary = {}
+var _enemy_budget: float = 0.0
 var _enemy_budget_left: float = 0.0
+var _noise_left: float = 0.0
+## Host: smoke clouds creatures avoid, [centre: Vector3, radius: float, until: float (s)].
+var _smokes: Array[Array] = []
 var _trickle_left: float = 0.0
 var _ambience_left: float = 5.0
 var _voice_quiet_until: float = 0.0
@@ -128,6 +137,7 @@ func _process(delta: float) -> void:
 		_tick_ambience(delta)
 		if multiplayer.is_server():
 			_host_tick_shift(delta)
+			_host_tick_noise(delta)
 
 
 # --- session --------------------------------------------------------------------------------------
@@ -243,11 +253,15 @@ func _spawn_item(spawn_data: Array) -> Node:
 	return item
 
 
-func _spawn_creature(spawn_data: Array) -> Node:
-	var data: EnemyData = null
+func creature_data(id: StringName) -> EnemyData:
 	for candidate: EnemyData in creature_types:
-		if candidate.id == spawn_data[1]:
-			data = candidate
+		if candidate.id == id:
+			return candidate
+	return null
+
+
+func _spawn_creature(spawn_data: Array) -> Node:
+	var data: EnemyData = creature_data(spawn_data[1])
 	var creature: Creature = data.scene.instantiate() as Creature
 	creature.name = spawn_data[0]
 	creature.data = data
@@ -279,7 +293,7 @@ func _spawn_loot(seed_value: int) -> void:
 				options.append(data)
 				weights.append(data.spawn_weight)
 		var picked: ItemData = options[rng.rand_weighted(weights)]
-		var value: int = roundi(rng.randi_range(picked.value_min, picked.value_max) * (1.0 + depth * _config.loot_value_per_depth))
+		var value: int = roundi(rng.randi_range(picked.value_min, picked.value_max) * (1.0 + depth * _config.loot_value_per_depth) * _biome_rule().loot_value_mult)
 		var xform: Transform3D = (spot[0] as Marker3D).global_transform
 		if i >= spots.size():
 			xform.origin += Vector3(rng.randf_range(-0.6, 0.6), 0.2, rng.randf_range(-0.6, 0.6))
@@ -287,7 +301,7 @@ func _spawn_loot(seed_value: int) -> void:
 	print("[game] spawned %d loot items" % count)
 
 
-func _spawn_creature_group(data: EnemyData) -> int:
+func _spawn_creature_group(rule: CreatureSpawnRule) -> int:
 	var spots: Array[Vector3] = []
 	for spot: Array in mine.markers_with_depth(&"enemy_spawn"):
 		var where: Vector3 = (spot[0] as Marker3D).global_position
@@ -296,26 +310,56 @@ func _spawn_creature_group(data: EnemyData) -> int:
 	if spots.is_empty():
 		return 0
 	var at: Vector3 = spots.pick_random()
-	var size: int = mini(randi_range(_config.bergmandl_group_min, _config.bergmandl_group_max), floori(_enemy_budget_left / data.budget_cost))
+	var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), _enemy_budget_left)
 	for i: int in size:
-		_next_creature += 1
 		var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), 0.3, randf_range(-1.0, 1.0))
-		_creature_spawner.spawn(["C%d" % _next_creature, data.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset)])
-		_enemy_budget_left -= data.budget_cost
+		spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset))
+		_enemy_budget_left -= rule.budget_cost
 	return size
 
 
+## Host: one creature of type `id` (outside the budget, e.g. the Schichtmeister).
+func spawn_creature(id: StringName, xform: Transform3D) -> Creature:
+	_next_creature += 1
+	return _creature_spawner.spawn(["C%d" % _next_creature, id, xform]) as Creature
+
+
+func alive_count(id: StringName) -> int:
+	var count: int = 0
+	for creature: Creature in creatures():
+		count += 1 if creature.data.id == id else 0
+	return count
+
+
+## Spends the enemy budget until `share_spent` of it is used, picking creature types of the
+## biome by weight (DESIGN.md §6, §8; rules in balance.tres).
 func _spawn_creatures_up_to(share_spent: float) -> void:
-	var data: EnemyData = creature_types[0]
-	var budget: float = _config.enemy_budget(GameState.run.cycle, GameState.run.player_count)
-	var spawned: int = 0
-	while _enemy_budget_left >= data.budget_cost and budget - _enemy_budget_left < budget * share_spent:
-		var group: int = _spawn_creature_group(data)
+	var spawned: Dictionary = {}
+	for _attempt: int in 32:
+		if _enemy_budget - _enemy_budget_left >= _enemy_budget * share_spent:
+			break
+		var options: Array[CreatureSpawnRule] = []
+		var weights: PackedFloat32Array = []
+		for id: StringName in mine.chunk_set.creatures:
+			var rule: CreatureSpawnRule = _config.spawn_rule(id)
+			if rule != null and creature_data(id) != null and rule.allowed(GameState.run.cycle, alive_count(id), _enemy_budget_left):
+				options.append(rule)
+				weights.append(rule.weight)
+		if options.is_empty():
+			break
+		var picked: CreatureSpawnRule = options[_rng_weighted(weights)]
+		var group: int = _spawn_creature_group(picked)
 		if group == 0:
 			break
-		spawned += group
-	if spawned > 0:
-		print("[game] spawned %d %s" % [spawned, data.id])
+		spawned[picked.id] = int(spawned.get(picked.id, 0)) + group
+	for id: StringName in spawned:
+		print("[game] spawned %d %s" % [spawned[id], id])
+
+
+func _rng_weighted(weights: PackedFloat32Array) -> int:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.randomize()
+	return rng.rand_weighted(weights)
 
 
 # --- shift flow (host) ----------------------------------------------------------------------------
@@ -337,7 +381,7 @@ func _descend() -> void:
 	_broadcast_run()
 	var seed_value: int = randi()
 	_all_dead_time = 0.0
-	_begin_ride.rpc(true, seed_value, run.cycle)
+	_begin_ride.rpc(true, seed_value, run.cycle, biome_index)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	if phase != Phase.DESCENDING:
 		return
@@ -350,7 +394,9 @@ func _descend() -> void:
 		player.teleport.rpc(mine_cage.player_spot(index))
 		index += 1
 	_spawn_loot(seed_value)
-	_enemy_budget_left = _config.enemy_budget(run.cycle, run.player_count)
+	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
+	_enemy_budget_left = _enemy_budget
+	_smokes.clear()
 	_spawn_creatures_up_to(_config.enemy_start_share)
 	_trickle_left = _config.enemy_trickle_seconds
 	_start_shift.rpc(_config.shift_seconds(run.player_count))
@@ -381,7 +427,7 @@ func _ascend() -> void:
 	for player: Player in players():
 		if player.alive and mine_cage.contains(player.global_position):
 			riders.append(player)
-	_begin_ride.rpc(false, 0, 0)
+	_begin_ride.rpc(false, 0, 0, 0)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	var results: Dictionary = {"sold": [], "total": 0, "left_behind": [], "dead": []}
 	var rider_peers: Array[int] = []
@@ -505,7 +551,7 @@ func _arg_value(prefix: String) -> String:
 # --- shift flow (every peer) ----------------------------------------------------------------------
 
 @rpc("authority", "call_local", "reliable")
-func _begin_ride(down: bool, seed_value: int, cycle: int) -> void:
+func _begin_ride(down: bool, seed_value: int, cycle: int, biome: int) -> void:
 	phase = Phase.DESCENDING if down else Phase.ASCENDING
 	if multiplayer.is_server():
 		NetworkManager.set_joinable(false)
@@ -516,16 +562,16 @@ func _begin_ride(down: bool, seed_value: int, cycle: int) -> void:
 	_set_local_input(false)
 	await get_tree().create_timer(FADE_SECONDS).timeout
 	if down:
-		_build_mine(seed_value, cycle)
+		_build_mine(seed_value, cycle, biome)
 
 
-func _build_mine(seed_value: int, cycle: int) -> void:
+func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	_free_mine()
 	var started: int = Time.get_ticks_msec()
 	mine = Mine.new()
 	mine.name = "Mine"
 	mine_root.add_child(mine)
-	mine.build(seed_value, MineParams.from_balance(_config, cycle), CHUNKS)
+	mine.build(seed_value, MineParams.from_balance(_config, cycle), BIOMES[clampi(biome, 0, BIOMES.size() - 1)])
 	var anchor: Marker3D = mine.station.find_child("LiftAnchor", true, false) as Marker3D
 	mine_cage = CAGE_SCENE.instantiate() as Foerderkorb
 	mine_cage.name = "MineCage"
@@ -694,6 +740,7 @@ func request_drop(item_path: NodePath, at: Transform3D, toss: Vector3) -> void:
 	item.host_release(at, toss)
 	if item.data.weight_class == ItemData.WeightClass.HEAVY and not item is Schubkarre:
 		play_sound_everywhere.rpc("drop_thud", at.origin)
+		host_noise(at.origin, _config.noise_heavy_drop)
 
 
 ## Takes the other end of a heavy item another player carries (DESIGN.md §3).
@@ -803,6 +850,8 @@ func request_shout(peer: int, where: Vector3, with_sound: bool = true) -> void:
 		return
 	if with_sound:
 		_play_shout.rpc(peer)
+	# Loud voices draw the Tatzelwurm (DESIGN.md §9).
+	host_noise(where, _config.noise_shout)
 	for creature: Creature in creatures():
 		if creature.global_position.distance_to(where) <= _config.shout_radius:
 			creature.host_shouted_at(where)
@@ -918,6 +967,73 @@ func claim_voice_slot() -> bool:
 		return false
 	_voice_quiet_until = now + _config.voice_global_gap
 	return true
+
+
+# --- noise and smoke (host) -----------------------------------------------------------------------
+
+## A noise or vibration at `where` that carries `reach` metres: every creature in reach hears
+## it (the Tatzelwurm hunts by it, DESIGN.md §6).
+func host_noise(where: Vector3, reach: float) -> void:
+	if not multiplayer.is_server() or phase != Phase.SHIFT or reach <= 0.0:
+		return
+	for creature: Creature in creatures():
+		if creature.global_position.distance_to(where) <= reach:
+			creature.host_heard(where, reach)
+
+
+## How far a player's movement carries right now: sprinting is loud, walking a little,
+## crouching (sneaking) not at all; a rattling Schubkarre is loud too.
+func movement_noise(player: Player) -> float:
+	if not player.alive or player.global_position.y > HUB_FLOOR_ABOVE or not player.is_on_floor_now():
+		return 0.0
+	var speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+	if speed < 0.5 or player.crouching:
+		return 0.0
+	var reach: float = _config.noise_sprint if speed > _config.walk_speed * 1.2 else _config.noise_walk
+	if player.inventory.hands is Schubkarre:
+		reach = maxf(reach, _config.noise_schubkarre)
+	return reach
+
+
+func _host_tick_noise(delta: float) -> void:
+	_noise_left -= delta
+	if _noise_left > 0.0:
+		return
+	_noise_left = _config.noise_step_seconds
+	for player: Player in players():
+		host_noise(player.global_position, movement_noise(player))
+	var now: float = Time.get_ticks_msec() / 1000.0
+	_smokes = _smokes.filter(func(smoke: Array) -> bool: return float(smoke[2]) > now)
+
+
+func add_smoke(centre: Vector3, radius: float, seconds: float) -> void:
+	_smokes.append([centre, radius, Time.get_ticks_msec() / 1000.0 + seconds])
+
+
+func in_smoke(point: Vector3) -> bool:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	for smoke: Array in _smokes:
+		if float(smoke[2]) > now and (smoke[0] as Vector3).distance_to(point) < float(smoke[1]):
+			return true
+	return false
+
+
+## A point just outside the smoke cloud around `point`, straight away from its centre.
+func smoke_exit(point: Vector3) -> Vector3:
+	for smoke: Array in _smokes:
+		var centre: Vector3 = smoke[0]
+		if centre.distance_to(point) < float(smoke[1]):
+			var away: Vector3 = point - centre
+			away.y = 0.0
+			if away.length() < 0.1:
+				away = Vector3.FORWARD
+			return centre + away.normalized() * (float(smoke[1]) + 1.0)
+	return point
+
+
+func _biome_rule() -> BiomeRule:
+	var rule: BiomeRule = _config.biome_rule(BIOMES[clampi(biome_index, 0, BIOMES.size() - 1)].id)
+	return rule if rule != null else BiomeRule.new()
 
 
 # --- lookups --------------------------------------------------------------------------------------

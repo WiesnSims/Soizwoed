@@ -136,6 +136,12 @@ func _on_settings_changed() -> void:
 	camera.fov = Settings.data.fov
 
 
+## On the ground, on every peer: remote players are not moved by physics here, so their
+## smoothed vertical speed decides.
+func is_on_floor_now() -> bool:
+	return is_on_floor() if is_local() else absf(velocity.y) < 1.0
+
+
 func is_local() -> bool:
 	return peer_id == multiplayer.get_unique_id()
 

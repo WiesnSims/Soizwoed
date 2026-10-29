@@ -63,7 +63,10 @@ min_depth = 3
 
 [resource]
 script = ExtResource("1_set")
+id = &"oberer_stollen"
 biome_name_key = "BIOME_OBERER_STOLLEN"
 cell_size = 12.0
 entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall")])
 superset_weight = 0.25
+creatures = Array[StringName]([&"bergmandl", &"tatzelwurm", &"kasermandl"])
+echo = 0.2

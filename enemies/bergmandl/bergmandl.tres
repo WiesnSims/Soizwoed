@@ -107,7 +107,4 @@ script = ExtResource("1_data")
 id = &"bergmandl"
 name_key = "CREATURE_BERGMANDL"
 scene = ExtResource("3_scene")
-budget_cost = 1.0
-max_health = 30
-move_speed = 3.2
 voice_lines = Array[ExtResource("2_line")]([SubResource("line_spot_schau"), SubResource("line_spot_wos"), SubResource("line_idle_salz"), SubResource("line_idle_psst"), SubResource("line_idle_wer"), SubResource("line_steal_ghert"), SubResource("line_steal_meins"), SubResource("line_hit_grobian"), SubResource("line_hit_aua"), SubResource("line_die_kumm"), SubResource("line_flee_langsam"), SubResource("line_flee_fangts"), SubResource("line_shouted_laut"), SubResource("line_shouted_guat")])

@@ -1,6 +1,48 @@
-[gd_resource type="Resource" script_class="BalanceConfig" format=3]
+[gd_resource type="Resource" script_class="BalanceConfig" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://autoload/balance_config.gd" id="1_balance"]
+[ext_resource type="Script" path="res://enemies/creature_spawn_rule.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://world/chunks/biome_rule.gd" id="3_biome"]
+
+[sub_resource type="Resource" id="spawn_bergmandl"]
+script = ExtResource("2_spawn")
+id = &"bergmandl"
+budget_cost = 1.0
+weight = 3.0
+group_min = 2
+group_max = 3
+
+[sub_resource type="Resource" id="spawn_tatzelwurm"]
+script = ExtResource("2_spawn")
+id = &"tatzelwurm"
+budget_cost = 3.0
+weight = 1.0
+max_alive = 1
+
+[sub_resource type="Resource" id="spawn_kasermandl"]
+script = ExtResource("2_spawn")
+id = &"kasermandl"
+budget_cost = 2.5
+weight = 1.0
+max_alive = 1
+
+[sub_resource type="Resource" id="spawn_schichtmeister"]
+script = ExtResource("2_spawn")
+id = &"schichtmeister"
+budget_cost = 0.0
+weight = 0.0
+max_alive = 1
+
+[sub_resource type="Resource" id="biome_oberer_stollen"]
+script = ExtResource("3_biome")
+id = &"oberer_stollen"
+
+[sub_resource type="Resource" id="biome_salzsee"]
+script = ExtResource("3_biome")
+id = &"salzsee"
+unlock_cycle = 1
+loot_value_mult = 1.35
+enemy_budget_mult = 1.2
 
 [resource]
 script = ExtResource("1_balance")
@@ -71,9 +113,9 @@ bergmandl_flee_speed = 5.4
 bergmandl_sight = 14.0
 bergmandl_steal_from_hands_chance = 0.35
 bergmandl_scared_seconds = 8.0
-bergmandl_group_min = 2
-bergmandl_group_max = 3
 voice_cooldown_per_creature = 10.0
 voice_global_gap = 2.0
 voice_max_distance = 25.0
 voice_idle_chance = 0.04
+creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister")])
+biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee")])

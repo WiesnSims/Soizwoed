@@ -104,8 +104,109 @@ extends Resource
 @export var bergmandl_sight: float = 14.0
 @export var bergmandl_steal_from_hands_chance: float = 0.35
 @export var bergmandl_scared_seconds: float = 8.0
-@export var bergmandl_group_min: int = 2
-@export var bergmandl_group_max: int = 3
+
+@export_group("Creature spawning")
+## How the enemy budget is spent per creature type (group sizes, limits, first cycle).
+@export var creature_spawn_rules: Array[CreatureSpawnRule] = []
+## Mine sections: unlock cycle, loot and enemy multipliers.
+@export var biome_rules: Array[BiomeRule] = []
+
+@export_group("Noise")
+## How far (m) creatures that listen (Tatzelwurm) notice each kind of noise or vibration.
+@export var noise_walk: float = 6.0
+@export var noise_sprint: float = 22.0
+@export var noise_landing: float = 10.0
+@export var noise_heavy_drop: float = 20.0
+@export var noise_shout: float = 25.0
+@export var noise_schubkarre: float = 12.0
+@export var noise_rail_cart: float = 20.0
+@export var noise_boeller: float = 35.0
+@export var noise_alphorn: float = 80.0
+@export var noise_explosion: float = 60.0
+@export var noise_bell: float = 40.0
+## How often the host turns each player's movement into a noise (s).
+@export var noise_step_seconds: float = 0.5
+
+@export_group("Tools")
+@export var stirnlampe_battery_seconds: float = 720.0
+@export var stirnlampe_energy: float = 2.1
+@export var stirnlampe_range: float = 13.0
+@export var alphorn_cone_degrees: float = 70.0
+@export var alphorn_range: float = 20.0
+@export var alphorn_stun_seconds: float = 6.0
+@export var alphorn_cooldown: float = 12.0
+@export var boeller_fuse_seconds: float = 2.5
+@export var boeller_radius: float = 3.0
+@export var boeller_damage: int = 20
+@export var obstler_heal: int = 25
+@export var obstler_wobble_seconds: float = 20.0
+@export var leberkaese_heal: int = 40
+@export var leberkaese_eat_seconds: float = 4.0
+@export var rauchbombe_radius: float = 5.0
+@export var rauchbombe_seconds: float = 35.0
+@export var seil_length: float = 7.0
+@export var climb_speed: float = 2.0
+## Climbing with a heavy item in your hands is this much slower.
+@export var climb_heavy_factor: float = 0.4
+@export var rail_cart_push_speed: float = 0.85
+@export var rail_cart_capacity: int = 6
+@export var pfeiferl_cart_speed: float = 3.0
+@export var salt_wall_health: int = 100
+@export var rubble_health: int = 60
+## Funkgerät: creatures this close to either end put static on the line.
+@export var funk_static_distance: float = 10.0
+
+@export_group("Hazards")
+## Share of hazard spots that hold a firedamp pocket, plus this much per cycle.
+@export var gas_share: float = 0.3
+@export var gas_share_per_cycle: float = 0.05
+@export var gas_radius: float = 3.0
+## Seconds between an open flame entering the gas and the bang (time to put the lamp out).
+@export var gas_fuse_seconds: float = 1.0
+@export var gas_explosion_radius: float = 7.0
+@export var gas_explosion_damage: int = 90
+## The carbide flame flares this far from a pocket (the old miners' warning).
+@export var gas_warning_distance: float = 2.5
+@export var rockfall_interval: float = 75.0
+@export var rockfall_chance: float = 0.5
+@export var rockfall_warning_seconds: float = 2.5
+@export var rockfall_radius: float = 2.2
+@export var rockfall_damage: int = 45
+## Share of rockfalls in tunnels that leave a pile blocking the way.
+@export var rockfall_block_chance: float = 0.35
+@export var brine_speed: float = 0.6
+## Brine splashing into the carbide lamp: it burns this many times faster.
+@export var brine_lamp_drain: float = 3.0
+@export var swim_speed: float = 1.6
+## Seconds in deep water before something down there gets hold of you.
+@export var deep_water_grace: float = 2.0
+@export var deep_water_damage_per_second: float = 12.0
+
+@export_group("Tatzelwurm")
+@export var tatzelwurm_health: int = 120
+@export var tatzelwurm_speed: float = 4.5
+@export var tatzelwurm_roam_speed: float = 1.5
+@export var tatzelwurm_surface_seconds: float = 6.0
+@export var tatzelwurm_lunge_distance: float = 3.2
+@export var tatzelwurm_bite_damage: int = 55
+## Players moving faster than this near a surfaced Tatzelwurm get lunged at (crouching is safe).
+@export var tatzelwurm_motion_threshold: float = 2.2
+@export var tatzelwurm_dive_seconds: float = 10.0
+
+@export_group("Kasermandl")
+@export var kasermandl_creep_speed: float = 2.2
+@export var kasermandl_rush_speed: float = 4.8
+@export var kasermandl_strike_damage: int = 35
+@export var kasermandl_strike_cooldown: float = 12.0
+## A lamp freezes it up to this share of the lamp's range; a hanging lantern this far (m).
+@export var kasermandl_lamp_share: float = 0.9
+@export var kasermandl_lantern_range: float = 6.0
+
+@export_group("Schichtmeister")
+## Seconds after the whistle until he comes for whoever is still down.
+@export var schichtmeister_delay: float = 12.0
+@export var schichtmeister_speed: float = 6.4
+@export var schichtmeister_damage: int = 100
 
 @export_group("Creature voices")
 ## Minimum seconds between two lines of the same creature.
@@ -141,6 +242,32 @@ func loot_count(cycle: int, player_count: int) -> int:
 
 func enemy_budget(cycle: int, player_count: int) -> float:
 	return (enemy_budget_base + enemy_budget_per_cycle * cycle) * enemy_budget_mult(player_count)
+
+
+func spawn_rule(id: StringName) -> CreatureSpawnRule:
+	for rule: CreatureSpawnRule in creature_spawn_rules:
+		if rule.id == id:
+			return rule
+	return null
+
+
+func biome_rule(id: StringName) -> BiomeRule:
+	for rule: BiomeRule in biome_rules:
+		if rule.id == id:
+			return rule
+	return null
+
+
+## Share of hazard spots with a firedamp pocket in this cycle.
+func gas_share_for_cycle(cycle: int) -> float:
+	return clampf(gas_share + gas_share_per_cycle * cycle, 0.0, 0.8)
+
+
+## Damage of an explosion at `distance` m: full at the centre, none at the edge.
+func explosion_damage(distance: float, radius: float, full: int) -> int:
+	if distance >= radius:
+		return 0
+	return ceili(full * (1.0 - distance / radius))
 
 
 ## Health lost when landing at `speed` m/s (0 for a soft landing).
