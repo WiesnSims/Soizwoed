@@ -265,3 +265,10 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - Anything medium or heavy slips from your hands and sinks for good: heavy loot crosses on the ferry.
   - After 2 s in the water something down there gets hold of you: 12 damage a second, with gurgling, until you are out.
   - Swim against a landing (or the boat) to pull yourself out.
+
+### Version and tests
+- **Version 0.4.0** (M4). Lobbies of 0.3.0 builds and 0.4.0 builds do not see each other.
+- **New headless checks:**
+  - `smoke_tools`, `smoke_hazards`, `smoke_salzsee` (in `tools/smoke_test.ps1`);
+  - `tools/mp_test.ps1 -Tools`: a client uses Stirnlampe, Obstler, Böller, Alphorn, Rauchbombe, Funkgerät and Pfeiferl; the host must see each use arrive and the client must see the Hunt roll.
+- The hazards and Salzsee checks build a Gesenk or lake chunk far below the generated mine, so they never depend on the seed.

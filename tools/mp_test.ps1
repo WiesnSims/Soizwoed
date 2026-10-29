@@ -5,10 +5,12 @@
 #   must notice.
 # -Coop: one client and the scripted co-op scenario (tools/dev/dev_scenario.gd "coop"): item
 #   physics sync, carrying together, hand-over, death and spectating.
-param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop)
+# -Tools: one client uses the M4 tools (tools/dev/dev_scenario.gd "mptools"); the host must see
+#   every use arrive and the client must see the results.
+param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop, [switch]$Tools)
 . "$PSScriptRoot/godot_run.ps1"
 
-if ($Coop) { $Clients = 1 }
+if ($Coop -or $Tools) { $Clients = 1 }
 $hostArgs = @("--headless", "--", "--net=enet", "--host", "--port=$Port")
 $clientExtra = @()
 $hostExpect = @()
@@ -24,6 +26,13 @@ if ($HostLeavesFirst) {
     $clientExtra = @("--scenario=coopclient")
     $hostExpect = @("host: ITestFall fell [1-9]", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[game\] shift ended")
     $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client carrying together with P1, speed 0\.95", "client took the block over", "client dead, spectating P1", "\[game\] shift ended")
+} elseif ($Tools) {
+    $hostSeconds = 36
+    $clientSeconds = 32
+    $hostArgs += @("--scenario=mptools", "--wait-peers=1")
+    $clientExtra = @("--scenario=mptoolsclient")
+    $hostExpect = @("Alphorn by P[0-9]{2,}", "Bierzelt cloud", "Hunt called by P[0-9]{2,}", "host sees P[0-9]+: lamp electric true, health 55", "\[game\] shift ended")
+    $clientExpect = @("client used stirnlampe", "client health after obstler 55", "client used boeller", "client used funkgeraet", "client saw the hunt roll [1-9]", "\[game\] shift ended")
 } else {
     $hostSeconds = 26
     $clientSeconds = 19
@@ -100,6 +109,6 @@ if ($Coop) {
         }
     }
 }
-$mode = if ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } else { ", shift played" }
+$mode = if ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } elseif ($Tools) { ", tools scenario" } else { ", shift played" }
 if (-not ($allOk -and $hostOk)) { Write-Host "MP TEST FAILED (logs: build/logs/)" -ForegroundColor Red; exit 1 }
 Write-Host "MP TEST OK ($Clients client(s)$mode)" -ForegroundColor Green

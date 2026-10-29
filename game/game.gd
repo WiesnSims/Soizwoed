@@ -1055,6 +1055,7 @@ func request_call_cart(where: Vector3) -> void:
 	if mine.rails.distance_to(where) > mine.chunk_set.cell_size:
 		_show_message_key.rpc_id(player.peer_id, "MSG_RAILS_FAR")
 	nearest.host_call(where)
+	print("[game] Hunt called by P%d" % player.peer_id)
 
 
 ## The Seil: thrown down the edge at `point` (looking along `flat`), where there is a drop.

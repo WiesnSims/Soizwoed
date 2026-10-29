@@ -27,6 +27,12 @@ func run(game: Game, scenario: String) -> void:
 	if scenario == "coopclient":
 		await _coop_client()
 		return
+	if scenario == "mptoolsclient":
+		await _mp_tools_client()
+		return
+	if scenario == "mptools":
+		while _game._ready_peers.size() < 2:
+			await get_tree().process_frame
 	if scenario == "coop":
 		# Already in a pocket before the client joins: the join snapshot must say so.
 		var pick: WorldItem = _game._spawn_item_at(&"spitzhacke", 0, _game.hub.counter_spot(), "ITestPick")
@@ -35,7 +41,7 @@ func run(game: Game, scenario: String) -> void:
 		while _game._ready_peers.size() < 2:
 			await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
-	if scenario == "salzsee":
+	if scenario == "salzsee" or scenario == "salzseelook":
 		_game.biome_index = 1  # unlocked or not: this is a check of the section itself
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
@@ -43,6 +49,10 @@ func run(game: Game, scenario: String) -> void:
 	match scenario:
 		"salzsee":
 			await _salzsee()
+		"salzseelook":
+			await _salzsee_look()
+		"mptools":
+			await _mp_tools()
 		"mandl":
 			await _mandl()
 		"loot":
@@ -570,6 +580,93 @@ func _salzsee() -> void:
 	_game.request_ferry(ferry.get_path(), player.global_position)
 	await get_tree().create_timer(config.ferry_seconds + 1.0).timeout
 	print("[scenario] ferry crossed %.1f m, rider moved %.1f m, swimming %s" % [ferry.boat_position().distance_to(deck), player.global_position.distance_to(deck), player.swim_lake != null])
+
+
+## For screenshots: on the north landing of a lake cavern with the Stirnlampe, looking across
+## the lake at the ferry, a firedamp pocket in front; then a turn to the side.
+func _salzsee_look() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var chunk: Chunk = (load("res://world/chunks/salzsee/lake.tscn") as PackedScene).instantiate() as Chunk
+	chunk.name = "LakeLook"
+	chunk.position = Vector3(0.0, -80.0, 0.0)
+	chunk.setup(GridDir.N | GridDir.S, 0)
+	_game.mine.add_child(chunk)
+	chunk.build_cave(8.0, _game.mine.seed_value)
+	var lake: Lake = chunk.find_child("Lake", true, false) as Lake
+	var ferry: Ferry = chunk.find_child("Ferry", true, false) as Ferry
+	player.lamp_electric = true
+	player.lamp_on = true
+	player.teleport(Transform3D(Basis.IDENTITY, Vector3(lake.global_position.x + 1.0, chunk.global_position.y + 0.1, chunk.global_position.z - 6.2)))
+	player.look_at(Vector3(lake.global_position.x, player.global_position.y, chunk.global_position.z + 4.0))
+	player.head.rotation.x = -0.25
+	_game.mine.hazards._add_pocket(player.global_position + Vector3(0.0, 1.8, 2.8), "GasLook")
+	await get_tree().create_timer(6.0).timeout
+	_game.request_ferry(ferry.get_path(), player.global_position)
+	await get_tree().create_timer(6.0).timeout
+	player.rotate_y(1.2)
+	player.head.rotation.x = 0.1
+
+
+## Host side of the multiplayer tool check: hands the client its tools one after another
+## (mptoolsclient uses each as it arrives) and logs what the host sees.
+func _mp_tools() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var host: Player = _game.local_player()
+	var client: Player = null
+	for player: Player in _game.players():
+		if player != host:
+			client = player
+	var stand: Vector3 = _out_of_station(10.0)
+	client.teleport.rpc(Transform3D(_game.mine_cage.global_basis, stand))
+	host.teleport(Transform3D(_game.mine_cage.global_basis, stand + _game.mine_cage.global_basis.x * 1.5))
+	client.set_health.rpc(30)
+	await get_tree().create_timer(1.0).timeout
+	for id: StringName in [&"stirnlampe", &"obstler", &"boeller", &"alphorn", &"rauchbombe", &"funkgeraet", &"pfeiferl"]:
+		var item: WorldItem = _game._spawn_item_at(id, 0, client.global_transform.translated(Vector3.UP * 1.0), "ITool_%s" % id)
+		await get_tree().create_timer(0.5).timeout
+		_game.request_take(item.get_path(), client.peer_id)
+		await get_tree().create_timer(2.5 if id == &"boeller" else 1.5).timeout
+	print("[scenario] host sees P%d: lamp electric %s, health %d" % [client.peer_id, client.lamp_electric, client.health])
+	await get_tree().create_timer(6.0).timeout
+	host.teleport(_game.mine_cage.player_spot(0))
+	await get_tree().create_timer(0.5).timeout
+	_game.request_lift()
+
+
+## Client side: uses every tool that lands in a pocket, the way a player would (click).
+func _mp_tools_client() -> void:
+	while _game.phase != Game.Phase.SHIFT:
+		await get_tree().process_frame
+	var me: Player = _game.local_player()
+	var used: Dictionary = {}
+	var cart_from: Vector3 = Vector3.INF
+	for i: int in 160:
+		await get_tree().create_timer(0.2).timeout
+		if _game.phase != Game.Phase.SHIFT:
+			break
+		for slot: int in me.inventory.slots.size():
+			var item: WorldItem = me.inventory.slots[slot] as WorldItem
+			if item == null or used.has(item.name):
+				continue
+			used[item.name] = true
+			me.inventory.select(slot)
+			me._use_cooldown = 0.0
+			me._alphorn_cooldown = 0.0
+			if item.data.id == &"pfeiferl":
+				for other: WorldItem in _game._items():
+					if other is RailCart:
+						cart_from = other.global_position
+			me._use_active()
+			print("[scenario] client used %s" % item.data.id)
+			if item.data.id == &"obstler":
+				await get_tree().create_timer(0.6).timeout
+				print("[scenario] client health after obstler %d" % me.health)
+	for other: WorldItem in _game._items():
+		if other is RailCart and cart_from != Vector3.INF:
+			print("[scenario] client saw the hunt roll %.1f m" % other.global_position.distance_to(cart_from))
 
 
 func _count(id: StringName) -> int:
