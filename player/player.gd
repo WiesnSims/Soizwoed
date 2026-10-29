@@ -25,6 +25,9 @@ const MELEE_DISTANCE: float = 2.2
 const DEATH_VIEW_SECONDS: float = 2.5
 ## Another player's name shows when you look at them from this close.
 const NAMEPLATE_DISTANCE: float = 10.0
+## Your own lamp hangs right in front of your eyes: at full strength it would light the fog
+## there and wash out the top of the screen. Others still see its full glow in the dust.
+const OWN_LAMP_FOG_ENERGY: float = 0.15
 
 var peer_id: int = 1
 ## 1..4 in order of joining, for the name other players see ("Kumpl 2").
@@ -106,6 +109,8 @@ func _ready() -> void:
 	body_mesh.visible = not local
 	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if local:
+		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
 	if not local:
 		_build_nameplate()
 		sync.synchronized.connect(_on_synchronized)

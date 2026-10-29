@@ -83,6 +83,23 @@ if (-not $HostLeavesFirst) {
         }
     }
 }
+# Co-op: an item thrown while walking must fly the same way on both peers (host throw and
+# client throw).
+function Get-Flight([string]$Name, [string]$Who, [string]$Item) {
+    $line = Get-GodotLog $Name | Select-String -Pattern "$($Who): $Item flew ([\d.]+) m" | Select-Object -First 1
+    if ($line) { return [double]$line.Matches[0].Groups[1].Value }
+    return -1.0
+}
+if ($Coop) {
+    foreach ($item in @("ITestThrow", "ITestThrow2")) {
+        $hostFlight = Get-Flight "mp_host" "host" $item
+        $clientFlight = Get-Flight "mp_client1" "client" $item
+        if ($hostFlight -lt 1.0 -or [math]::Abs($hostFlight - $clientFlight) -gt 0.5) {
+            Write-Host "[mp] $item flew $hostFlight m on the host but $clientFlight m on the client" -ForegroundColor Red
+            $allOk = $false
+        }
+    }
+}
 $mode = if ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } else { ", shift played" }
 if (-not ($allOk -and $hostOk)) { Write-Host "MP TEST FAILED (logs: build/logs/)" -ForegroundColor Red; exit 1 }
 Write-Host "MP TEST OK ($Clients client(s)$mode)" -ForegroundColor Green

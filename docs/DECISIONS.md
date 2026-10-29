@@ -108,3 +108,10 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Testing
 - `tools/mp_test.ps1 -Clients 3` now plays a short shift: the host waits for all clients (`--wait-peers=<n>`), rides down, rides up after a few seconds (`--auto-shift=<s>`), and every peer must have built the same mine.
 - `tools/mp_test.ps1 -Coop` runs the scripted co-op scenario (`--scenario=coop` on the host, `coopclient` on the client): a falling item seen on the client, carrying together, hand-over, death and spectating.
+
+## 2026-10-29 – M2 playtest feedback
+
+### Chosen by Claude (change any time)
+- **Your own lamp and the fog:** your own lamp lights the volumetric fog at 0.15 of its strength (others still see the full glow around your lamp). At full strength it hazed over the top third of your own screen.
+- **Less bloom and a dimmer lamp:** mine glow intensity 0.4 (was 0.55), strength 0.8 (0.9), no bloom (was 0.04), only from HDR 1.6 up (was 1.2); lamp energy 1.9 (was 2.3).
+- **Throw check:** `mp_test.ps1 -Coop` now throws a crystal while walking, once from the host and once from the client, and fails when the flight differs between the peers by more than 0.5 m. The reported "drops straight down on the other screen" is how the M1 build behaved (clients ran their own item physics without the throw speed); the M2 build passes this check headless and in real windows.

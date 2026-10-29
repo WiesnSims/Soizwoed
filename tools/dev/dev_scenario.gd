@@ -189,6 +189,18 @@ func _coop() -> void:
 	var falling: WorldItem = _game._spawn_item_at(&"salzkristall", 20, Transform3D(Basis.IDENTITY, fall_at), "ITestFall")
 	await get_tree().create_timer(3.0).timeout
 	print("[scenario] host: ITestFall fell %.2f m" % (fall_at.y - falling.global_position.y))
+	# Thrown while walking forward: the client must see the same arc.
+	var thrown: WorldItem = _game._spawn_item_at(&"salzkristall", 20, host.global_transform.translated(Vector3.UP * 1.0), "ITestThrow")
+	await get_tree().create_timer(0.5).timeout
+	_game.request_take(thrown.get_path(), host.peer_id)
+	await get_tree().create_timer(0.5).timeout
+	_track(thrown, "host")
+	_game.request_drop(thrown.get_path(), host.hand_point.global_transform, forward * 2.0 + forward * Balance.config.walk_speed)
+	await get_tree().create_timer(2.0).timeout
+	# Now the client throws one (coopclient picks it up and throws it while walking).
+	var client_thrown: WorldItem = _game._spawn_item_at(&"salzkristall", 20, client.global_transform.translated(Vector3.UP * 1.0), "ITestThrow2")
+	_track(client_thrown, "host", "ITestThrow2")
+	await get_tree().create_timer(3.5).timeout
 	var block: WorldItem = _game._spawn_item_at(&"steinsalz_block", 120, host.global_transform.translated(forward * 1.0 + Vector3.UP * 0.3), "ITestBlock")
 	await get_tree().create_timer(1.0).timeout
 	_game.request_take(block.get_path(), host.peer_id)
@@ -220,6 +232,7 @@ func _coop_client() -> void:
 		await get_tree().process_frame
 	var me: Player = _game.local_player()
 	var seen: Dictionary = {}
+	_track_when_thrown()
 	var fall_start: float = INF
 	for i: int in 80:
 		await get_tree().create_timer(0.25).timeout
@@ -242,3 +255,43 @@ func _coop_client() -> void:
 		if not me.alive and me.spectating != null and not seen.has("dead"):
 			seen.dead = true
 			print("[scenario] client dead, spectating P%d" % me.spectating.peer_id)
+
+
+## Logs where a thrown item flies, every 0.1 s from the moment it is let go (host and client).
+func _track(item: WorldItem, who: String, label: String = "ITestThrow") -> void:
+	while item.state == WorldItem.State.FREE:
+		await get_tree().process_frame
+	while item.state != WorldItem.State.FREE:
+		await get_tree().process_frame
+	var start: Vector3 = item.global_position
+	var path: PackedStringArray = []
+	for i: int in 16:
+		var offset: Vector3 = item.global_position - start
+		path.append("%.2f/%.2f" % [Vector2(offset.x, offset.z).length(), offset.y])
+		await get_tree().create_timer(0.1).timeout
+	var flat: Vector3 = item.global_position - start
+	print("[scenario] %s: %s path %s" % [who, label, " ".join(path)])
+	print("[scenario] %s: %s flew %.2f m" % [who, label, Vector2(flat.x, flat.z).length()])
+
+
+func _track_when_thrown() -> void:
+	var item: WorldItem = null
+	while item == null or item.state == WorldItem.State.FREE:
+		await get_tree().process_frame
+		item = _game.items_root.get_node_or_null(^"ITestThrow") as WorldItem
+	await _track(item, "client")
+	# The client's own throw, walking forward.
+	while _game.items_root.get_node_or_null(^"ITestThrow2") == null:
+		await get_tree().process_frame
+	var mine: WorldItem = _game.items_root.get_node_or_null(^"ITestThrow2") as WorldItem
+	var me: Player = _game.local_player()
+	await get_tree().create_timer(0.5).timeout
+	_game.request_take.rpc_id(1, mine.get_path(), me.peer_id)
+	_track(mine, "client", "ITestThrow2")
+	await get_tree().create_timer(0.3).timeout
+	# Walk (real input) and throw with the drop key, as a player would.
+	Input.action_press(&"move_forward")
+	await get_tree().create_timer(0.6).timeout
+	me._drop_active()
+	await get_tree().create_timer(0.4).timeout
+	Input.action_release(&"move_forward")
