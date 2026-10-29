@@ -30,6 +30,16 @@ func test_other_game_is_refused() -> void:
 	assert_eq(SteamBackend.lobby_problem({}, "0.3.0"), "NET_NOT_SOIZWOED")
 
 
+func test_friends_list_puts_online_friends_first_then_by_name() -> void:
+	var friends: Array[Dictionary] = [
+		{"id": 1, "name": "zenzi", "online": true, "in_game": false},
+		{"id": 2, "name": "Alois", "online": false, "in_game": false},
+		{"id": 3, "name": "Burgi", "online": true, "in_game": true},
+	]
+	var ids: Array = SteamBackend.sort_friends(friends).map(func(f: Dictionary) -> int: return int(f.id))
+	assert_eq(ids, [3, 1, 2])
+
+
 func test_refusal_reasons_are_translated() -> void:
 	for key: String in ["NET_WRONG_VERSION", "NET_NOT_SOIZWOED", "NET_LOBBY_FULL", "NET_JOINING_INVITE"]:
 		assert_ne(tr(key), key, "no text for %s" % key)

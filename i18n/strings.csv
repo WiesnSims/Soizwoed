@@ -98,3 +98,9 @@ PAUSE_VOICE_PTT,"Redn: mit V (drucka)"
 PAUSE_VOICE_OPEN,"Redn: Mikro offn"
 PAUSE_MIC_TEST_OFF,"Mikro probiern: aus"
 PAUSE_MIC_TEST_ON,"Mikro probiern: ein (du hörst di selber)"
+INVITE_TITLE,Freind eiladn
+INVITE_NO_FRIENDS,Koane Steam-Freind gfundn.
+INVITE_IN_GAME,(spüt grad)
+INVITE_SEND,Eiladn
+INVITE_SENT,Eiglodn!
+INVITE_FAILED,Hot ned highaut

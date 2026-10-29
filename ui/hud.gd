@@ -189,12 +189,55 @@ func _open_pause() -> void:
 	_add_text(tr("PAUSE_KEYS"), DIM_COLOR, 15)
 	_add_button(tr("PANEL_CONTINUE"), close_panels)
 	if NetworkManager.can_invite():
-		_add_button(tr("PAUSE_INVITE"), NetworkManager.invite_friends)
+		_add_button(tr("PAUSE_INVITE"), _open_invite)
 	if NetworkManager.voice_enabled():
 		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT"), _toggle_open_mic)
 		_add_button(tr("PAUSE_MIC_TEST_ON") if VoiceChat.echo else tr("PAUSE_MIC_TEST_OFF"), _toggle_mic_test)
 	_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
 	_apply_modal()
+
+
+## The Steam overlay's invite dialog when there is one, else our own list of Steam friends
+## (the overlay is missing when Steam did not start the game, DESIGN.md §9 "in-game friends list").
+func _open_invite() -> void:
+	if NetworkManager.invite_friends():
+		close_panels()
+		return
+	_start_panel("invite", tr("INVITE_TITLE"))
+	var friends: Array[Dictionary] = NetworkManager.invitable_friends()
+	if friends.is_empty():
+		_add_text(tr("INVITE_NO_FRIENDS"), DIM_COLOR)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, mini(friends.size(), 8) * 44)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list: VBoxContainer = VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	_panel_box.add_child(scroll)
+	for friend: Dictionary in friends:
+		var row: HBoxContainer = HBoxContainer.new()
+		var name_text: String = str(friend.name)
+		if bool(friend.in_game):
+			name_text += "  " + tr("INVITE_IN_GAME")
+		var name_label: Label = _label(name_text, 17)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.modulate.a = 1.0 if bool(friend.online) else 0.5
+		row.add_child(name_label)
+		var invite: Button = Button.new()
+		invite.text = tr("INVITE_SEND")
+		invite.custom_minimum_size = Vector2(130, 36)
+		invite.pressed.connect(_on_invite_pressed.bind(int(friend.id), invite))
+		row.add_child(invite)
+		list.add_child(row)
+	_add_button(tr("PANEL_CLOSE"), _open_pause)
+	_apply_modal()
+
+
+func _on_invite_pressed(friend_id: int, button: Button) -> void:
+	Audio.play_ui("ui_click")
+	var sent: bool = NetworkManager.invite_friend(friend_id)
+	button.text = tr("INVITE_SENT") if sent else tr("INVITE_FAILED")
+	button.disabled = sent
 
 
 func _toggle_open_mic() -> void:
