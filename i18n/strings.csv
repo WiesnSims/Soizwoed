@@ -11,7 +11,61 @@ NET_CONNECT_FAILED,Koa Verbindung zum Host.
 NET_HOST_LEFT,Da Host is gangen – Partie aus.
 NET_HOST_FAILED,Partie hot si ned aufmacha lossn.
 NET_LEFT,Partie verlossn.
-HUB_TITLE,Gasthaus „Zum Salzstock“
-HUB_PLACEHOLDER,Do kummt in M1 as Gasthaus hin.
-HUB_PLAYERS,Kumpel do: %d
 HUB_LEAVE,Hamgeh
+NET_SHIFT_RUNNING,"De san grad unten – wart, bis de Schicht aus is."
+BIOME_OBERER_STOLLEN,Oberer Stollen
+CREATURE_BERGMANDL,Bergmandl
+ITEM_SALZKRISTALL,Salzkristall
+ITEM_ALTE_JAUSENBOX,Alte Jausenbox
+ITEM_ANTIKE_GRUBENLAMPE,Antike Grubenlampe
+ITEM_KAISERLICHES_ABZEICHEN,Kaiserliches Abzeichen
+ITEM_STEINSALZ_BLOCK,Steinsalz-Block
+ITEM_SPITZHACKE,Spitzhacke
+ITEM_SPITZHACKE_DESC,Fürs Grobe. Haut a Bergmandl ordentlich.
+ITEM_KARBIDPATRONE,Karbidpatrone
+ITEM_KARBIDPATRONE_DESC,Füllt d'Lampn unterwegs nach (Klick).
+ITEM_SCHUBKARRE,Schubkarre
+ITEM_SCHUBKARRE_DESC,"A schwerer Brocken oder drei mittlere, fost so gschwind wia z'Fuaß."
+PROMPT_PICK_UP,Nehma: %s
+PROMPT_PUSH_CART,Schubkarre schiabn
+PROMPT_LOAD_CART,In d'Schubkarre legn
+PROMPT_CART_FULL,De Schubkarre is voll.
+PROMPT_LIFT_DOWN,Einifoahn – Schicht anfanga
+PROMPT_LIFT_UP,Aufifoahn – Schicht beenden
+PROMPT_REFILL_LAMP,Lampn auffülln
+PROMPT_SHOP,Beim Wirt eikaufn
+MSG_HANDS_FULL,De Händ san voll.
+MSG_SHIFT_START,Glück auf! Bring a Zeug in Förderkorb.
+MSG_WHISTLE,Schicht aus! In %d Sekundn foahrt da Korb aufi!
+MSG_TOO_POOR,"Des kost mehr, ois du host."
+HUD_HEALTH,Gsundheit
+HUD_LAMP,Karbid
+HUD_STAMINA,Puste
+HUD_HANDS,In de Händ: %s
+HUD_DROP,ablegn
+HUD_WATCH,Taschnuhr
+HUD_MONEY,Geld: %d S
+HUD_QUOTA,Quote: %d S (no %d Schichtn)
+BOARD_TITLE,Soizwöd GmbH – Schwarzes Brett
+BOARD_CYCLE,Quotenrundn %d
+BOARD_QUOTA,Quote: %d Schilling
+BOARD_MONEY,Kassa: %d Schilling
+BOARD_SHIFTS,Schichtn übrig: %d
+SHOP_TITLE,Beim Wirt
+SHOP_MONEY,Kassa: %d Schilling
+SHOP_BUY,Kaufn (%d S)
+PANEL_CLOSE,Passt
+PANEL_CONTINUE,Weiter
+PAUSE_TITLE,Brotzeit
+PAUSE_KEYS,"WASD gehn · Shift laufn · Strg/C duckn · Leertaste hupfn
+E nehma/benutzn · G ablegn · Klick haun/benutzn · 1–4 Fächer
+F Lampn · Q plärrn · T Taschnuhr"
+RESULTS_TITLE,Schicht vorbei
+RESULTS_LEFT_BEHIND,Du bist unten blieben!
+RESULTS_NOTHING,Nix verkauft.
+RESULTS_ITEM,%s … %d S
+RESULTS_TOTAL,Verkauft um %d Schilling
+RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.
+RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!
+RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S
+PROMPT_CART_DROP_IN,[G] %s einilegn

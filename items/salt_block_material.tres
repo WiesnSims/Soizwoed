@@ -1,0 +1,17 @@
+[gd_resource type="ORMMaterial3D" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/textures/salt_rock/albedo.jpg" id="1_albedo"]
+[ext_resource type="Texture2D" path="res://assets/textures/salt_rock/normal.jpg" id="2_normal"]
+[ext_resource type="Texture2D" path="res://assets/textures/salt_rock/arm.jpg" id="3_arm"]
+
+[resource]
+resource_name = "salt_block"
+albedo_color = Color(1, 0.66, 0.55, 1)
+albedo_texture = ExtResource("1_albedo")
+orm_texture = ExtResource("3_arm")
+roughness = 0.5
+normal_enabled = true
+normal_texture = ExtResource("2_normal")
+uv1_triplanar = true
+uv1_scale = Vector3(1.6, 1.6, 1.6)
+texture_filter = 5

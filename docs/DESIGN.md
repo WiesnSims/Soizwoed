@@ -198,8 +198,8 @@ All numbers live in a single config resource (`balance.tres`) so they can be tun
 ## 10. Presentation
 
 ### Visuals
-- Low-resolution but realistic textures (same direction as Berghittn), nearest-neighbour filtering, slight vertex snapping optional.
-- Very dark mine; lighting is the main visual tool. Volumetric fog/dust in lamp beams.
+- **Realistic and beautiful** (user decision 2026-10-29): a native Windows x64 game can and should look much better than browser-only Berghittn. High-resolution PBR photo textures (CC0, albedo + normal + roughness/AO, height where it helps; 1K–2K), trilinear/anisotropic filtering, real geometry detail (round timber posts, rails, sleepers, rubble) instead of flat boxes.
+- Very dark mine; lighting is the main visual tool: flickering lamp light with soft real-time shadows, volumetric fog/dust in the light, SSAO/SSIL for contact shadows and bounce, subtle glow, filmic tonemapping, a little exposure adaptation. Wet, slightly glossy salt rock that catches the lamp light.
 - Hub: cosy wood-panelled Gasthaus with stove, Herrgottswinkel, notice board with the quota.
 
 ### Audio

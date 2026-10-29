@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/steinsalzblock.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"steinsalz_block"
+name_key = "ITEM_STEINSALZ_BLOCK"
+kind = 0
+weight_class = 2
+value_min = 110
+value_max = 170
+fragile = false
+price = 0
+spawn_weight = 1.0
+min_depth = 2
+scene = ExtResource("2_scene")
+melee_damage = 0

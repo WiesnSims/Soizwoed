@@ -37,3 +37,47 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **GodotSteam** is not downloaded until M3. Until then `SteamBackend` reports itself unavailable and the default `--net=steam` falls back to ENet (logged as `[net] Steam backend not available, using ENet`).
 - **Dev command-line flags** (after `--`): `--solo`, `--port=<n>` and `--smoke=<seconds>` (quit after that long, for headless smoke tests), in addition to `--net`, `--host`, `--join`.
 - **Known engine noise:** if several ENet clients disconnect in the very same frame, the host logs `Unable to send packet on channel 0` (it relays "peer left" to a peer that is itself disconnecting). Harmless; `tools/mp_test.ps1` staggers client quits by 1 s.
+
+## 2026-10-29 – M1 solo vertical slice (chosen by Claude, change any time)
+
+### Structure
+- **One game scene** (`game/game.tscn`, the main scene): the Gasthaus stands 400 m above the mine, and the main menu is an overlay on it, with the Gasthaus behind it as the background. All network node paths exist from the first frame, so clients never get packets for nodes they have not loaded yet. Leaving a session reloads the scene.
+- **The lift ride** is a fade to black, the ride sounds, and a move of everything in the cage to the other cage. The mine is built on every peer during the fade (about 0.5–0.8 s).
+- **Spawning:** players, items and creatures come from the host through `MultiplayerSpawner`s. Positions of players and creatures are synced; items, carrying together and spectating are M2.
+- **Late join:** a client that connects during a shift is sent back to the menu with a message (DESIGN.md §9: late join only in the hub).
+
+### Shift rules
+- **Ending a shift early:** hold the lever inside the mine's Förderkorb for 1.5 s. You must stand in the cage, so nobody pulls it by accident. The lift going up ends the shift for everyone; whoever is not in the cage is left behind (§2).
+- **What rides up and gets sold:** loot lying in the cage, loot held by a player in the cage, and loot in a Schubkarre that is in the cage or pushed by a rider. Everything else in the mine is lost, including tools left down there. Tools that ride up stay yours.
+- **Lamp:** the carbide only burns in the mine. The Karbid barrel in both cages refills it for free; the Karbidpatrone from the shop refills 60 % on the way.
+- **Death:** nothing in M1 can kill you (the Bergmandl is not deadly). Health, death and spectating arrive with the deadly creatures in M2/M4.
+
+### Balance (first guess, tune in playtests)
+- **Money** is shown in Schilling ("S"), for the Austrian flavour.
+- **Quota base 1500:** cycle 1 solo = 675 S over 3 shifts. A solo shift has about 10 loot items worth about 60 S each, so you need roughly 40 % of everything the mine holds.
+- **Shop prices:** Spitzhacke 150 S, Karbidpatrone 40 S, Schubkarre 250 S. Every purchase risks the quota.
+
+### Bergmandl
+- Spots players and greets them. Goes for loot lying around or in a parked Schubkarre. Tries to snatch loot from hands or the top of a pushed Schubkarre (35 % per attempt, every 2 s). Then runs to a far waypoint and drops it there.
+- **Stash:** loot a Bergmandl dropped after running off is left alone by all Bergmandl until a player picks it up again. Without this they kept stealing it back from each other.
+- **Loot inside the Förderkorb is safe.** That makes the cage the place to collect loot.
+- 30 HP: the Spitzhacke hits for 34 (one hit), a bare-hand "Watschn" for 8. Hit or shouted at (Plärren, 14 m), it drops what it carries and runs away for 8 s.
+- Groups of 2–3 spawn at least 2 chunks deep and 15 m from players, half the budget at the start and the rest every 90 s. A player-count factor scales the budget (§8).
+- Its voice and footsteps are muffled when rock is between it and you (a simple raycast low-pass). Proximity voice will reuse this later.
+
+### Presentation
+- **Gasthaus music:** a short accordion waltz ("Stubenmusi") rendered by `tools/audio/music.py`, playing from a corner of the room. No music in the mine (§10).
+- **Dev flags** (after `--`): `--auto-shift` (ride down, play, ride up), `--scenario=mandl|loot` (scripted checks in `tools/dev/dev_scenario.gd`), `--shots=<dir>` (screenshots every 1.5 s, needs a window). The smoke test runs the shift and both scenarios headless.
+
+## 2026-10-29 – M1 playtest feedback
+
+### Confirmed by the owner
+- **Bergmandl voice:** variant A ("Kobold") is final.
+
+### Chosen by Claude (change any time)
+- **Loading the Schubkarre:** besides E (loot in your hands, or loot on the floor while pushing), you can aim at the barrow and press G to put in whatever you hold, pocket items included. Loot that lands in the bed and lies still is loaded on its own, so dropping or throwing it in works too.
+- **Held items** follow the hand every rendered frame with a little smoothing, instead of every physics step. That was what made them shake when turning.
+- **Your own lamp is silent;** you only hear other players' lamps hiss.
+- **Footsteps:** the stride grows with speed: about 2 steps/s walking, 2.5 sprinting, 1.3 crouching. Head bob follows the steps.
+- **Light falloff:** lamp and lantern attenuation 2.0 (was 1.3/1.4), ambient light in the mine cut to a third, less bounce light. Darker away from light sources.
+- **Bergmandl look:** Poly Haven fabric/leather textures (wool coat, fleece cap, fur beard, leather boots, belt and bag) plus moustache and brows.

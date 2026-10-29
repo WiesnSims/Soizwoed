@@ -1,0 +1,61 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_enamel_red"]
+albedo_color = Color(0.55, 0.04, 0.05, 1)
+roughness = 0.2
+clearcoat_enabled = true
+
+[sub_resource type="StandardMaterial3D" id="mat_gold"]
+albedo_color = Color(1, 0.76, 0.33, 1)
+metallic = 1.0
+roughness = 0.22
+
+[sub_resource type="CylinderMesh" id="disc"]
+top_radius = 0.045
+bottom_radius = 0.045
+height = 0.008
+radial_segments = 24
+rings = 1
+
+[sub_resource type="CylinderMesh" id="inner"]
+top_radius = 0.025
+bottom_radius = 0.025
+height = 0.01
+radial_segments = 24
+rings = 1
+
+[sub_resource type="CylinderMesh" id="crown"]
+top_radius = 0.012
+bottom_radius = 0.016
+height = 0.02
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.1, 0.02, 0.12)
+
+[node name="KaiserlichesAbzeichen" type="RigidBody3D"]
+mass = 0.2
+script = ExtResource("1_item")
+
+[node name="Disc" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.006, 0)
+mesh = SubResource("disc")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Inner" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+mesh = SubResource("inner")
+surface_material_override/0 = SubResource("mat_enamel_red")
+
+[node name="Crown" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.006, -0.05)
+mesh = SubResource("crown")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, -0.01)
+shape = SubResource("shape")
+

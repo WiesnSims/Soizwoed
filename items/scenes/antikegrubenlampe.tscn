@@ -1,0 +1,106 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/glass_clink.ogg" id="3_clink"]
+
+[sub_resource type="StandardMaterial3D" id="mat_brass"]
+albedo_color = Color(0.6, 0.42, 0.18, 1)
+metallic = 0.92
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="mat_old_glass"]
+transparency = 1
+albedo_color = Color(0.85, 0.8, 0.62, 0.35)
+roughness = 0.12
+metallic_specular = 0.9
+
+[sub_resource type="CylinderMesh" id="cap"]
+top_radius = 0.035
+bottom_radius = 0.075
+height = 0.07
+radial_segments = 16
+rings = 1
+
+[sub_resource type="CylinderMesh" id="glass"]
+top_radius = 0.058
+bottom_radius = 0.058
+height = 0.15
+radial_segments = 16
+rings = 1
+
+[sub_resource type="CylinderMesh" id="rod"]
+top_radius = 0.006
+bottom_radius = 0.006
+height = 0.15
+radial_segments = 5
+rings = 1
+
+[sub_resource type="CylinderMesh" id="base"]
+top_radius = 0.07
+bottom_radius = 0.066
+height = 0.09
+radial_segments = 16
+rings = 1
+
+[sub_resource type="TorusMesh" id="hook"]
+inner_radius = 0.018
+outer_radius = 0.026
+rings = 12
+ring_segments = 6
+
+[sub_resource type="CylinderShape3D" id="shape"]
+radius = 0.075
+height = 0.34
+
+[node name="AntikeGrubenlampe" type="RigidBody3D"]
+mass = 2.5
+script = ExtResource("1_item")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, 0)
+mesh = SubResource("base")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Glass" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.165, 0)
+mesh = SubResource("glass")
+surface_material_override/0 = SubResource("mat_old_glass")
+
+[node name="Rod1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, 0.165, 0)
+mesh = SubResource("rod")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Rod2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0.165, 0)
+mesh = SubResource("rod")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Rod3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.165, 0.06)
+mesh = SubResource("rod")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Rod4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.165, -0.06)
+mesh = SubResource("rod")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Cap" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+mesh = SubResource("cap")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Hook" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.33, 0)
+mesh = SubResource("hook")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17, 0)
+shape = SubResource("shape")
+
+[node name="ImpactSound" type="AudioStreamPlayer3D" parent="."]
+stream = ExtResource("3_clink")
+bus = &"SFX"
+

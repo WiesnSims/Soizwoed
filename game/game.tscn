@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://game/game.gd" id="1_game"]
+[ext_resource type="Environment" path="res://hub/hub_environment.tres" id="2_env"]
+[ext_resource type="PackedScene" path="res://hub/gasthaus.tscn" id="3_hub"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://ui/main_menu.tscn" id="5_menu"]
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("2_env")
+
+[node name="Hub" parent="." instance=ExtResource("3_hub")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 400, 0)
+
+[node name="MineRoot" type="Node3D" parent="."]
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="Items" type="Node3D" parent="."]
+
+[node name="Creatures" type="Node3D" parent="."]
+
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Players")
+
+[node name="ItemSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Items")
+
+[node name="CreatureSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Creatures")
+
+[node name="Hud" parent="." instance=ExtResource("4_hud")]
+
+[node name="Menu" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="MainMenu" parent="Menu" instance=ExtResource("5_menu")]

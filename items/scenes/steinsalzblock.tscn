@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+[ext_resource type="Material" path="res://items/salt_block_material.tres" id="2_salt"]
+
+[sub_resource type="BoxMesh" id="block"]
+size = Vector3(0.62, 0.42, 0.44)
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.62, 0.42, 0.44)
+
+[node name="SteinsalzBlock" type="RigidBody3D"]
+mass = 45.0
+script = ExtResource("1_item")
+
+[node name="Block" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21, 0)
+mesh = SubResource("block")
+surface_material_override/0 = ExtResource("2_salt")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.21, 0)
+shape = SubResource("shape")
+

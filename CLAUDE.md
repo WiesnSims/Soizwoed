@@ -35,4 +35,5 @@ The full game design is here and must be followed:
   - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it
   - Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`
+- Test runs must never disturb the user at the PC: prefer `--headless`. When a window is needed (screenshots), always run `godot --audio-driver Dummy -- ... --shots=<dir>`; `--shots` makes the window small in the screen corner, without focus, without mouse capture and muted.
 - Before saying a task is done: run the tests and a headless smoke run, and fix any errors or warnings in the output.

@@ -1,0 +1,115 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://player/player.gd" id="1_player"]
+[ext_resource type="Script" path="res://world/props/flicker_light.gd" id="2_flicker"]
+[ext_resource type="AudioStream" path="res://assets/audio/sfx/lamp_hiss.ogg" id="3_hiss"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+resource_local_to_scene = true
+radius = 0.32
+height = 1.75
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jacket"]
+albedo_color = Color(0.2, 0.19, 0.17, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_helmet"]
+albedo_color = Color(0.45, 0.33, 0.14, 1)
+metallic = 0.3
+roughness = 0.5
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.3
+height = 1.6
+
+[sub_resource type="SphereMesh" id="SphereMesh_helmet"]
+radius = 0.17
+height = 0.2
+is_hemisphere = true
+
+[sub_resource type="SceneReplicationConfig" id="sync"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath("Head:rotation")
+properties/2/spawn = true
+properties/2/replication_mode = 1
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+floor_snap_length = 0.3
+script = ExtResource("1_player")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="Body" type="Node3D" parent="."]
+
+[node name="Torso" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_jacket")
+
+[node name="Helmet" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.68, 0)
+mesh = SubResource("SphereMesh_helmet")
+surface_material_override/0 = SubResource("StandardMaterial3D_helmet")
+
+[node name="Head" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
+
+[node name="Camera" type="Camera3D" parent="Head"]
+fov = 78.0
+near = 0.04
+
+[node name="HoldPoint" type="Node3D" parent="Head/Camera"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.55, -0.85)
+
+[node name="HandPoint" type="Node3D" parent="Head/Camera"]
+transform = Transform3D(0.94, 0, -0.34, 0, 1, 0, 0.34, 0, 0.94, 0.3, -0.3, -0.5)
+
+[node name="InteractRay" type="RayCast3D" parent="Head/Camera"]
+target_position = Vector3(0, 0, -2.6)
+collision_mask = 29
+collide_with_areas = true
+
+[node name="Lamp" type="OmniLight3D" parent="Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.12, 0.16, -0.12)
+light_color = Color(1, 0.76, 0.48, 1)
+light_energy = 1.9
+light_volumetric_fog_energy = 1.2
+light_size = 0.04
+shadow_enabled = true
+shadow_bias = 0.04
+omni_range = 11.0
+omni_attenuation = 2.0
+script = ExtResource("2_flicker")
+base_energy = 1.9
+flicker = 0.07
+
+[node name="Hiss" type="AudioStreamPlayer3D" parent="Head/Lamp"]
+stream = ExtResource("3_hiss")
+volume_db = -22.0
+max_distance = 6.0
+bus = &"SFX"
+
+[node name="CartPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, -1.25)
+
+[node name="Footsteps" type="AudioStreamPlayer3D" parent="."]
+volume_db = -6.0
+max_distance = 25.0
+bus = &"SFX"
+
+[node name="Voice" type="AudioStreamPlayer3D" parent="Head"]
+volume_db = 4.0
+max_distance = 45.0
+bus = &"Voice"
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.05
+replication_config = SubResource("sync")

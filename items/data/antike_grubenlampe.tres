@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/antikegrubenlampe.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"antike_grubenlampe"
+name_key = "ITEM_ANTIKE_GRUBENLAMPE"
+kind = 0
+weight_class = 1
+value_min = 55
+value_max = 95
+fragile = true
+price = 0
+spawn_weight = 1.2
+min_depth = 2
+scene = ExtResource("2_scene")
+melee_damage = 0

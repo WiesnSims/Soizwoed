@@ -1,0 +1,69 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="1_chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="2_box"]
+[ext_resource type="PackedScene" path="res://world/props/mine_cart.tscn" id="3_cart"]
+[ext_resource type="PackedScene" path="res://world/props/crate.tscn" id="4_crate"]
+[ext_resource type="PackedScene" path="res://world/props/hanging_lantern.tscn" id="5_lantern"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="6_rubble"]
+[ext_resource type="PackedScene" path="res://world/props/timber_set.tscn" id="7_timber"]
+
+[node name="Station" type="Node3D"]
+script = ExtResource("1_chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Room" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 1.5)
+script = ExtResource("2_box")
+size = Vector3(8, 4.5, 8)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4.25)
+script = ExtResource("2_box")
+size = Vector3(4, 3.5, 3.5)
+
+[node name="Shaft" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 4.5, 3.75)
+script = ExtResource("2_box")
+size = Vector3(3.5, 6, 3.5)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Timber_N" parent="Props" instance=ExtResource("7_timber")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4.5)
+
+[node name="TimberMouth" parent="Props" instance=ExtResource("7_timber")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -2.25)
+
+[node name="LanternL" parent="Props" instance=ExtResource("5_lantern")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -3.0, 4.3, 0.5)
+
+[node name="LanternR" parent="Props" instance=ExtResource("5_lantern")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 3.0, 4.3, 0.5)
+
+[node name="Crate1" parent="Props" instance=ExtResource("4_crate")]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, -3.2, 0, -1.6)
+
+[node name="Crate2" parent="Props" instance=ExtResource("4_crate")]
+transform = Transform3D(0.990268, 0, 0.139173, 0, 1, 0, -0.139173, 0, 0.990268, -3.3, 0, -0.6)
+
+[node name="Crate3" parent="Props" instance=ExtResource("4_crate")]
+transform = Transform3D(0.766044, 0, -0.642788, 0, 1, 0, 0.642788, 0, 0.766044, -3.25, 0.7, -1.1)
+
+[node name="Cart" parent="Props" instance=ExtResource("3_cart")]
+transform = Transform3D(0.997564, 0, -0.069756, 0, 1, 0, 0.069756, 0, 0.997564, 3.1, 0, -1.2)
+
+[node name="Rubble1" parent="Props" instance=ExtResource("6_rubble")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 3.3, 0, 1.6)
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0.5)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -6)
+
+[node name="LiftAnchor" type="Marker3D" parent="Markers"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 3.75)
