@@ -608,7 +608,9 @@ func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	mine = Mine.new()
 	mine.name = "Mine"
 	mine_root.add_child(mine)
-	mine.build(seed_value, MineParams.from_balance(_config, cycle), BIOMES[clampi(biome, 0, BIOMES.size() - 1)])
+	biome_index = clampi(biome, 0, BIOMES.size() - 1)
+	mine.build(seed_value, MineParams.from_balance(_config, cycle), BIOMES[biome_index])
+	mine.add_hazards(cycle, _biome_rule())
 	var anchor: Marker3D = mine.station.find_child("LiftAnchor", true, false) as Marker3D
 	mine_cage = CAGE_SCENE.instantiate() as Foerderkorb
 	mine_cage.name = "MineCage"
@@ -929,9 +931,28 @@ func host_blast(where: Vector3, radius: float, damage: int) -> void:
 
 
 ## An open flame or a blast at `where` reaching `radius` m (host): firedamp there goes up.
-## Hazards hook in here.
-func host_flame(_where: Vector3, _radius: float) -> void:
-	pass
+func host_flame(where: Vector3, radius: float) -> void:
+	if mine != null and mine.hazards != null:
+		mine.hazards.host_flame(where, radius)
+
+
+## A rotten ladder gave way under someone with a heavy load (they ask; their movement is theirs).
+@rpc("any_peer", "call_local", "reliable")
+func request_break_ladder(ladder_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var ladder: Ladder = get_node_or_null(ladder_path) as Ladder
+	var player: Player = player_by_peer(_sender())
+	if ladder != null and ladder.rotten and not ladder.broken and player != null and player.global_position.distance_to(ladder.global_position) < ladder.height + 2.0:
+		_break_ladder.rpc(ladder_path)
+		print("[hazards] %s gave way under P%d" % [ladder.name, player.peer_id])
+
+
+@rpc("authority", "call_local", "reliable")
+func _break_ladder(ladder_path: NodePath) -> void:
+	var ladder: Ladder = get_node_or_null(ladder_path) as Ladder
+	if ladder != null:
+		ladder.break_apart()
 
 
 ## The "Bierzelt" bomb bursts: a stinking cloud creatures keep out of (host).

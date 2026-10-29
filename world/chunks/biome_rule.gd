@@ -8,3 +8,5 @@ extends Resource
 ## Loot values and the enemy budget are multiplied by these (deeper = richer and nastier).
 @export var loot_value_mult: float = 1.0
 @export var enemy_budget_mult: float = 1.0
+## Share of chunks (two or more steps from the lift) with a brine pool.
+@export var brine_share: float = 0.12

@@ -227,3 +227,24 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - The generator closes half of the loop passages (shortcuts) and a quarter of the dead-end entrances (niches) with a salt wall.
   - The Spitzhacke breaks one in 3 hits (100 HP); bare hands only get "Do brauchst a Spitzhackn". A broken wall leaves 1–2 small salt crystals.
   - Creatures do not path through an unbroken wall, except the Tatzelwurm underground.
+
+### Hazards (§4)
+- **Placement:** every peer places firedamp and brine from the seed, in chunks two or more steps from the lift. The host decides what happens: ignition, rockfalls, the bridge giving way.
+- **Schlagende Wetter (firedamp):**
+  - A pocket is a 3 m sphere just under the roof, at the middle of a chunk. 30 % of chunks get one in cycle 1, plus 5 % per cycle (at most 80 %). Never in a chunk with a hanging lantern.
+  - All you see is a faint shimmer, like hot air.
+  - Within 2.5 m of a pocket the carbide flame flares up tall and bluish, with a whoosh: the old miners' warning sign.
+  - A carbide flame inside the pocket for 1 s sets it off: up to 90 damage within 7 m (rock shields), the mine hears it 60 m away, the camera shakes. Bangs and other explosions also set pockets off, so pockets can chain.
+  - Pass with the lamp off (in the dark, with the Kasermandl) or with the Stirnlampe.
+- **Steinschlag (rockfall):**
+  - About every 75 s (±30 %), with a 50 % chance, the roof gives at a waypoint 3–12 m from a random miner outside the station. You hear creaking and see grit trickling down; 2.5 s later the rock comes down: 45 damage within 2.2 m.
+  - In 35 % of cases it leaves a pile blocking the tunnel (60 HP: 2 pick hits). It only blocks if:
+    - every miner still has another way back to the lift;
+    - the spot is not a crossing;
+    - nobody stands where the pile would be.
+- **Gesenk (new Oberer Stollen chunk, 2+ steps deep, no rails, no gas or brine):**
+  - A 5 m deep pit in a small room, with loot at the bottom. Narrow ledges along the sides lead around it.
+  - A rotten plank bridge crosses it. The bridge creaks under anyone and gives way under someone carrying something heavy: a salt block, a body, or a Schubkarre with a heavy load. A heavy item dropped on it breaks it too.
+  - Two rotten ladders lead down. They creak, and give way after 0.6 s of climbing with something heavy in your hands.
+  - The fall costs about 25 health. The Seil is the safe way up with a load.
+- **Sole (brine):** pools of 2.2 m radius in 12 % of chunks (more in the Salzsee). Wading through one slows you to 60 %, the carbide burns 3× as fast while you are in it, and footsteps slosh.

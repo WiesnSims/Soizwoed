@@ -186,6 +186,9 @@ extends Resource
 ## Share of rockfalls in tunnels that leave a pile blocking the way.
 @export var rockfall_block_chance: float = 0.35
 @export var brine_speed: float = 0.6
+@export var brine_radius: float = 2.2
+## Rotten ladders and bridges give way after this long under someone carrying something heavy.
+@export var rotten_break_seconds: float = 0.6
 ## Brine splashing into the carbide lamp: it burns this many times faster.
 @export var brine_lamp_drain: float = 3.0
 @export var swim_speed: float = 1.6

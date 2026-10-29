@@ -55,6 +55,8 @@ func run(game: Game, scenario: String) -> void:
 			await _meister()
 		"tools":
 			await _tools()
+		"hazards":
+			await _hazards()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -383,11 +385,10 @@ func _tools() -> void:
 	_game.request_push_rail(cart.get_path())
 	await get_tree().create_timer(0.2).timeout
 	var before: float = cart.s
-	var toward_lift: Vector3 = _game.mine.rails.transform_at(0.0).origin
+	# Walk along the track towards the lift, behind the cart.
+	var walk_from: float = _game.mine.rails.closest_s(player.global_position)
 	for i: int in 60:
-		var step: Vector3 = (toward_lift - player.global_position)
-		step.y = 0.0
-		player.global_position += step.normalized() * config.walk_speed * 0.8 / 60.0
+		player.global_position = _game.mine.rails.transform_at(walk_from - i * config.walk_speed * 0.8 / 60.0).origin + Vector3.UP * 0.1
 		await get_tree().physics_frame
 	await get_tree().create_timer(0.5).timeout
 	print("[scenario] pushed hunt from %.1f to %.1f, pusher P%d, cargo %d" % [before, cart.s, cart.pusher_peer, cart.cargo.size()])
@@ -409,6 +410,114 @@ func _tools() -> void:
 		hits += 1
 		await get_tree().create_timer(0.1).timeout
 	print("[scenario] salt wall broken after %d hits: %s" % [hits, wall.health <= 0])
+
+
+func _hazards() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	var hazards: Hazards = _game.mine.hazards
+	var stand: Vector3 = _out_of_station(8.0)
+	player.teleport(Transform3D(_game.mine_cage.global_basis, stand))
+	await get_tree().create_timer(0.5).timeout
+	# Firedamp with the Stirnlampe: nothing happens. With the carbide flame: bang.
+	player.lamp_electric = true
+	hazards._add_pocket(stand + Vector3.UP * 1.8, "GasTest1")
+	await get_tree().create_timer(config.gas_fuse_seconds + 0.5).timeout
+	print("[scenario] gas with stirnlampe: still there %s, health %d" % [not hazards.pockets[-1].gone, player.health])
+	player.lamp_electric = false
+	player.lamp_on = true
+	await get_tree().create_timer(0.2).timeout
+	print("[scenario] gas: carbide flare %.2f" % player.gas_flare)
+	await get_tree().create_timer(config.gas_fuse_seconds + 0.5).timeout
+	print("[scenario] gas with carbide: gone %s, health %d" % [hazards.pockets[-1].gone, player.health])
+	player.set_health(config.player_max_health)
+	# A Böller sets off a pocket from outside.
+	var far_gas: Vector3 = stand + _game.mine_cage.global_basis.x * 0.0 - _game.mine_cage.global_basis.z * 6.0 + Vector3.UP * 1.8
+	hazards._add_pocket(far_gas, "GasTest2")
+	_game.host_bang(far_gas - Vector3.UP * 1.6)
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] gas set off by a bang: %s" % hazards.pockets[-1].gone)
+	player.set_health(config.player_max_health)
+	# Brine slows and drains the carbide.
+	hazards._add_pool(player.global_position, "BrineTest")
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	await get_tree().create_timer(0.2).timeout
+	print("[scenario] brine: in brine %s, lamp drain x%.0f" % [player.in_brine, player.brine_lamp_drain()])
+	# Rockfall next to the player.
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(22.0)))
+	await get_tree().create_timer(0.5).timeout
+	var before: int = player.health
+	hazards._host_rockfall()
+	await get_tree().create_timer(0.2).timeout
+	print("[scenario] standing under the rockfall")
+	player.teleport(Transform3D(Basis.IDENTITY, hazards.last_rockfall + Vector3.UP * 0.1))
+	await get_tree().create_timer(config.rockfall_warning_seconds + 0.5).timeout
+	print("[scenario] rockfall happened, health %d -> %d" % [before, player.health])
+	player.set_health(config.player_max_health)
+	await _gesenk(player, config)
+
+
+## A Gesenk chunk far below the mine: the bridge breaks under a salt block, the rotten ladder
+## under someone carrying it, and a Seil goes down the edge and up again.
+func _gesenk(player: Player, config: BalanceConfig) -> void:
+	var scene: PackedScene = load("res://world/chunks/oberer_stollen/gesenk.tscn")
+	var chunk: Chunk = scene.instantiate() as Chunk
+	chunk.name = "GesenkTest"
+	chunk.cell = Vector2i(100, 100)
+	chunk.position = Vector3(0.0, -80.0, 0.0)
+	chunk.setup(GridDir.N | GridDir.S, 0)
+	_game.mine.add_child(chunk)
+	chunk.build_cave(6.0, _game.mine.seed_value)
+	await get_tree().physics_frame
+	var bridge: RottenBridge = chunk.find_child("Bridge", true, false) as RottenBridge
+	var top: Vector3 = chunk.global_position
+	# Across the bridge alone: it holds.
+	player.teleport(Transform3D(Basis.IDENTITY, bridge.global_position + Vector3(0, 0.2, 1.0)))
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] bridge with a miner on it: broken %s, standing at %.1f" % [bridge.broken, player.global_position.y - top.y])
+	# With a salt block: it gives way, down into the pit.
+	var block: WorldItem = _game._spawn_item_at(&"steinsalz_block", 100, player.global_transform.translated(Vector3.UP * 0.6))
+	await get_tree().create_timer(0.3).timeout
+	_game.request_take(block.get_path(), player.peer_id)
+	await get_tree().create_timer(config.rotten_break_seconds + 1.6).timeout
+	print("[scenario] bridge with a salt block: broken %s, fell to %.1f, health %d" % [bridge.broken, player.global_position.y - top.y, player.health])
+	player.set_health(config.player_max_health)
+	# Up the rotten ladder with the block: it breaks.
+	var ladder: Ladder = chunk.find_child("LadderS", true, false) as Ladder
+	player.teleport(Transform3D(Basis.IDENTITY, ladder.global_position + ladder.global_basis.z * -0.4 + Vector3.UP * 0.1))
+	player.look_at(ladder.global_position + Vector3.UP * 1.0 + ladder.global_basis.z * -0.4 + (ladder.global_position - (ladder.global_position + ladder.global_basis.z * -0.4)) * 2.0)
+	player.rotation.x = 0.0
+	player.rotation.z = 0.0
+	await get_tree().create_timer(0.3).timeout
+	Input.action_press(&"move_forward")
+	await get_tree().create_timer(1.5).timeout
+	Input.action_release(&"move_forward")
+	print("[scenario] ladder with a salt block: broken %s, climbed %s" % [ladder.broken, player.climbing or ladder.broken])
+	_game.request_drop(block.get_path(), player.hold_point.global_transform, Vector3.ZERO)
+	await get_tree().create_timer(0.5).timeout
+	# A Seil down the edge from the ledge beside the pit, then climb it out.
+	player.teleport(Transform3D(Basis.IDENTITY, top + Vector3(2.3, 0.1, 0.0)))
+	await get_tree().create_timer(0.4).timeout
+	var seil: WorldItem = await _give(&"seil")
+	_game.request_rope(seil.get_path(), top + Vector3(1.9, 0.0, 0.0), Vector3.LEFT)
+	await get_tree().create_timer(0.4).timeout
+	var ropes: Array[Node] = _game.mine.find_children("Rope*", "Rope", false, false)
+	if ropes.is_empty():
+		print("[scenario] no rope placed")
+		return
+	var rope: Rope = ropes[0] as Rope
+	print("[scenario] rope from %.1f down to %.1f" % [rope.top.y - top.y, rope.bottom.y - top.y])
+	player.teleport(Transform3D(Basis.IDENTITY, rope.bottom + Vector3(-0.3, 0.1, 0.0)))
+	player.look_at(Vector3(rope.top.x + 2.0, player.global_position.y, rope.top.z))
+	await get_tree().create_timer(0.3).timeout
+	Input.action_press(&"move_forward")
+	await get_tree().create_timer(5.0).timeout
+	Input.action_release(&"move_forward")
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] climbed the rope to %.1f, on the ledge %s" % [player.global_position.y - top.y, player.global_position.y > top.y - 0.3])
 
 
 func _count(id: StringName) -> int:

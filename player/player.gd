@@ -57,6 +57,8 @@ var battery: float = 0.0
 var in_brine: bool = false
 ## On a ladder or rope right now (local player).
 var climbing: bool = false
+## 0..1: how hard the carbide flame flares near firedamp (set by Hazards on every peer).
+var gas_flare: float = 0.0
 var crouching: bool = false
 var input_enabled: bool = true
 ## False after dying, until the next ride (host-authoritative).
@@ -107,6 +109,11 @@ var _radio_until: float = 0.0
 var _climbables: Array[Climbable] = []
 var _climb_ignore_until: float = 0.0
 var _pushed_cart: RailCart
+## Camera shake from blasts and rockfalls (local player), 0..1, dies down by itself.
+var _shake: float = 0.0
+## Seconds climbing a rotten ladder with a heavy load, and until the next creak.
+var _rotten_strain: float = 0.0
+var _creak_left: float = 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
@@ -234,6 +241,8 @@ func _physics_process(delta: float) -> void:
 	_update_focus(delta)
 	_tick_eating(delta)
 	_tick_wobble(delta)
+	_tick_shake(delta)
+	_tick_rotten(delta)
 	net_position = global_position
 	net_angles = Vector2(rotation.y, head.rotation.x)
 
@@ -354,6 +363,25 @@ func _climb_velocity(input_dir: Vector2) -> float:
 	return up * _config.climb_speed * factor
 
 
+## A rotten ladder creaks under you, and gives way if you carry something heavy up or down it.
+func _tick_rotten(delta: float) -> void:
+	var climb: Climbable = _climbables.back() if climbing and not _climbables.is_empty() else null
+	if climb == null or not climb.rotten:
+		_rotten_strain = 0.0
+		return
+	_creak_left -= delta
+	if _creak_left <= 0.0:
+		_creak_left = randf_range(0.7, 1.5)
+		Audio.play_at("plank_creak", global_position + Vector3.UP, &"SFX", -6.0, 15.0)
+	if not (inventory.hands_busy() and inventory.hands_weight == ItemData.WeightClass.HEAVY):
+		return
+	_rotten_strain += delta
+	var ladder: Ladder = climb.get_parent() as Ladder
+	if _rotten_strain >= _config.rotten_break_seconds and ladder != null:
+		_rotten_strain = -INF  # asked once
+		game().request_break_ladder.rpc_id(1, ladder.get_path())
+
+
 func _let_go_of_climbable() -> void:
 	climbing = false
 	_climb_ignore_until = Time.get_ticks_msec() / 1000.0 + 0.5
@@ -379,16 +407,25 @@ func _footsteps_and_bob(delta: float) -> void:
 		_bob_phase += horizontal * delta * PI / stride
 		if _step_accum >= stride:
 			_step_accum = 0.0
-			_play_footstep.rpc(global_position.y > Game.HUB_FLOOR_ABOVE)
+			_play_footstep.rpc(_surface())
 	else:
 		_bob_phase = lerpf(_bob_phase, roundf(_bob_phase / PI) * PI, clampf(6.0 * delta, 0.0, 1.0))
 	var bob: float = BOB_AMOUNT if Settings.data.head_bob else 0.0
 	head.position.y = _head_height + absf(sin(_bob_phase)) * bob
 
 
+enum Surface { GRAVEL, WOOD, BRINE }
+
+
+func _surface() -> Surface:
+	if global_position.y > Game.HUB_FLOOR_ABOVE:
+		return Surface.WOOD
+	return Surface.BRINE if in_brine else Surface.GRAVEL
+
+
 @rpc("authority", "call_local", "unreliable")
-func _play_footstep(on_wood: bool) -> void:
-	Audio.play_on(footsteps, "footstep_wood" if on_wood else "footstep_gravel", 0.06)
+func _play_footstep(surface: Surface) -> void:
+	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade"][surface], 0.06)
 	footsteps.volume_db = -14.0 if crouching else -6.0
 
 
@@ -569,10 +606,11 @@ func _update_lamp() -> void:
 		lamp.flicker = 0.12 if low else 0.0
 		lamp.light_color = Color(0.86, 0.9, 1.0)
 	else:
-		lamp.omni_range = _config.lamp_range * strength
-		lamp.base_energy = _config.lamp_energy * (0.55 if low else 1.0)
-		lamp.flicker = 0.35 if low else 0.07
-		lamp.light_color = _carbide_color
+		# Near firedamp the flame flares up tall and bluish.
+		lamp.omni_range = _config.lamp_range * strength * (1.0 + gas_flare * 0.25)
+		lamp.base_energy = _config.lamp_energy * (0.55 if low else 1.0) * (1.0 + gas_flare * 1.4)
+		lamp.flicker = maxf(0.35 if low else 0.07, gas_flare * 0.45)
+		lamp.light_color = _carbide_color.lerp(Color(0.62, 0.78, 1.0), gas_flare * 0.7)
 	# Only other players' carbide lamps hiss: your own would be a constant noise in your ear.
 	var hiss: bool = lamp_on and not lamp_electric and not is_local()
 	if hiss and not lamp_sound.playing:
@@ -779,6 +817,17 @@ func _tick_wobble(delta: float) -> void:
 	var strength: float = clampf(_wobble_left / 4.0, 0.0, 1.0)
 	camera.rotation.z = sin(_wobble_time * 1.1) * 0.07 * strength
 	camera.rotation.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
+
+
+## A jolt from a blast or a rockfall nearby (mount 0..1).
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
+
+
+func _tick_shake(delta: float) -> void:
+	_shake = maxf(0.0, _shake - delta * 1.2)
+	camera.h_offset = randf_range(-1.0, 1.0) * _shake * 0.06
+	camera.v_offset = randf_range(-1.0, 1.0) * _shake * 0.06
 
 
 ## The Seil: thrown down the edge you look at; the host checks that there is a drop.

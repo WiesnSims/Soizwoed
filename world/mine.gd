@@ -12,6 +12,8 @@ var station: Chunk
 var lights: Array[OmniLight3D] = []
 ## The track along the main path (null where the section has none).
 var rails: RailLine
+## Firedamp, brine and rockfalls (DESIGN.md §4).
+var hazards: Hazards
 var seed_value: int = 0
 
 
@@ -40,6 +42,14 @@ func build(new_seed: int, params: MineParams, new_chunk_set: ChunkSet) -> void:
 	_build_walls()
 	if chunk_set.has_rails:
 		_build_rails()
+
+
+## Places the hazards for this cycle and section (after build).
+func add_hazards(cycle: int, rule: BiomeRule) -> void:
+	hazards = Hazards.new()
+	hazards.name = "Hazards"
+	add_child(hazards)
+	hazards.build(self, cycle, rule)
 
 
 func cell_centre(cell: Vector2i) -> Vector3:

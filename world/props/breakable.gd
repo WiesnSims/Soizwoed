@@ -34,6 +34,11 @@ func _build() -> void:
 	shape.shape = box
 	shape.position = Vector3.UP * size.y / 2.0
 	add_child(shape)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = hash(name)
+	if kind == Kind.RUBBLE:
+		_build_pile(rock, rng)
+		return
 	_mesh = MeshInstance3D.new()
 	var mesh: BoxMesh = BoxMesh.new()
 	mesh.size = size
@@ -42,8 +47,6 @@ func _build() -> void:
 	_mesh.material_override = rock
 	add_child(_mesh)
 	# A few lumps so it reads as a rough wall of salt, not a panel.
-	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = hash(name)
 	for i: int in 7:
 		var lump: MeshInstance3D = MeshInstance3D.new()
 		var ball: SphereMesh = SphereMesh.new()
@@ -55,6 +58,24 @@ func _build() -> void:
 		lump.material_override = rock
 		var side: float = -1.0 if i % 2 == 0 else 1.0
 		lump.position = Vector3(rng.randf_range(-size.x, size.x) * 0.4, rng.randf_range(0.3, size.y * 0.8), side * size.z * 0.45)
+		add_child(lump)
+
+
+## Rubble: boulders heaped up to the roof, the big ones at the bottom.
+func _build_pile(rock: Material, rng: RandomNumberGenerator) -> void:
+	for i: int in 26:
+		var lump: MeshInstance3D = MeshInstance3D.new()
+		var ball: SphereMesh = SphereMesh.new()
+		var height_share: float = rng.randf()
+		ball.radius = lerpf(0.9, 0.35, height_share) * rng.randf_range(0.8, 1.2)
+		ball.height = ball.radius * 1.5
+		ball.radial_segments = 9
+		ball.rings = 5
+		lump.mesh = ball
+		lump.material_override = rock
+		var spread: float = (1.0 - height_share * 0.6) * size.x * 0.5
+		lump.position = Vector3(rng.randf_range(-spread, spread), height_share * size.y * 0.85, rng.randf_range(-size.z, size.z) * 0.35)
+		lump.rotation = Vector3(rng.randf() * TAU, rng.randf() * TAU, 0.0)
 		add_child(lump)
 
 
