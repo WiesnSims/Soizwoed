@@ -163,3 +163,40 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Taskbar icon (owner report)
 - **Taskbar showed the generic Windows icon** while the file, the shortcut and the window corner showed the lamp: Godot 4.7.2's exporter rewrites the exe's icons but writes the icon group's name (`GODOT_ICON`) with a broken offset. Explorer just takes the first group, but the game loads its window-class icon by that name at startup, gets nothing and falls back to the generic icon, which the Windows 11 taskbar shows.
 - **Now:** `tools/build.ps1` runs `tools/fix_exe_icon.ps1` after the export. It rewrites the exe's resources from `icon.ico` (all 7 sizes, Godot kept only 6), restores the group name and keeps version info and manifest. This only works because the pck is not embedded. An export straight from the editor still has the bug; use the build script.
+
+### Creature spawning
+- **Each biome lists its creatures** (`ChunkSet.creatures`). The host spends the shift's enemy budget on them by weight: half at the start, the rest every 90 s, as before. The rules (`CreatureSpawnRule`, in `balance.tres`) give each type a budget cost, a weight, a group size, the first cycle it appears and a maximum alive at once:
+  - Bergmandl: cost 1, weight 3, groups of 2–3.
+  - Tatzelwurm: cost 3, weight 1, at most 1.
+  - Kasermandl: cost 2.5, weight 1, at most 1.
+  - Schichtmeister: outside the budget, only after the whistle.
+- **Mine sections** (`BiomeRule`): the Salzsee unlocks from cycle 2 (`unlock_cycle = 1`) with 1.35× loot values and 1.2× enemy budget.
+
+### Noise (for the Tatzelwurm)
+- Every noise has a reach in metres; creatures within it hear where it came from (`Game.host_noise`):
+  - movement: sprinting 22, walking 6, crouching 0, pushing the Schubkarre 12;
+  - heavy drop 20, shout or loud voice 25;
+  - rail cart 20, Böller 35, bell 40, explosion 60, Alphorn 80.
+- Movement is checked every 0.5 s.
+
+### Tatzelwurm
+- Underground it is invisible and only heard: grinding rock, muffled through walls. It roams slowly, and heads for the last noise it heard.
+- It bursts out of the floor there and stays up about 6 s. It lunges (55 damage) at anyone within 3.2 m who moves faster than 2.2 m/s, so crouching or standing still is safe; walking is not. Then it dives and rests about 10 s.
+- 120 HP. Any hit makes it dive at once, so the Spitzhacke chases it off but rarely kills it.
+
+### Kasermandl
+- **Lit = frozen:** it counts as lit when a lamp's light reaches it (within 90 % of the lamp's range, no rock in between – whichever way the player looks) or a hanging lantern is within 6 m. Lit, it stands still, falls silent and fades out; in the dark it fades back in.
+- In the dark it creeps (2.2 m/s) after the nearest miner and rushes (4.8 m/s) at one whose lamp is off. A touch does 35 damage, then it slips back into the dark for 12 s.
+- It cannot be hurt: the pick goes right through it. Light is the only counter. Close by in the dark you hear it breathe.
+
+### Schichtmeister
+- Comes 12 s after the whistle, once per shift, for the miner outside the cage who is nearest the lift. He appears 15–40 m behind them, on the side away from the cage.
+- 6.4 m/s (faster than a sprint); one touch kills. He never enters the Förderkorb and vanishes when the lift goes up. Hits only annoy him. The Alphorn stuns him, and he won't walk into a "Bierzelt" cloud.
+
+### Creature voices
+- **Kasermandl and Schichtmeister use variant A** for now. The sample pack with variants A/B/C is in the worktree's `build/samples/`, waiting for the owner's pick.
+- Each creature's `.tres` is generated from `tools/audio/voices.py` (`tools/audio/creature_tres.py`), so lines and files never drift apart.
+
+### Creature movement
+- A creature blocked by something (the parked mine cart, a crate) sidesteps for 0.7 s.
+- If it makes no progress for 4 s, it hops back to the nearest waypoint. Without this, a Bergmandl could stay wedged at one spot for good.
