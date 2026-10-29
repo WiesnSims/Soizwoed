@@ -53,10 +53,19 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "MENU_SOLO"
 
-[node name="HostButton" type="Button" parent="Center/Menu"]
+[node name="HostRow" type="HBoxContainer" parent="Center/Menu"]
+layout_mode = 2
+
+[node name="HostButton" type="Button" parent="Center/Menu/HostRow"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "MENU_HOST"
+
+[node name="PublicCheck" type="CheckBox" parent="Center/Menu/HostRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MENU_PUBLIC"
 
 [node name="JoinRow" type="HBoxContainer" parent="Center/Menu"]
 layout_mode = 2
@@ -72,6 +81,15 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "MENU_JOIN"
 
+[node name="FindButton" type="Button" parent="Center/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "MENU_FIND"
+
+[node name="LobbyList" type="VBoxContainer" parent="Center/Menu"]
+unique_name_in_owner = true
+layout_mode = 2
+
 [node name="QuitButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -79,5 +97,11 @@ text = "MENU_QUIT"
 
 [node name="StatusLabel" type="Label" parent="Center/Menu"]
 unique_name_in_owner = true
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="SteamLabel" type="Label" parent="Center/Menu"]
+unique_name_in_owner = true
+modulate = Color(1, 1, 1, 0.6)
 layout_mode = 2
 horizontal_alignment = 1

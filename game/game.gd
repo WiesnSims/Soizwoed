@@ -213,7 +213,7 @@ func _spawn_player_for(peer: int) -> void:
 		taken.append(player.player_number)
 	while number in taken:
 		number += 1
-	_player_spawner.spawn([peer, hub.player_spot(number - 1), number])
+	_player_spawner.spawn([peer, hub.player_spot(number - 1), number, NetworkManager.peer_name(peer)])
 
 
 func _spawn_player(spawn_data: Array) -> Node:
@@ -222,6 +222,7 @@ func _spawn_player(spawn_data: Array) -> Node:
 	player.name = "P%d" % player.peer_id
 	player.transform = spawn_data[1]
 	player.player_number = int(spawn_data[2])
+	player.steam_name = str(spawn_data[3])
 	player.net_position = player.transform.origin
 	player.net_angles = Vector2(player.rotation.y, 0.0)
 	return player
@@ -506,6 +507,8 @@ func _arg_value(prefix: String) -> String:
 @rpc("authority", "call_local", "reliable")
 func _begin_ride(down: bool, seed_value: int, cycle: int) -> void:
 	phase = Phase.DESCENDING if down else Phase.ASCENDING
+	if multiplayer.is_server():
+		NetworkManager.set_joinable(false)
 	hud.close_panels()
 	var cage: Foerderkorb = hub_cage if down else mine_cage
 	cage.play_ride()
@@ -570,6 +573,8 @@ func _blow_whistle() -> void:
 @rpc("authority", "call_local", "reliable")
 func _end_shift(results: Dictionary) -> void:
 	phase = Phase.OVER if results.fired else Phase.HUB
+	if multiplayer.is_server():
+		NetworkManager.set_joinable(phase == Phase.HUB)
 	_free_mine()
 	hub_cage.stop_ride()
 	_set_local_input(true)
@@ -791,11 +796,13 @@ func request_hit(creature_path: NodePath, damage: int, from: Vector3) -> void:
 
 
 ## "Plärren": a loud shout. Scares Bergmandl nearby (DESIGN.md §6, DECISIONS "Plärren key").
+## A shout into the voice chat comes with `with_sound` false: the real voice is heard already.
 @rpc("any_peer", "call_local", "reliable")
-func request_shout(peer: int, where: Vector3) -> void:
+func request_shout(peer: int, where: Vector3, with_sound: bool = true) -> void:
 	if not multiplayer.is_server():
 		return
-	_play_shout.rpc(peer)
+	if with_sound:
+		_play_shout.rpc(peer)
 	for creature: Creature in creatures():
 		if creature.global_position.distance_to(where) <= _config.shout_radius:
 			creature.host_shouted_at(where)
@@ -823,8 +830,9 @@ func _show_message_key(key: String) -> void:
 func _player_message(key: String, number: int, about_peer: int) -> void:
 	if about_peer == multiplayer.get_unique_id():
 		show_message(tr("MSG_YOU_DIED"), 5.0)
-	else:
-		show_message(tr(key) % (tr("PLAYER_NAME") % number), 4.0)
+		return
+	var about: Player = player_by_peer(about_peer)
+	show_message(tr(key) % (about.display_name() if about != null else tr("PLAYER_NAME") % number), 4.0)
 
 
 # --- free item physics (host simulates, clients follow) -----------------------------------------
