@@ -116,10 +116,10 @@ SET_EFFECTS,Gräusch
 SET_VOICE,Stimmen vo de Kumpl
 SET_CREATURE_LINES,Gegner redn
 SET_OPEN_MIC,"Mikro offn (sunst redst mit V)"
-SET_WINDOW_MODE,Fenster
-SET_WINDOWED,Im Fenster
-SET_BORDERLESS,Vollbild (randlos)
-SET_FULLSCREEN,Vollbild (exklusiv)
+SET_WINDOW_MODE,Fenstermodus
+SET_WINDOWED,Fenster
+SET_BORDERLESS,Randloses Fenster
+SET_FULLSCREEN,Vollbild
 SET_VSYNC,VSync
 SET_FPS,Bildrate
 SET_FPS_UNLIMITED,Unbegrenzt
@@ -202,3 +202,4 @@ PROMPT_FERRY_BUSY,De Fähre is unterwegs.
 MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
 MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
 MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."
+SET_AUTO_RESOLUTION,"3D-Auflösung automatisch (höchstens 1080p, FSR 2)"

@@ -1,8 +1,9 @@
 class_name SettingsPanel
-extends PanelContainer
+extends Control
 ## The settings page (main menu and Esc menu): tabs for sound, display, graphics and gameplay.
 ## Every change is applied and saved right away (Settings autoload). Built in code; all texts
-## go through tr().
+## go through tr(). Covers the whole screen and keeps its panel in the middle, whatever the
+## window size or mode.
 
 signal closed
 
@@ -11,19 +12,25 @@ const DIM_COLOR: Color = Color(0.7, 0.64, 0.55)
 const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _tabs: TabContainer
+var _panel: PanelContainer
 
 
 func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var centre: CenterContainer = CenterContainer.new()
+	centre.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(centre)
+	_panel = PanelContainer.new()
 	var box: StyleBoxFlat = StyleBoxFlat.new()
 	box.bg_color = Color(0.08, 0.06, 0.04, 0.94)
 	box.set_corner_radius_all(4)
 	box.set_content_margin_all(24)
-	add_theme_stylebox_override("panel", box)
-	set_anchors_preset(Control.PRESET_CENTER)
-	custom_minimum_size = Vector2(640, 0)
-	grow_horizontal = Control.GROW_DIRECTION_BOTH
-	grow_vertical = Control.GROW_DIRECTION_BOTH
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	_panel.add_theme_stylebox_override("panel", box)
+	_panel.custom_minimum_size = Vector2(640, 0)
+	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	centre.add_child(_panel)
 	hide()
 
 
@@ -46,12 +53,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _rebuild() -> void:
 	var current_tab: int = _tabs.current_tab if _tabs != null else 0
-	for child: Node in get_children():
-		remove_child(child)
+	for child: Node in _panel.get_children():
+		_panel.remove_child(child)
 		child.queue_free()
 	var column: VBoxContainer = VBoxContainer.new()
 	column.add_theme_constant_override("separation", 12)
-	add_child(column)
+	_panel.add_child(column)
 	var title: Label = _label(tr("SETTINGS_TITLE"), 30)
 	title.add_theme_color_override("font_color", ACCENT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -118,7 +125,11 @@ func _build_graphics(grid: GridContainer) -> void:
 	var data: SettingsData = Settings.data
 	_option(grid, "SET_QUALITY", ["SET_Q_LOW", "SET_Q_MEDIUM", "SET_Q_HIGH", "SET_Q_ULTRA"], data.quality,
 			func(i: int) -> void: data.quality = i as SettingsData.Quality)
-	_slider(grid, "SET_RENDER_SCALE", data.render_scale, 0.5, 1.0, 0.05, true, func(v: float) -> void: data.render_scale = v)
+	_check(grid, "SET_AUTO_RESOLUTION", data.auto_resolution, func(on: bool) -> void:
+		data.auto_resolution = on
+		_rebuild.call_deferred())
+	if not data.auto_resolution:
+		_slider(grid, "SET_RENDER_SCALE", data.render_scale, 0.5, 1.0, 0.05, true, func(v: float) -> void: data.render_scale = v)
 	_check(grid, "SET_FOG", data.volumetric_fog, func(on: bool) -> void: data.volumetric_fog = on)
 	_option(grid, "SET_AA", ["SET_AA_OFF", "SET_AA_FXAA", "SET_AA_TAA", "SET_AA_MSAA"], data.anti_aliasing,
 			func(i: int) -> void: data.anti_aliasing = i as SettingsData.AntiAliasing)

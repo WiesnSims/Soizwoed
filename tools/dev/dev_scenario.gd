@@ -24,6 +24,9 @@ func run(game: Game, scenario: String) -> void:
 	if scenario == "cart":
 		await _cart()
 		return
+	if scenario == "settings":
+		_game.hud._open_settings()  # for screenshots of its layout
+		return
 	if scenario == "coopclient":
 		await _coop_client()
 		return

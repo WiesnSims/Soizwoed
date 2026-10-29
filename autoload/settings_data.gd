@@ -9,7 +9,13 @@ enum Quality { LOW, MEDIUM, HIGH, ULTRA }
 enum AntiAliasing { OFF, FXAA, TAA, MSAA_TAA }
 
 ## Frame rate caps offered (0 = no cap).
-const FPS_LIMITS: Array[int] = [0, 30, 60, 120, 144, 240]
+const FPS_LIMITS: Array[int] = [0, 30, 60, 90, 120, 144, 165, 240]
+const DEFAULT_FPS_LIMIT: int = 60
+## With automatic resolution the 3D picture is rendered at most this many lines high and
+## upscaled with FSR 2 (the UI stays sharp).
+const AUTO_RENDER_HEIGHT: float = 1080.0
+## Bumped when defaults change in a way old settings files should pick up (see load_from).
+const VERSION: int = 2
 const FOV_MIN: float = 60.0
 const FOV_MAX: float = 100.0
 const SENSITIVITY_MIN: float = 0.2
@@ -27,16 +33,18 @@ var voice_open_mic: bool = false
 # Display
 var window_mode: WindowMode = WindowMode.WINDOWED
 var vsync: bool = true
-var fps_limit: int = 0
+var fps_limit: int = DEFAULT_FPS_LIMIT
 var fov: float = 78.0
 ## Multiplies the tonemap exposure: the mine is meant to be dark, but screens differ.
 var brightness: float = 1.0
 # Graphics
 var quality: Quality = Quality.HIGH
-## 3D resolution share (FSR upscaling below 1).
+## 3D resolution share (FSR 2 upscaling below 1), used when auto_resolution is off.
 var render_scale: float = 1.0
+## Render 3D at no more than 1080p on bigger screens (FSR 2 upscaling).
+var auto_resolution: bool = true
 var volumetric_fog: bool = true
-var anti_aliasing: AntiAliasing = AntiAliasing.MSAA_TAA
+var anti_aliasing: AntiAliasing = AntiAliasing.TAA
 # Gameplay
 var mouse_sensitivity: float = 1.0
 var invert_y: bool = false
@@ -51,7 +59,7 @@ func clamp_all() -> void:
 	voice_volume = clampf(voice_volume, 0.0, 1.0)
 	window_mode = clampi(window_mode, 0, WindowMode.size() - 1) as WindowMode
 	if not fps_limit in FPS_LIMITS:
-		fps_limit = 0
+		fps_limit = DEFAULT_FPS_LIMIT
 	fov = clampf(fov, FOV_MIN, FOV_MAX)
 	brightness = clampf(brightness, 0.5, 1.6)
 	quality = clampi(quality, 0, Quality.size() - 1) as Quality
@@ -74,6 +82,8 @@ func save_to(file: ConfigFile) -> void:
 	file.set_value("display", "brightness", brightness)
 	file.set_value("graphics", "quality", quality)
 	file.set_value("graphics", "render_scale", render_scale)
+	file.set_value("graphics", "auto_resolution", auto_resolution)
+	file.set_value("meta", "version", VERSION)
 	file.set_value("graphics", "volumetric_fog", volumetric_fog)
 	file.set_value("graphics", "anti_aliasing", anti_aliasing)
 	file.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
@@ -96,25 +106,41 @@ func load_from(file: ConfigFile) -> void:
 	brightness = float(file.get_value("display", "brightness", brightness))
 	quality = int(file.get_value("graphics", "quality", quality)) as Quality
 	render_scale = float(file.get_value("graphics", "render_scale", render_scale))
+	auto_resolution = bool(file.get_value("graphics", "auto_resolution", auto_resolution))
 	volumetric_fog = bool(file.get_value("graphics", "volumetric_fog", volumetric_fog))
 	anti_aliasing = int(file.get_value("graphics", "anti_aliasing", anti_aliasing)) as AntiAliasing
 	mouse_sensitivity = float(file.get_value("gameplay", "mouse_sensitivity", mouse_sensitivity))
 	invert_y = bool(file.get_value("gameplay", "invert_y", invert_y))
 	head_bob = bool(file.get_value("gameplay", "head_bob", head_bob))
+	# Files from before version 2 saved the old, heavy defaults (uncapped frame rate, MSAA on top
+	# of TAA) whether or not the player chose them: move those to the new defaults.
+	if int(file.get_value("meta", "version", 1)) < 2:
+		if fps_limit == 0:
+			fps_limit = DEFAULT_FPS_LIMIT
+		if anti_aliasing == AntiAliasing.MSAA_TAA:
+			anti_aliasing = AntiAliasing.TAA
 	clamp_all()
 
 
-## Renderer values of a quality preset. HIGH is the look the game was tuned with.
+## How much of the window's resolution the 3D picture is rendered at (1 = native).
+func effective_render_scale(window_height: int) -> float:
+	if not auto_resolution:
+		return render_scale
+	return clampf(AUTO_RENDER_HEIGHT / maxf(1.0, window_height), 0.5, 1.0)
+
+
+## Renderer values of a quality preset. HIGH is the look the game was tuned with (minus the
+## costs nobody could see: an 8K shadow atlas, full-detail reflections).
 static func quality_values(preset: Quality) -> Dictionary:
 	match preset:
 		Quality.LOW:
-			return {"shadow_atlas": 2048, "soft_shadows": 1, "ssao": false, "ssao_quality": 0, "ssil": false, "ssil_quality": 0, "fog_size": 64, "fog_depth": 48}
+			return {"shadow_atlas": 2048, "soft_shadows": 1, "ssao": false, "ssao_quality": 0, "ssil": false, "ssil_quality": 0, "fog_size": 64, "fog_depth": 48, "ssr": false, "ssr_steps": 0, "shadow_distance": 14.0}
 		Quality.MEDIUM:
-			return {"shadow_atlas": 4096, "soft_shadows": 2, "ssao": true, "ssao_quality": 1, "ssil": false, "ssil_quality": 0, "fog_size": 96, "fog_depth": 64}
+			return {"shadow_atlas": 4096, "soft_shadows": 2, "ssao": true, "ssao_quality": 1, "ssil": false, "ssil_quality": 0, "fog_size": 80, "fog_depth": 64, "ssr": false, "ssr_steps": 0, "shadow_distance": 18.0}
 		Quality.ULTRA:
-			return {"shadow_atlas": 8192, "soft_shadows": 4, "ssao": true, "ssao_quality": 4, "ssil": true, "ssil_quality": 3, "fog_size": 160, "fog_depth": 128}
+			return {"shadow_atlas": 8192, "soft_shadows": 4, "ssao": true, "ssao_quality": 3, "ssil": true, "ssil_quality": 2, "fog_size": 128, "fog_depth": 96, "ssr": true, "ssr_steps": 48, "shadow_distance": 40.0}
 		_:
-			return {"shadow_atlas": 8192, "soft_shadows": 3, "ssao": true, "ssao_quality": 3, "ssil": true, "ssil_quality": 2, "fog_size": 128, "fog_depth": 96}
+			return {"shadow_atlas": 4096, "soft_shadows": 2, "ssao": true, "ssao_quality": 2, "ssil": true, "ssil_quality": 1, "fog_size": 96, "fog_depth": 64, "ssr": true, "ssr_steps": 24, "shadow_distance": 24.0}
 
 
 ## Linear volume 0–1 as bus decibels (silent at 0).

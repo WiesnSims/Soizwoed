@@ -194,7 +194,7 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - 6.4 m/s (faster than a sprint); one touch kills. He never enters the Förderkorb and vanishes when the lift goes up. Hits only annoy him. The Alphorn stuns him, and he won't walk into a "Bierzelt" cloud.
 
 ### Creature voices
-- **Kasermandl and Schichtmeister use variant A** for now. The sample pack with variants A/B/C is in the worktree's `build/samples/`, waiting for the owner's pick.
+- **Kasermandl and Schichtmeister use variant A** (picked by the owner after the M4 playtest).
 - Each creature's `.tres` is generated from `tools/audio/voices.py` (`tools/audio/creature_tres.py`), so lines and files never drift apart.
 
 ### Creature movement
@@ -272,3 +272,25 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - `smoke_tools`, `smoke_hazards`, `smoke_salzsee` (in `tools/smoke_test.ps1`);
   - `tools/mp_test.ps1 -Tools`: a client uses Stirnlampe, Obstler, Böller, Alphorn, Rauchbombe, Funkgerät and Pfeiferl; the host must see each use arrive and the client must see the Hunt roll.
 - The hazards and Salzsee checks build a Gesenk or lake chunk far below the generated mine, so they never depend on the seed.
+
+## 2026-10-30 – M4 playtest feedback
+
+### Confirmed by the owner
+- **Voices:** variant A is final for the Kasermandl and the Schichtmeister.
+- **Stirnlampe haze** in the big Salzsee caverns stays as it is.
+
+### Chosen by Claude (change any time)
+- **The settings page was cut off in fullscreen.** It is now a full-screen layer that keeps its panel centred.
+- **The UI scales with the screen:** canvas_items stretch from 1280×720, aspect "expand". It used to stay at its pixel size.
+- **Window mode labels:** "Fenster", "Randloses Fenster", "Vollbild".
+- **Performance in fullscreen** (it rendered everything at native resolution, uncapped):
+  - **Automatic 3D resolution (new, on by default):** the 3D picture is rendered at no more than 1080 lines and upscaled with FSR 2, so 1440p renders at 75 % and 4K at 50 %. The UI stays sharp. Turn it off to use the 3D resolution slider. Below 100 %, FSR 2 replaces the other anti-aliasing.
+  - **Defaults:** 60 fps cap (new choices: 90 and 165) and TAA instead of MSAA 2× + TAA + FXAA. Settings files saved by the M4 build move to these once, if they still had the old uncapped frame rate or the MSAA combination.
+  - **"Hoch" preset:**
+    - 4K shadow atlas instead of 8K, soft shadows quality 2;
+    - SSAO quality 2, SSIL quality 1;
+    - volumetric fog 96×64;
+    - reflections (SSR) with 24 steps.
+    "Ultra" keeps the full look. "Mittel" and "Niedrig" turn reflections off.
+  - **Lamps and lanterns:** they stop casting shadows beyond a distance set by the preset (14 / 18 / 24 / 40 m) and fade out entirely beyond 32–40 m. Every shadowed lantern used to render the scene six more times, however far away.
+- **DLSS / AMD's AI upscaler (FSR 4):** not available in stock Godot 4.7, which only has FSR 1 and FSR 2. DLSS would need NVIDIA's SDK compiled into a custom engine build: no stock export templates, licence terms, and maintenance on every Godot update. FSR 4 has no Godot integration. We stay on FSR 2 for now.

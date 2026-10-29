@@ -10,6 +10,8 @@ const PATH: String = "user://settings.cfg"
 const ENVIRONMENTS: Array[String] = ["res://world/mine_environment.tres", "res://hub/hub_environment.tres"]
 
 var data: SettingsData = SettingsData.new()
+## Lamps and lanterns farther than this from the camera stop casting shadows (quality preset).
+var shadow_distance: float = 24.0
 
 ## The environments' tuned exposure and SSAO/SSIL switches, before any settings.
 var _base: Dictionary = {}  # Environment -> Dictionary
@@ -21,8 +23,10 @@ func _ready() -> void:
 		data.load_from(file)
 	for path: String in ENVIRONMENTS:
 		var env: Environment = load(path) as Environment
-		_base[env] = {"exposure": env.tonemap_exposure, "ssao": env.ssao_enabled, "ssil": env.ssil_enabled, "fog": env.volumetric_fog_enabled}
+		_base[env] = {"exposure": env.tonemap_exposure, "ssao": env.ssao_enabled, "ssil": env.ssil_enabled, "fog": env.volumetric_fog_enabled, "ssr": env.ssr_enabled}
 	apply()
+	# Automatic resolution follows the window (fullscreen, resizing).
+	get_tree().root.size_changed.connect(_apply_graphics)
 
 
 ## Applies the current values and saves them.
@@ -100,8 +104,17 @@ func _apply_graphics() -> void:
 		env.ssao_enabled = bool(base.ssao) and bool(values.ssao)
 		env.ssil_enabled = bool(base.ssil) and bool(values.ssil)
 		env.volumetric_fog_enabled = bool(base.fog) and data.volumetric_fog
-	root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR if data.render_scale < 0.99 else Viewport.SCALING_3D_MODE_BILINEAR
-	root.scaling_3d_scale = data.render_scale
+		env.ssr_enabled = bool(base.ssr) and bool(values.ssr)
+		env.ssr_max_steps = maxi(1, int(values.ssr_steps))
+	shadow_distance = float(values.shadow_distance)
+	var scale: float = data.effective_render_scale(root.size.y)
+	root.scaling_3d_scale = scale
+	if scale < 0.99:
+		# FSR 2 upscales with its own temporal anti-aliasing: nothing else on top.
+		root.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+		_set_aa(root, Viewport.MSAA_DISABLED, Viewport.SCREEN_SPACE_AA_DISABLED, false)
+		return
+	root.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 	match data.anti_aliasing:
 		SettingsData.AntiAliasing.OFF:
 			_set_aa(root, Viewport.MSAA_DISABLED, Viewport.SCREEN_SPACE_AA_DISABLED, false)
