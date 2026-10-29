@@ -195,6 +195,8 @@ extends Resource
 ## Seconds in deep water before something down there gets hold of you.
 @export var deep_water_grace: float = 2.0
 @export var deep_water_damage_per_second: float = 12.0
+## Seconds the Salzsee ferry takes to cross.
+@export var ferry_seconds: float = 7.0
 
 @export_group("Tatzelwurm")
 @export var tatzelwurm_health: int = 120

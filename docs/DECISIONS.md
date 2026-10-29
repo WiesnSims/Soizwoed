@@ -248,3 +248,20 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - Two rotten ladders lead down. They creak, and give way after 0.6 s of climbing with something heavy in your hands.
   - The fall costs about 25 health. The Seil is the safe way up with a load.
 - **Sole (brine):** pools of 2.2 m radius in 12 % of chunks (more in the Salzsee). Wading through one slows you to 60 %, the carbide burns 3× as fast while you are in it, and footsteps slosh.
+
+### Salzsee (§4) and the Grubnplan
+- **Picking a section:** a yellowed "Grubnplan" hangs right of the notice board in the Gasthaus. E opens the list of sections: the Oberer Stollen from the start, the Salzsee from quota cycle 2.
+  - Anyone in the crew can pick; the host checks the pick is unlocked.
+  - The choice holds for the following shifts until someone changes it, and the plan shows "Heit: …".
+  - A new run starts in the Oberer Stollen again.
+- **The Salzsee:**
+  - **Layout:** 16 m cells; passages 5 m wide and 4.5 m high. Tunnels, a grotto with a salt column, a "Salzdom" (12 × 9 × 12 m with two columns), and the lake cavern. No rails.
+  - **Balance:** loot is worth 1.35×, the enemy budget is 1.2×, and brine pools are in 30 % of chunks. Same creatures as the Oberer Stollen.
+  - **Echo:** a long reverb on sounds, creatures and ambience (echo 0.6; the Oberer Stollen 0.2; the Gasthaus none).
+- **The lake cavern (Seehalle):**
+  - A 14 × 13 m hall with an 11.5 × 8 m lake of black brine, 2.6 m deep, between two landings. Along one wall runs a wet path about 2.5 m wide; creatures always take that path.
+  - **The ferry:** a flat Zille between the landings. Ring the bell at either landing ("Hol über!") and it crosses to the other side in 7 s: to you, or with you on it. The bell is a noise that carries 40 m.
+  - **Swimming:** falling in means swimming at 1.6 m/s with the head above water. The carbide lamp goes out ("ersoffn"); the Stirnlampe keeps working.
+  - Anything medium or heavy slips from your hands and sinks for good: heavy loot crosses on the ferry.
+  - After 2 s in the water something down there gets hold of you: 12 damage a second, with gurgling, until you are out.
+  - Swim against a landing (or the boat) to pull yourself out.

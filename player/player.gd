@@ -28,6 +28,8 @@ const NAMEPLATE_DISTANCE: float = 10.0
 ## Your own lamp hangs right in front of your eyes: at full strength it would light the fog
 ## there and wash out the top of the screen. Others still see its full glow in the dust.
 const OWN_LAMP_FOG_ENERGY: float = 0.15
+## Swimming, the feet hang this far under the surface (the head stays above it).
+const SWIM_DEPTH: float = 1.35
 
 var peer_id: int = 1
 ## 1..4 in order of joining, for the name other players see ("Kumpl 2").
@@ -59,6 +61,8 @@ var in_brine: bool = false
 var climbing: bool = false
 ## 0..1: how hard the carbide flame flares near firedamp (set by Hazards on every peer).
 var gas_flare: float = 0.0
+## The Salzsee lake you are swimming in (null on dry land).
+var swim_lake: Lake
 var crouching: bool = false
 var input_enabled: bool = true
 ## False after dying, until the next ride (host-authoritative).
@@ -286,9 +290,19 @@ func _move(delta: float) -> void:
 	if climbing:
 		speed *= 0.35
 		accel = ACCEL_GROUND
+	var swimming: bool = swim_lake != null and is_instance_valid(swim_lake) and not climbing
+	if swimming:
+		speed = _config.swim_speed
+		accel = ACCEL_AIR
 	velocity.x = lerpf(velocity.x, direction.x * speed, clampf(accel * delta, 0.0, 1.0))
 	velocity.z = lerpf(velocity.z, direction.z * speed, clampf(accel * delta, 0.0, 1.0))
-	if climbing:
+	if swimming:
+		# Float with the head just above the surface; swimming against a low shore pulls you out.
+		var feet: float = swim_lake.surface_y() - SWIM_DEPTH
+		velocity.y = clampf((feet - global_position.y) * 4.0, -3.0, 2.0)
+		if controls and input_dir.y < 0.0:
+			_try_climb_out()
+	elif climbing:
 		velocity.y = _climb_velocity(input_dir)
 		if controls and Input.is_action_just_pressed(&"jump"):
 			_let_go_of_climbable()
@@ -296,7 +310,7 @@ func _move(delta: float) -> void:
 		velocity.y -= _gravity * delta
 	elif controls and Input.is_action_just_pressed(&"jump") and not crouching and not inventory.hands_busy():
 		velocity.y = _config.jump_velocity
-	var falling: float = -velocity.y if not is_on_floor() and not climbing else 0.0
+	var falling: float = -velocity.y if not is_on_floor() and not climbing and not swimming else 0.0
 	move_and_slide()
 	if falling > 0.0 and is_on_floor():
 		var damage: int = _config.fall_damage(falling)
@@ -308,7 +322,45 @@ func _move(delta: float) -> void:
 
 func _can_sprint_with_load() -> bool:
 	var cart: Schubkarre = inventory.hands as Schubkarre
-	return cart == null and inventory.can_sprint() and pushed_cart() == null
+	return cart == null and inventory.can_sprint() and pushed_cart() == null and swim_lake == null
+
+
+# --- swimming (Salzsee) --------------------------------------------------------------------------------
+
+## Fell into deep water: the carbide lamp goes out and nothing heavy can be held.
+func enter_water(lake: Lake) -> void:
+	swim_lake = lake
+	climbing = false
+	if not is_local():
+		return
+	if lamp_on and not lamp_electric:
+		_set_lamp.rpc(false)
+		game().show_message(tr("MSG_LAMP_DROWNED"))
+	var held: WorldItem = inventory.hands as WorldItem
+	if held != null and held.data.weight_class != ItemData.WeightClass.LIGHT:
+		game().request_drop.rpc_id(1, held.get_path(), hold_point.global_transform, Vector3.ZERO)
+		game().show_message(tr("MSG_TOO_HEAVY_TO_SWIM"))
+
+
+func exit_water(lake: Lake) -> void:
+	if swim_lake == lake:
+		swim_lake = null
+
+
+## Pulls you up onto a shore or boat in front when there is floor just above the water there.
+func _try_climb_out() -> void:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var ahead: Vector3 = -global_basis.z * 0.8
+	var from: Vector3 = global_position + Vector3.UP * (SWIM_DEPTH + 1.2) + ahead
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 1.8, 1)
+	query.exclude = [get_rid()]
+	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var ledge: Vector3 = hit.position
+	if ledge.y > swim_lake.surface_y() - 0.3 and ledge.y < swim_lake.surface_y() + 0.9:
+		global_position = ledge + Vector3.UP * 0.05
+		velocity = Vector3.ZERO
 
 
 func _load_speed_factor() -> float:

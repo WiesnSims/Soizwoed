@@ -93,3 +93,28 @@ func test_no_salt_walls_when_switched_off() -> void:
 	params.wall_dead_end_chance = 0.0
 	for seed_value: int in range(10):
 		assert_eq(MineGenerator.generate(seed_value, params, CHUNKS).walls.size(), 0)
+
+
+func test_salzsee_chunks_cover_every_cell() -> void:
+	var lake_set: ChunkSet = load("res://world/chunks/salzsee/salzsee.tres")
+	var lakes: int = 0
+	for seed_value: int in range(40):
+		var layout: MineLayout = MineGenerator.generate(seed_value, params, lake_set)
+		assert_eq(layout.depth.size(), layout.cells.size(), "seed %d has unreachable cells" % seed_value)
+		assert_true(lake_set.entries[layout.chunk_index[layout.start]].is_station)
+		for cell: Vector2i in layout.cells:
+			var entry: ChunkEntry = lake_set.entries[layout.chunk_index[cell]]
+			var turned: int = GridDir.rotate_mask(entry.openings, layout.chunk_rotation[cell])
+			assert_eq(turned & layout.cells[cell], layout.cells[cell], "seed %d cell %s" % [seed_value, cell])
+			lakes += 1 if entry.scene.resource_path.ends_with("lake.tscn") else 0
+	assert_gt(lakes, 10, "hardly any lake caverns in 40 Salzsee mines")
+
+
+func test_every_section_has_rules_and_creatures() -> void:
+	var config: BalanceConfig = load("res://balance.tres")
+	for path: String in ["res://world/chunks/oberer_stollen/oberer_stollen.tres", "res://world/chunks/salzsee/salzsee.tres"]:
+		var chunk_set: ChunkSet = load(path)
+		assert_not_null(config.biome_rule(chunk_set.id), "no BiomeRule for %s" % chunk_set.id)
+		assert_false(chunk_set.creatures.is_empty())
+		for id: StringName in chunk_set.creatures:
+			assert_not_null(config.spawn_rule(id), "%s: no spawn rule for %s" % [chunk_set.id, id])

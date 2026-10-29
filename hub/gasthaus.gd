@@ -20,12 +20,15 @@ const WALL: float = 0.3
 @onready var board_text: Label3D = $Board/Text
 
 var _body: StaticBody3D
+## The Grubnplan beside the notice board: which mine section the crew rides down into.
+var _plan: Label3D
 
 
 func _ready() -> void:
 	_body = StaticBody3D.new()
 	_body.name = "Room"
 	add_child(_body)
+	_build_plan()
 	_build_shell()
 	_build_counter()
 	_build_tables()
@@ -62,9 +65,55 @@ func update_board(info: Dictionary) -> void:
 		tr("BOARD_MONEY") % int(info.money),
 		tr("BOARD_SHIFTS") % int(info.shifts_left),
 	]
+	if _plan != null:
+		var section: ChunkSet = Game.BIOMES[clampi(int(info.get("section", 0)), 0, Game.BIOMES.size() - 1)]
+		_plan.text = "%s\n\n%s" % [tr("PLAN_TITLE"), tr("PLAN_TODAY") % tr(section.biome_name_key)]
 
 
 # --- building ---------------------------------------------------------------------------------------
+
+## A yellowed mine plan pinned to the wall right of the notice board; E opens the section list.
+func _build_plan() -> void:
+	var paper: StandardMaterial3D = StandardMaterial3D.new()
+	paper.albedo_color = Color(0.78, 0.7, 0.52)
+	paper.roughness = 0.9
+	var plan: SectionPlan = SectionPlan.new()
+	plan.name = "Plan"
+	plan.position = Vector3(1.4, 1.7, -HALF_Z + 0.05)
+	add_child(plan)
+	var sheet: MeshInstance3D = MeshInstance3D.new()
+	var box: BoxMesh = BoxMesh.new()
+	box.size = Vector3(1.3, 0.9, 0.02)
+	sheet.mesh = box
+	sheet.material_override = paper
+	plan.add_child(sheet)
+	_plan = Label3D.new()
+	_plan.text = tr("PLAN_TITLE")
+	_plan.font_size = 32
+	_plan.pixel_size = 0.0035
+	_plan.modulate = Color(0.2, 0.14, 0.08)
+	_plan.outline_size = 0
+	_plan.position = Vector3(0.0, 0.0, 0.02)
+	plan.add_child(_plan)
+
+
+class SectionPlan:
+	extends StaticBody3D
+
+	func _ready() -> void:
+		collision_layer = 16
+		collision_mask = 0
+		var shape: CollisionShape3D = CollisionShape3D.new()
+		var box: BoxShape3D = BoxShape3D.new()
+		box.size = Vector3(1.3, 0.9, 0.1)
+		shape.shape = box
+		add_child(shape)
+
+	func interaction_text(_player: Player) -> String:
+		return tr("PROMPT_PLAN") if Game.instance.phase == Game.Phase.HUB else ""
+
+	func interact(_player: Player) -> void:
+		Game.instance.hud.open_sections()
 
 func _build_shell() -> void:
 	_box(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0), Vector3(0, -0.1, 0), FLOOR)

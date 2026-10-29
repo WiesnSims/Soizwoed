@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="1_chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="2_box"]
+
+[node name="Corner" type="Node3D"]
+script = ExtResource("1_chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Center" type="Node3D" parent="Cave"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+script = ExtResource("2_box")
+size = Vector3(5, 4.5, 5)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5.25)
+script = ExtResource("2_box")
+size = Vector3(5, 4.5, 5.5)
+
+[node name="Arm_E" type="Node3D" parent="Cave"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.25, 0, 0)
+script = ExtResource("2_box")
+size = Vector3(5.5, 4.5, 5)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="Nav_E" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 0)
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 0.4, 1.5)

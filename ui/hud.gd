@@ -132,6 +132,8 @@ func update_run(info: Dictionary) -> void:
 		_run_label.text += "\n" + tr("HUD_CREW") % int(info.players)
 	if _panel_kind == "shop":
 		open_shop()
+	elif _panel_kind == "sections":
+		open_sections()
 
 
 func modal_open() -> bool:
@@ -172,6 +174,44 @@ func open_shop() -> void:
 		list.add_child(row)
 	_add_button(tr("PANEL_CLOSE"), close_panels)
 	_apply_modal()
+
+
+## The Grubnplan: pick the mine section for the next shift (later ones unlock with the cycles).
+func open_sections() -> void:
+	_start_panel("sections", tr("PLAN_TITLE"))
+	var game: Game = Game.instance
+	var cycle: int = int(_run_info.get("cycle", 0))
+	for index: int in Game.BIOMES.size():
+		var section: ChunkSet = Game.BIOMES[index]
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		var rule: BiomeRule = Balance.config.biome_rule(section.id)
+		var text: String = tr(section.biome_name_key) + "\n" + tr(section.biome_name_key + "_DESC")
+		var label: Label = _label(text, 17)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.custom_minimum_size = Vector2(380, 0)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(label)
+		var pick: Button = Button.new()
+		pick.custom_minimum_size = Vector2(170, 0)
+		if index == game.biome_index:
+			pick.text = tr("PLAN_PICKED")
+			pick.disabled = true
+		elif not game.section_unlocked(index, cycle):
+			pick.text = tr("PLAN_LOCKED") % (rule.unlock_cycle + 1)
+			pick.disabled = true
+		else:
+			pick.text = tr("PLAN_PICK")
+			pick.pressed.connect(_on_section_pressed.bind(index))
+		row.add_child(pick)
+		_panel_box.add_child(row)
+	_add_button(tr("PANEL_CLOSE"), close_panels)
+	_apply_modal()
+
+
+func _on_section_pressed(index: int) -> void:
+	Audio.play_ui("ui_click")
+	Game.instance.request_section.rpc_id(1, index)
 
 
 func show_results(results: Dictionary, left_behind: bool, dead: bool = false) -> void:

@@ -16,7 +16,10 @@ const HUB_FLOOR_ABOVE: float = 200.0
 const RIDE_SECONDS: float = 3.5
 const FADE_SECONDS: float = 0.6
 ## The mine sections, in the order they unlock (DESIGN.md §4).
-const BIOMES: Array[ChunkSet] = [preload("res://world/chunks/oberer_stollen/oberer_stollen.tres")]
+const BIOMES: Array[ChunkSet] = [
+	preload("res://world/chunks/oberer_stollen/oberer_stollen.tres"),
+	preload("res://world/chunks/salzsee/salzsee.tres"),
+]
 const PLAYER_SCENE: PackedScene = preload("res://player/player.tscn")
 const CAGE_SCENE: PackedScene = preload("res://world/lift/foerderkorb.tscn")
 const MINE_ENVIRONMENT: Environment = preload("res://world/mine_environment.tres")
@@ -153,6 +156,7 @@ func _on_session_started() -> void:
 	if NetworkManager.is_host():
 		if GameState.run == null:
 			GameState.start_run(NetworkManager.player_count())
+			biome_index = 0
 			# Solo extra (DESIGN.md §8). A host waiting for friends does not get it.
 			if NetworkManager.mode == NetworkManager.Mode.SOLO and _config.solo_free_schubkarre:
 				_spawn_item_at(&"schubkarre", 0, hub.free_cart_spot())
@@ -611,6 +615,7 @@ func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	biome_index = clampi(biome, 0, BIOMES.size() - 1)
 	mine.build(seed_value, MineParams.from_balance(_config, cycle), BIOMES[biome_index])
 	mine.add_hazards(cycle, _biome_rule())
+	Audio.set_echo(mine.chunk_set.echo)
 	var anchor: Marker3D = mine.station.find_child("LiftAnchor", true, false) as Marker3D
 	mine_cage = CAGE_SCENE.instantiate() as Foerderkorb
 	mine_cage.name = "MineCage"
@@ -663,6 +668,7 @@ func _end_shift(results: Dictionary) -> void:
 	if multiplayer.is_server():
 		NetworkManager.set_joinable(phase == Phase.HUB)
 	_free_mine()
+	Audio.set_echo(0.0)
 	hub_cage.stop_ride()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
@@ -713,6 +719,7 @@ func _broadcast_run() -> void:
 		"shifts_left": run.shifts_left_in_cycle(),
 		"fired": run.fired,
 		"players": run.player_count,
+		"section": biome_index,
 	}
 	for peer: int in _ready_peers:
 		if peer == multiplayer.get_unique_id():
@@ -724,6 +731,7 @@ func _broadcast_run() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _apply_run_info(info: Dictionary) -> void:
 	run_info = info
+	biome_index = clampi(int(info.get("section", biome_index)), 0, BIOMES.size() - 1)
 	hub.update_board(info)
 	hud.update_run(info)
 
@@ -1083,6 +1091,11 @@ func _find_drop(point: Vector3, flat: Vector3) -> Array[Vector3]:
 		var hit: Dictionary = space.intersect_ray(query)
 		var floor_y: float = (hit.position as Vector3).y if not hit.is_empty() else probe.y - depth
 		if point.y - floor_y > 1.8:
+			# A bulge of the wall just under the edge is not the bottom: look a little further out.
+			for extra: int in range(1, 4):
+				var further: Vector3 = probe + flat * (0.2 * extra)
+				var deeper: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(further, further + Vector3.DOWN * depth, 1))
+				floor_y = minf(floor_y, (deeper.position as Vector3).y if not deeper.is_empty() else further.y - depth)
 			var top: Vector3 = Vector3(probe.x, point.y, probe.z) + flat * 0.1
 			return [top, Vector3(top.x, maxf(floor_y, top.y - _config.seil_length), top.z)]
 	return []
@@ -1125,6 +1138,47 @@ func _remove_rope(rope_path: NodePath) -> void:
 	var rope: Node = get_node_or_null(rope_path)
 	if rope != null:
 		rope.queue_free()
+
+
+## The bell at a Salzsee landing: the ferry crosses over. The bell carries far.
+@rpc("any_peer", "call_local", "reliable")
+func request_ferry(ferry_path: NodePath, bell_at: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var ferry: Ferry = get_node_or_null(ferry_path) as Ferry
+	var player: Player = player_by_peer(_sender())
+	if ferry == null or player == null or not player.alive or player.global_position.distance_to(bell_at) > _config.interact_distance + 2.0:
+		return
+	play_sound_everywhere.rpc("ferry_bell", bell_at, 4.0, 70.0)
+	host_noise(bell_at, _config.noise_bell)
+	if ferry.host_ring():
+		print("[game] ferry crossing")
+
+
+## A message for one player (host), by translation key.
+func message_to(peer: int, key: String) -> void:
+	if peer == multiplayer.get_unique_id():
+		_show_message_key(key)
+	else:
+		_show_message_key.rpc_id(peer, key)
+
+
+## Picked a mine section on the Grubnplan in the Gasthaus (only unlocked ones, only in the hub).
+@rpc("any_peer", "call_local", "reliable")
+func request_section(index: int) -> void:
+	if not multiplayer.is_server() or phase != Phase.HUB or index < 0 or index >= BIOMES.size():
+		return
+	if not section_unlocked(index, GameState.run.cycle):
+		return
+	biome_index = index
+	_broadcast_run()
+	print("[game] section %s picked" % BIOMES[index].id)
+
+
+## Whether mine section `index` can be picked in quota cycle `cycle` (BiomeRule.unlock_cycle).
+func section_unlocked(index: int, cycle: int) -> bool:
+	var rule: BiomeRule = _config.biome_rule(BIOMES[index].id)
+	return rule == null or cycle >= rule.unlock_cycle
 
 
 ## The Funkgerät's call button: a crackle on every other Funkgerät in the crew.

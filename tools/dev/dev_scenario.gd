@@ -35,10 +35,14 @@ func run(game: Game, scenario: String) -> void:
 		while _game._ready_peers.size() < 2:
 			await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
+	if scenario == "salzsee":
+		_game.biome_index = 1  # unlocked or not: this is a check of the section itself
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
 		await get_tree().process_frame
 	match scenario:
+		"salzsee":
+			await _salzsee()
 		"mandl":
 			await _mandl()
 		"loot":
@@ -418,6 +422,10 @@ func _hazards() -> void:
 	var player: Player = _game.local_player()
 	var config: BalanceConfig = Balance.config
 	var hazards: Hazards = _game.mine.hazards
+	# Only the test pockets count: the mine's own could go up wherever the checks lead.
+	for pocket: Hazards.GasPocket in hazards.pockets:
+		pocket.gone = true
+		pocket.visible = false
 	var stand: Vector3 = _out_of_station(8.0)
 	player.teleport(Transform3D(_game.mine_cage.global_basis, stand))
 	await get_tree().create_timer(0.5).timeout
@@ -518,6 +526,50 @@ func _gesenk(player: Player, config: BalanceConfig) -> void:
 	Input.action_release(&"move_forward")
 	await get_tree().create_timer(0.5).timeout
 	print("[scenario] climbed the rope to %.1f, on the ledge %s" % [player.global_position.y - top.y, player.global_position.y > top.y - 0.3])
+
+
+## A Salzsee shift: the section's mine, and a lake cavern far below it for swimming and the ferry.
+func _salzsee() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	print("[scenario] section %s, %d chunks, cell %.0f m, echo %.1f" % [_game.mine.chunk_set.id, _game.mine.chunks.size(), _game.mine.chunk_set.cell_size, _game.mine.chunk_set.echo])
+	var scene: PackedScene = load("res://world/chunks/salzsee/lake.tscn")
+	var chunk: Chunk = scene.instantiate() as Chunk
+	chunk.name = "LakeTest"
+	chunk.cell = Vector2i(100, 100)
+	chunk.position = Vector3(0.0, -80.0, 0.0)
+	chunk.setup(GridDir.N | GridDir.S, 0)
+	_game.mine.add_child(chunk)
+	chunk.build_cave(8.0, _game.mine.seed_value)
+	await get_tree().physics_frame
+	var lake: Lake = chunk.find_child("Lake", true, false) as Lake
+	var ferry: Ferry = chunk.find_child("Ferry", true, false) as Ferry
+	# Into the water: swimming, the carbide lamp drowns, and something bites after a while.
+	player.lamp_on = true
+	player.teleport(Transform3D(Basis.IDENTITY, lake.global_position + Vector3(-3.0, 0.5, 0.0)))
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] in the lake: swimming %s, lamp on %s, head above water %s" % [player.swim_lake != null, player.lamp_on, player.global_position.y + 1.6 > lake.surface_y()])
+	await get_tree().create_timer(config.deep_water_grace + 1.5).timeout
+	print("[scenario] after %.0f s in the water: health %d" % [config.deep_water_grace + 2.5, player.health])
+	# Swim to the north landing and pull out.
+	player.look_at(Vector3(player.global_position.x, player.global_position.y, chunk.global_position.z - 8.0))
+	Input.action_press(&"move_forward")
+	for i: int in 80:
+		await get_tree().create_timer(0.1).timeout
+		if player.swim_lake == null:
+			break
+	Input.action_release(&"move_forward")
+	print("[scenario] out of the water: %s at %.1f" % [player.swim_lake == null, player.global_position.y - chunk.global_position.y])
+	player.set_health(config.player_max_health)
+	# The ferry: stand on it at the north landing, ring, ride across.
+	var deck: Vector3 = ferry.boat_position()
+	player.teleport(Transform3D(Basis.IDENTITY, deck + Vector3.UP * 0.3))
+	await get_tree().create_timer(0.6).timeout
+	_game.request_ferry(ferry.get_path(), player.global_position)
+	await get_tree().create_timer(config.ferry_seconds + 1.0).timeout
+	print("[scenario] ferry crossed %.1f m, rider moved %.1f m, swimming %s" % [ferry.boat_position().distance_to(deck), player.global_position.distance_to(deck), player.swim_lake != null])
 
 
 func _count(id: StringName) -> int:

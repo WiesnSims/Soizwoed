@@ -188,3 +188,17 @@ USE_EAT,Essn
 USE_ROPE,Seil owi lossn
 USE_PFEIFERL,Pfeifn
 USE_RADIO,Anfunkn
+BIOME_OBERER_STOLLEN_DESC,"Hoiz, Gleis und oide Lampn. Da Hunt rennt auf de Schienen."
+BIOME_SALZSEE,Salzsee
+BIOME_SALZSEE_DESC,"Riesige Hallen, a schwoaze Sole-See und a Fähre. Mehr wert – und wos im Wossa."
+PLAN_TITLE,Grubnplan
+PLAN_TODAY,Heit: %s
+PLAN_PICK,Do eini
+PLAN_PICKED,Do geht's eini
+PLAN_LOCKED,Ab Quotenrundn %d
+PROMPT_PLAN,Grubnplan – Abschnitt aussuachn
+PROMPT_FERRY_BELL,"Glockn läutn – ""Hol über!"""
+PROMPT_FERRY_BUSY,De Fähre is unterwegs.
+MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
+MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
+MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."

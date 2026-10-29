@@ -43,6 +43,7 @@ id = &"salzsee"
 unlock_cycle = 1
 loot_value_mult = 1.35
 enemy_budget_mult = 1.2
+brine_share = 0.3
 
 [resource]
 script = ExtResource("1_balance")

@@ -129,27 +129,27 @@ func markers_with_depth(group: StringName) -> Array[Array]:
 	return result
 
 
-## Waypoints: every chunk links its nav points to its centre point ("Nav_C"); points at
-## the same spot (the shared edge of two chunks) are merged.
+## Waypoints: every chunk links its nav points to its centre point ("Nav_C"), or to the point
+## named in their `link` metadata (paths around a lake); points at the same spot (the shared
+## edge of two chunks) are merged.
 func _build_nav() -> void:
 	var id_of: Dictionary = {}
 	for cell: Vector2i in layout.cells:
 		var chunk: Chunk = chunks[cell]
-		var centre_id: int = -1
-		var others: Array[int] = []
+		var ids: Dictionary = {}  # marker name -> point id
+		var links: Array[Array] = []  # [point id, name of the point it links to]
 		for marker: Marker3D in chunk.markers(&"nav_point"):
 			var key: Vector3i = Vector3i((marker.global_position * 4.0).round())
 			if not id_of.has(key):
 				var new_id: int = nav.get_available_point_id()
 				nav.add_point(new_id, marker.global_position)
 				id_of[key] = new_id
-			if marker.name == "Nav_C":
-				centre_id = id_of[key]
-			else:
-				others.append(id_of[key])
-		assert(centre_id >= 0, "%s has no Nav_C" % chunk.name)
-		for other: int in others:
-			nav.connect_points(centre_id, other)
+			ids[String(marker.name)] = id_of[key]
+			if marker.name != "Nav_C":
+				links.append([id_of[key], str(marker.get_meta(&"link", "Nav_C"))])
+		assert(ids.has("Nav_C"), "%s has no Nav_C" % chunk.name)
+		for link: Array in links:
+			nav.connect_points(link[0], ids.get(link[1], ids["Nav_C"]))
 
 
 func nav_path(from: Vector3, to: Vector3) -> PackedVector3Array:

@@ -26,6 +26,29 @@ func _ready() -> void:
 	_add_radio_bus()
 
 
+## How much the rock throws sound back (ChunkSet.echo: dry tunnels 0.2, the Salzsee's caverns
+## much more; 0 in the Gasthaus). One reverb on the sounds, creatures and ambience buses.
+func set_echo(amount: float) -> void:
+	for bus_name: StringName in [&"SFX", &"Creatures", &"Ambience"]:
+		var index: int = AudioServer.get_bus_index(bus_name)
+		var reverb: AudioEffectReverb = null
+		var slot: int = -1
+		for i: int in AudioServer.get_bus_effect_count(index):
+			if AudioServer.get_bus_effect(index, i) is AudioEffectReverb:
+				reverb = AudioServer.get_bus_effect(index, i) as AudioEffectReverb
+				slot = i
+		if reverb == null:
+			reverb = AudioEffectReverb.new()
+			AudioServer.add_bus_effect(index, reverb)
+			slot = AudioServer.get_bus_effect_count(index) - 1
+		reverb.room_size = 0.35 + amount * 0.6
+		reverb.damping = 0.55 - amount * 0.3
+		reverb.predelay_msec = 20.0 + amount * 120.0
+		reverb.wet = amount * 0.3
+		reverb.dry = 1.0
+		AudioServer.set_bus_effect_enabled(index, slot, amount > 0.01)
+
+
 ## The Funkgerät: tinny and crackly, under the voice volume (it sends into Voice).
 func _add_radio_bus() -> void:
 	if AudioServer.get_bus_index(&"Radio") != -1:
