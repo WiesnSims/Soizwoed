@@ -5,11 +5,11 @@ extends StaticBody3D
 @onready var cage: Foerderkorb = get_parent() as Foerderkorb
 
 
-func interaction_text(_player: Player) -> String:
+func interaction_text(player: Player) -> String:
 	var game: Game = Game.instance
 	if cage.in_hub:
 		return tr("PROMPT_LIFT_DOWN") if game.phase == Game.Phase.HUB else ""
-	return tr("PROMPT_LIFT_UP") if game.phase == Game.Phase.SHIFT else ""
+	return tr("PROMPT_LIFT_UP") if game.phase == Game.Phase.SHIFT and cage.contains(player.global_position) else ""
 
 
 func interact_hold_seconds(_player: Player) -> float:

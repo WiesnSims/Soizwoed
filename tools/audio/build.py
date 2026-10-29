@@ -5,7 +5,7 @@
     python tools/audio/build.py drip swing   # only these names
     python tools/audio/build.py --samples    # voice sample pack to build/samples/ (sample check)
 
-Folders: sfx/, ambience/, voices/<creature>/. A sound with several variants is written as
+Folders: sfx/, ambience/, music/, voices/<creature>/. A sound with several variants is written as
 name_1.ogg, name_2.ogg ...; one with a single variant as name.ogg. The game picks a variant at
 random (autoload/audio.gd). Voice lines need eSpeak NG; without it they are skipped.
 Structure follows Berghittn's tools/audio/build.py."""
@@ -17,6 +17,7 @@ import numpy as np
 import soundfile as sf
 
 import dsp
+import music
 import sfx
 import voices
 
@@ -49,6 +50,7 @@ def jobs():
         for v in range(variants):
             file = f"{name}_{v + 1}.ogg" if variants > 1 else f"{name}.ogg"
             yield name, AUDIO / folder / file, fn, v, name in sfx.LOOPS
+    yield "stubenmusi", AUDIO / "music" / "stubenmusi.ogg", music.stubenmusi, 0, True
     if voices.espeak():
         for folder, name, fn in voices.voice_jobs():
             yield name, AUDIO / folder / f"{name}.ogg", fn, 0, False

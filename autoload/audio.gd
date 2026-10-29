@@ -55,6 +55,12 @@ func play_at(sound: String, where: Vector3, bus: StringName = &"SFX", volume_db:
 	var audio: AudioStream = stream(sound)
 	if audio == null:
 		return null
+	return play_stream_at(audio, where, bus, volume_db, max_distance, pitch)
+
+
+## Like play_at, for a stream at hand (e.g. a creature's last words).
+func play_stream_at(audio: AudioStream, where: Vector3, bus: StringName = &"SFX", volume_db: float = 0.0,
+		max_distance: float = 30.0, pitch: float = 1.0) -> AudioStreamPlayer3D:
 	var player: AudioStreamPlayer3D = AudioStreamPlayer3D.new()
 	player.stream = audio
 	player.bus = bus

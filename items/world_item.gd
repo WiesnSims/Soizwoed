@@ -38,9 +38,12 @@ func display_name() -> String:
 	return tr(data.name_key)
 
 
-func interaction_text(_player: Player) -> String:
+func interaction_text(player: Player) -> String:
 	if state != State.FREE and state != State.CARTED:
 		return ""
+	var pushing: Schubkarre = player.inventory.hands as Schubkarre
+	if pushing != null and is_loot() and state == State.FREE:
+		return tr("PROMPT_LOAD_CART") if pushing.can_load(self) else tr("PROMPT_CART_FULL")
 	return tr("PROMPT_PICK_UP") % display_name()
 
 
@@ -92,6 +95,11 @@ func host_move(to: Transform3D) -> void:
 	_apply_state.rpc(state, holder_peer, 0, NodePath(), to)
 
 
+## Removes the item from the game (sold, used up, or lost in the mine).
+func host_vanish() -> void:
+	_vanish.rpc()
+
+
 # --- every peer ------------------------------------------------------------------------------------
 
 @rpc("authority", "call_local", "reliable")
@@ -115,6 +123,8 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 			follow = get_node_or_null(follow_path) as Node3D
 		State.FREE:
 			global_transform = at
+			linear_velocity = Vector3.ZERO
+			angular_velocity = Vector3.ZERO
 	freeze = new_state != State.FREE
 	collision_layer = LAYER_ITEMS if new_state == State.FREE or new_state == State.CARTED else 0
 	if new_state != State.STORED:
@@ -122,11 +132,24 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 	state_changed.emit()
 
 
+@rpc("authority", "call_local", "reliable")
+func _vanish() -> void:
+	_leave_current_holder()
+	hide()
+	if multiplayer.is_server():
+		queue_free()  # the spawner removes it on the clients
+
+
+func _exit_tree() -> void:
+	_leave_current_holder()
+
+
 func _leave_current_holder() -> void:
-	if holder_peer != 0:
+	if holder_peer != 0 and Game.instance != null:
 		var player: Player = Game.instance.player_by_peer(holder_peer)
 		if player != null:
 			player.inventory.remove(self)
-	if cart != null:
+	holder_peer = 0
+	if cart != null and is_instance_valid(cart):
 		cart.cargo.erase(self)
-		cart = null
+	cart = null

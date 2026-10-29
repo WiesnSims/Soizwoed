@@ -5,7 +5,7 @@ extends Resource
 ## length use the last entry (keeps the design open for up to 6 players).
 
 @export_group("Quota")
-@export var quota_base: int = 150
+@export var quota_base: int = 1500
 @export var quota_growth: float = 1.4
 @export var shifts_per_cycle: int = 3
 @export var quota_mult_by_players: Array[float] = [0.45, 0.65, 0.85, 1.0]

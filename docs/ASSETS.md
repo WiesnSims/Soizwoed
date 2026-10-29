@@ -18,3 +18,7 @@ Fetched by `tools/textures/fetch.py`.
 | hub_logs (2k) | Gasthaus log walls | [beam_wall_01](https://polyhaven.com/a/beam_wall_01) | Rob Tuytel |
 | hub_plaster (1k) | Gasthaus plaster | [plastered_wall](https://polyhaven.com/a/plastered_wall) | Amal Kumar |
 | hub_planks (1k) | Gasthaus counter, tables, panelling | [dark_wooden_planks](https://polyhaven.com/a/dark_wooden_planks) | Amal Kumar |
+
+## Music
+
+The Gasthaus waltz (`assets/audio/music/stubenmusi.ogg`) is synthesised by `tools/audio/music.py` (our own, no third-party material).

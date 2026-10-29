@@ -1,8 +1,8 @@
 extends Control
-## Main menu: solo, host, join, quit. Also applies the --solo/--host/--join command line
-## options once at startup.
+## Main menu: solo, host, join, quit. Lies over the Gasthaus in the game scene; the game takes
+## over once a session starts. Also applies the --solo/--host/--join command line options
+## once at startup.
 
-const HUB_SCENE: String = "res://hub/hub.tscn"
 const DEFAULT_JOIN_ADDRESS: String = "127.0.0.1"
 
 static var _launch_options_applied: bool = false
@@ -20,10 +20,9 @@ func _ready() -> void:
 	_host_button.pressed.connect(_on_host_pressed)
 	_join_button.pressed.connect(_on_join_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
-	NetworkManager.session_started.connect(_on_session_started)
 	NetworkManager.session_ended.connect(_on_session_ended)
 	_address_edit.text = DEFAULT_JOIN_ADDRESS
-	_status_label.text = NetworkManager.last_end_reason
+	_status_label.text = tr(NetworkManager.last_end_reason)
 	NetworkManager.last_end_reason = ""
 	if not _launch_options_applied:
 		_launch_options_applied = true
@@ -47,7 +46,7 @@ func _on_solo_pressed() -> void:
 
 func _on_host_pressed() -> void:
 	if not NetworkManager.host():
-		_status_label.text = NetworkManager.last_end_reason
+		_status_label.text = tr(NetworkManager.last_end_reason)
 
 
 func _on_join_pressed() -> void:
@@ -55,19 +54,15 @@ func _on_join_pressed() -> void:
 		_status_label.text = "NET_CONNECTING"
 		_set_buttons_disabled(true)
 	else:
-		_status_label.text = NetworkManager.last_end_reason
+		_status_label.text = tr(NetworkManager.last_end_reason)
 
 
 func _on_quit_pressed() -> void:
 	get_tree().quit()
 
 
-func _on_session_started() -> void:
-	get_tree().change_scene_to_file(HUB_SCENE)
-
-
 func _on_session_ended(reason: String) -> void:
-	_status_label.text = reason
+	_status_label.text = tr(reason)
 	_set_buttons_disabled(false)
 
 

@@ -10,3 +10,6 @@ build/
 Thumbs.db
 .DS_Store
 .vscode/
+
+# Python
+__pycache__/

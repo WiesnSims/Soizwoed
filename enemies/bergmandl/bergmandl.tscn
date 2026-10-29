@@ -1,0 +1,154 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://enemies/bergmandl/bergmandl.gd" id="1_mandl"]
+[ext_resource type="Script" path="res://world/props/muffled_audio.gd" id="2_muffled"]
+
+[sub_resource type="CapsuleShape3D" id="shape"]
+radius = 0.22
+height = 0.85
+
+[sub_resource type="CapsuleMesh" id="coat"]
+radius = 0.2
+height = 0.58
+
+[sub_resource type="StandardMaterial3D" id="coat_mat"]
+albedo_color = Color(0.24, 0.17, 0.1, 1)
+roughness = 0.95
+
+[sub_resource type="SphereMesh" id="head"]
+radius = 0.14
+height = 0.27
+
+[sub_resource type="StandardMaterial3D" id="skin"]
+albedo_color = Color(0.62, 0.45, 0.36, 1)
+roughness = 0.75
+subsurf_scatter_enabled = true
+subsurf_scatter_strength = 0.3
+
+[sub_resource type="CylinderMesh" id="beard"]
+top_radius = 0.12
+bottom_radius = 0.0
+height = 0.3
+radial_segments = 10
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="beard_mat"]
+albedo_color = Color(0.72, 0.7, 0.66, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="hat"]
+top_radius = 0.0
+bottom_radius = 0.16
+height = 0.42
+radial_segments = 12
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="hat_mat"]
+albedo_color = Color(0.5, 0.07, 0.05, 1)
+roughness = 0.9
+
+[sub_resource type="SphereMesh" id="eye"]
+radius = 0.022
+height = 0.044
+radial_segments = 8
+rings = 4
+
+[sub_resource type="StandardMaterial3D" id="eye_mat"]
+shading_mode = 0
+albedo_color = Color(1, 0.9, 0.45, 1)
+emission_enabled = true
+emission = Color(1, 0.85, 0.35, 1)
+emission_energy_multiplier = 5.0
+
+[sub_resource type="SphereMesh" id="nose"]
+radius = 0.045
+height = 0.08
+
+[sub_resource type="CapsuleMesh" id="arm"]
+radius = 0.045
+height = 0.34
+
+[sub_resource type="SceneReplicationConfig" id="sync"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+
+[node name="Bergmandl" type="CharacterBody3D"]
+floor_snap_length = 0.3
+script = ExtResource("1_mandl")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.425, 0)
+shape = SubResource("shape")
+
+[node name="Body" type="Node3D" parent="."]
+
+[node name="Coat" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+mesh = SubResource("coat")
+surface_material_override/0 = SubResource("coat_mat")
+
+[node name="ArmL" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(0.94, -0.34, 0, 0.34, 0.94, 0, 0, 0, 1, -0.21, 0.36, -0.03)
+mesh = SubResource("arm")
+surface_material_override/0 = SubResource("coat_mat")
+
+[node name="ArmR" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(0.94, 0.34, 0, -0.34, 0.94, 0, 0, 0, 1, 0.21, 0.36, -0.03)
+mesh = SubResource("arm")
+surface_material_override/0 = SubResource("coat_mat")
+
+[node name="Head" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+mesh = SubResource("head")
+surface_material_override/0 = SubResource("skin")
+
+[node name="Beard" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, -0.08)
+mesh = SubResource("beard")
+surface_material_override/0 = SubResource("beard_mat")
+
+[node name="Nose" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.69, -0.14)
+mesh = SubResource("nose")
+surface_material_override/0 = SubResource("skin")
+
+[node name="Hat" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 0.97, 0.24, 0, -0.24, 0.97, 0, 0.98, 0.04)
+mesh = SubResource("hat")
+surface_material_override/0 = SubResource("hat_mat")
+
+[node name="EyeL" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.05, 0.74, -0.12)
+mesh = SubResource("eye")
+surface_material_override/0 = SubResource("eye_mat")
+
+[node name="EyeR" type="MeshInstance3D" parent="Body"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, 0.74, -0.12)
+mesh = SubResource("eye")
+surface_material_override/0 = SubResource("eye_mat")
+
+[node name="CarryPoint" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+
+[node name="Voice" type="AudioStreamPlayer3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+volume_db = 2.0
+unit_size = 3.0
+max_distance = 30.0
+bus = &"Creatures"
+script = ExtResource("2_muffled")
+
+[node name="Steps" type="AudioStreamPlayer3D" parent="."]
+volume_db = -10.0
+unit_size = 2.0
+max_distance = 18.0
+bus = &"Creatures"
+script = ExtResource("2_muffled")
+
+[node name="Sync" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.066
+replication_config = SubResource("sync")

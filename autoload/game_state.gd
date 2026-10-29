@@ -44,4 +44,7 @@ func _start_smoke_timer_if_requested() -> void:
 func _on_smoke_timeout() -> void:
 	print("[smoke] done")
 	NetworkManager.leave()
+	# Free the scene first so no sound is still playing at exit (that leaks the playback).
+	get_tree().unload_current_scene()
+	await get_tree().create_timer(0.3).timeout
 	get_tree().quit(0)

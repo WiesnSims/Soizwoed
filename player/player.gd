@@ -25,6 +25,8 @@ var lamp_fuel: float = 0.0
 var lamp_on: bool = true
 var crouching: bool = false
 var input_enabled: bool = true
+## False while out of the shift (dead or left behind); back at the next ride.
+var alive: bool = true
 ## The interactable under the crosshair (local player only).
 var focus: Node
 ## 0..1 progress of a held interaction (local player only).
@@ -49,7 +51,7 @@ var _hold_time: float = 0.0
 @onready var cart_point: Node3D = $CartPoint
 @onready var ray: RayCast3D = $Head/Camera/InteractRay
 @onready var footsteps: AudioStreamPlayer3D = $Footsteps
-@onready var voice: AudioStreamPlayer3D = $Voice
+@onready var voice: AudioStreamPlayer3D = $Head/Voice
 @onready var shape: CollisionShape3D = $Shape
 @onready var body_mesh: Node3D = $Body
 
@@ -73,6 +75,10 @@ func _ready() -> void:
 	if local:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_update_lamp()
+
+
+func _exit_tree() -> void:
+	lamp_sound.stop()
 
 
 func is_local() -> bool:
@@ -185,6 +191,13 @@ func _play_footstep(on_wood: bool) -> void:
 func teleport(to: Transform3D) -> void:
 	global_transform = to
 	velocity = Vector3.ZERO
+	head.rotation.x = 0.0
+
+
+@rpc("any_peer", "call_local", "reliable")
+func revive() -> void:
+	alive = true
+	health = _config.player_max_health
 
 
 # --- lamp ------------------------------------------------------------------------------------------
@@ -203,7 +216,8 @@ func _set_lamp(on: bool) -> void:
 
 
 func _tick_lamp(delta: float) -> void:
-	if not lamp_on:
+	# The carbide only burns down in the mine.
+	if not lamp_on or global_position.y > Game.HUB_FLOOR_ABOVE:
 		return
 	lamp_fuel = maxf(0.0, lamp_fuel - delta)
 	if lamp_fuel <= 0.0:
