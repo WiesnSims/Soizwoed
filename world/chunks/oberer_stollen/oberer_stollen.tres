@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/tunnelcross.tscn" id="8_cross"]
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/sideroom.tscn" id="9_sideroom"]
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/hall.tscn" id="10_hall"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/gesenk.tscn" id="11_gesenk"]
 
 [sub_resource type="Resource" id="Resource_station"]
 script = ExtResource("2_entry")
@@ -61,9 +62,22 @@ openings = 15
 weight = 0.7
 min_depth = 3
 
+[sub_resource type="Resource" id="Resource_gesenk"]
+script = ExtResource("2_entry")
+scene = ExtResource("11_gesenk")
+openings = 5
+weight = 0.6
+min_depth = 2
+rails = false
+hazards = false
+
 [resource]
 script = ExtResource("1_set")
+id = &"oberer_stollen"
 biome_name_key = "BIOME_OBERER_STOLLEN"
 cell_size = 12.0
-entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall")])
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall"), SubResource("Resource_gesenk")])
 superset_weight = 0.25
+creatures = Array[StringName]([&"bergmandl", &"tatzelwurm", &"kasermandl"])
+echo = 0.2
+has_rails = true

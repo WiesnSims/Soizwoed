@@ -279,8 +279,8 @@ Items, tools and enemies should be **data-driven** (custom `Resource` types) so 
 | M1 | Solo vertical slice | One biome (Oberer Stollen), generator with ~8 chunks, player controller, lamp, 5 loot items, carrying, lift + shift timer + quota, hub with shop, 1 enemy (Bergmandl) |
 | M2 | Multiplayer via ENet | 2–4 local instances play M1 together: synced players, loot, enemy, carry-together, spectate on death |
 | M3 | Steam | SteamBackend with App ID 480, lobby create/filter/join, friend invites, proximity voice |
-| M4 | Content | All tools, Tatzelwurm, Kasermandl, Schichtmeister, hazards, Salzsee biome |
-| M5 | Content 2 & polish | Die Tiefe, Salzweibl, Percht, audio pass, balancing, settings menu, translations |
+| M4 | Content | All tools, Tatzelwurm, Kasermandl, Schichtmeister, hazards, Salzsee biome, settings menu (audio, display, graphics, gameplay) |
+| M5 | Content 2 & polish | Die Tiefe, Salzweibl, Percht, audio pass, balancing, translations |
 
 Work milestone by milestone. Each milestone should end in a playable Windows build.
 

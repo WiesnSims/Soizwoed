@@ -93,8 +93,20 @@ func can_invite() -> bool:
 	return false
 
 
-func invite_friends() -> void:
-	pass
+## Opens the platform's own invite dialog (Steam overlay); false when it cannot be shown.
+func invite_friends() -> bool:
+	return false
+
+
+## Friends who could be invited, for the in-game list: [{"id": int, "name": String,
+## "online": bool, "in_game": bool}], online friends first.
+func invitable_friends() -> Array[Dictionary]:
+	return []
+
+
+## Invites one friend from `invitable_friends` to the running session.
+func invite_friend(_friend_id: int) -> bool:
+	return false
 
 
 ## True when this backend carries voice chat.

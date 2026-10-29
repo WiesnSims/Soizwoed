@@ -1,0 +1,68 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://enemies/voice_line.gd" id="2_line"]
+[ext_resource type="PackedScene" path="res://enemies/kasermandl/kasermandl.tscn" id="3_scene"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/spot_kimm.ogg" id="s0"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/spot_siag.ogg" id="s1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/idle_koid.ogg" id="s2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/idle_kua.ogg" id="s3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/idle_liacht.ogg" id="s4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/strike_hob.ogg" id="s5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/strike_mei.ogg" id="s6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/kasermandl/hit_spuer.ogg" id="s7"]
+
+[sub_resource type="Resource" id="line_spot_kimm"]
+script = ExtResource("2_line")
+id = &"spot_kimm"
+moment = 0
+stream = ExtResource("s0")
+
+[sub_resource type="Resource" id="line_spot_siag"]
+script = ExtResource("2_line")
+id = &"spot_siag"
+moment = 0
+stream = ExtResource("s1")
+
+[sub_resource type="Resource" id="line_idle_koid"]
+script = ExtResource("2_line")
+id = &"idle_koid"
+moment = 1
+stream = ExtResource("s2")
+
+[sub_resource type="Resource" id="line_idle_kua"]
+script = ExtResource("2_line")
+id = &"idle_kua"
+moment = 1
+stream = ExtResource("s3")
+
+[sub_resource type="Resource" id="line_idle_liacht"]
+script = ExtResource("2_line")
+id = &"idle_liacht"
+moment = 1
+stream = ExtResource("s4")
+
+[sub_resource type="Resource" id="line_strike_hob"]
+script = ExtResource("2_line")
+id = &"strike_hob"
+moment = 2
+stream = ExtResource("s5")
+
+[sub_resource type="Resource" id="line_strike_mei"]
+script = ExtResource("2_line")
+id = &"strike_mei"
+moment = 2
+stream = ExtResource("s6")
+
+[sub_resource type="Resource" id="line_hit_spuer"]
+script = ExtResource("2_line")
+id = &"hit_spuer"
+moment = 3
+stream = ExtResource("s7")
+
+[resource]
+script = ExtResource("1_data")
+id = &"kasermandl"
+name_key = "CREATURE_KASERMANDL"
+scene = ExtResource("3_scene")
+voice_lines = Array[ExtResource("2_line")]([SubResource("line_spot_kimm"), SubResource("line_spot_siag"), SubResource("line_idle_koid"), SubResource("line_idle_kua"), SubResource("line_idle_liacht"), SubResource("line_strike_hob"), SubResource("line_strike_mei"), SubResource("line_hit_spuer")])

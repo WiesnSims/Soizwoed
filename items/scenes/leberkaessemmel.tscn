@@ -1,0 +1,52 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_bread"]
+albedo_color = Color(0.78, 0.52, 0.24, 1)
+roughness = 0.75
+
+[sub_resource type="StandardMaterial3D" id="mat_leberkaese"]
+albedo_color = Color(0.86, 0.55, 0.5, 1)
+roughness = 0.6
+
+[sub_resource type="SphereMesh" id="mesh_0"]
+radius = 0.07
+height = 0.05
+radial_segments = 16
+rings = 8
+
+[sub_resource type="BoxMesh" id="mesh_1"]
+size = Vector3(0.13, 0.018, 0.11)
+
+[sub_resource type="SphereMesh" id="mesh_2"]
+radius = 0.07
+height = 0.06
+radial_segments = 16
+rings = 8
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.15, 0.09, 0.15)
+
+[node name="Leberkaessemmel" type="RigidBody3D"]
+mass = 0.25
+script = ExtResource("1_item")
+
+[node name="Part1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.022, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_bread")
+
+[node name="Part2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.97815, 0, -0.20791, 0, 1, 0, 0.20791, 0, 0.97815, 0, 0.052, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_leberkaese")
+
+[node name="Part3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_bread")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.045, 0)
+shape = SubResource("shape")

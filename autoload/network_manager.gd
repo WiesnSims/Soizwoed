@@ -160,9 +160,20 @@ func can_invite() -> bool:
 	return mode == Mode.HOST and _backend.can_invite()
 
 
-func invite_friends() -> void:
-	if can_invite():
-		_backend.invite_friends()
+## The Steam overlay's invite dialog; false when the overlay is not there (the game was not
+## started by Steam), then the HUD shows its own friends list.
+func invite_friends() -> bool:
+	return can_invite() and _backend.invite_friends()
+
+
+func invitable_friends() -> Array[Dictionary]:
+	if not can_invite():
+		return []
+	return _backend.invitable_friends()
+
+
+func invite_friend(friend_id: int) -> bool:
+	return can_invite() and _backend.invite_friend(friend_id)
 
 
 ## Proximity voice runs in multiplayer sessions over a backend that carries it (Steam).

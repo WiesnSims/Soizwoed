@@ -25,9 +25,8 @@ const MELEE_DISTANCE: float = 2.2
 const DEATH_VIEW_SECONDS: float = 2.5
 ## Another player's name shows when you look at them from this close.
 const NAMEPLATE_DISTANCE: float = 10.0
-## Your own lamp hangs right in front of your eyes: at full strength it would light the fog
-## there and wash out the top of the screen. Others still see its full glow in the dust.
-const OWN_LAMP_FOG_ENERGY: float = 0.15
+## Swimming, the feet hang this far under the surface (the head stays above it).
+const SWIM_DEPTH: float = 1.35
 
 var peer_id: int = 1
 ## 1..4 in order of joining, for the name other players see ("Kumpl 2").
@@ -45,6 +44,22 @@ var lamp_on: bool = true:
 		lamp_on = value
 		if is_node_ready():
 			_update_lamp()
+## Wearing the Elektrische Stirnlampe instead of the carbide lamp: no flame, a battery.
+var lamp_electric: bool = false:
+	set(value):
+		lamp_electric = value
+		if is_node_ready():
+			_update_lamp()
+## Seconds of Stirnlampe battery left (charged in the Gasthaus before every shift).
+var battery: float = 0.0
+## Wading through brine right now (set by brine pools, local player only).
+var in_brine: bool = false
+## On a ladder or rope right now (local player).
+var climbing: bool = false
+## 0..1: how hard the carbide flame flares near firedamp (set by Hazards on every peer).
+var gas_flare: float = 0.0
+## The Salzsee lake you are swimming in (null on dry land).
+var swim_lake: Lake
 var crouching: bool = false
 var input_enabled: bool = true
 ## False after dying, until the next ride (host-authoritative).
@@ -63,6 +78,8 @@ var spectating: Player
 var focus: Node
 ## 0..1 progress of a held interaction (local player only).
 var hold_progress: float = 0.0
+## 0..1 progress of eating a Leberkässemmel (local player only, 0 when not eating).
+var use_progress: float = 0.0
 
 var _config: BalanceConfig
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -79,10 +96,33 @@ var _teleported_to: Vector3 = Vector3.INF
 var _teleport_ignore_until: float = 0.0
 var _dead_time: float = 0.0
 var _nameplate: Label3D
+var _alphorn_cooldown: float = 0.0
+## The Leberkässemmel being eaten and the seconds of chewing left.
+var _eating: WorldItem
+var _eating_left: float = 0.0
+## Obstler: seconds of wobbly view left, and the wobble's clock.
+var _wobble_left: float = 0.0
+var _wobble_time: float = 0.0
+var _carbide_color: Color
+## The Funkgerät's speaker (local player, made on first use) and when its crackle stops.
+var _radio: AudioStreamPlayer
+var _radio_until: float = 0.0
+var _climbables: Array[Climbable] = []
+var _climb_ignore_until: float = 0.0
+var _pushed_cart: RailCart
+## Camera shake from blasts and rockfalls (local player), 0..1, dies down by itself.
+var _shake: float = 0.0
+## Seconds climbing a rotten ladder with a heavy load, and until the next creak.
+var _rotten_strain: float = 0.0
+var _creak_left: float = 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
-@onready var lamp: FlickerLight = $Head/Lamp
+## The lamp: a beam where you look (with shadows) and a weak glow around you (without).
+@onready var lamp: OmniLight3D = $Head/Lamp
+@onready var beam: SpotLight3D = $Head/Camera/Beam
+@onready var _lamp_flame: FlickerLight = $Head/Lamp as FlickerLight
+@onready var _beam_flame: FlickerLight = $Head/Camera/Beam as FlickerLight
 @onready var lamp_sound: AudioStreamPlayer3D = $Head/Lamp/Hiss
 @onready var hold_point: Node3D = $Head/Camera/HoldPoint
 @onready var hand_point: Node3D = $Head/Camera/HandPoint
@@ -106,15 +146,20 @@ func _ready() -> void:
 	inventory.changed.connect(_on_inventory_changed)
 	health = _config.player_max_health
 	lamp_fuel = _config.lamp_fuel_seconds
+	battery = _config.stirnlampe_battery_seconds
 	ray.target_position = Vector3(0, 0, -_config.interact_distance)
 	ray.add_exception(self)
+	_carbide_color = lamp.light_color
 	var local: bool = is_local()
 	camera.current = local
 	body_mesh.visible = not local
 	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if local:
-		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
+		lamp.light_volumetric_fog_energy = 0.0
+		beam.light_volumetric_fog_energy = 0.0
+		_on_settings_changed()
+		Settings.changed.connect(_on_settings_changed)
 	if NetworkManager.voice_enabled():
 		voice_chat = VoiceChat.new()
 		voice_chat.name = "VoiceChat"
@@ -128,6 +173,16 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	lamp_sound.stop()
+
+
+func _on_settings_changed() -> void:
+	camera.fov = Settings.data.fov
+
+
+## On the ground, on every peer: remote players are not moved by physics here, so their
+## smoothed vertical speed decides.
+func is_on_floor_now() -> bool:
+	return is_on_floor() if is_local() else absf(velocity.y) < 1.0
 
 
 func is_local() -> bool:
@@ -149,8 +204,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var motion: InputEventMouseMotion = event
-		rotate_y(-motion.relative.x * MOUSE_SENSITIVITY)
-		head.rotation.x = clampf(head.rotation.x - motion.relative.y * MOUSE_SENSITIVITY, deg_to_rad(-85), deg_to_rad(85))
+		var sensitivity: float = MOUSE_SENSITIVITY * Settings.data.mouse_sensitivity
+		var pitch: float = motion.relative.y * sensitivity * (-1.0 if Settings.data.invert_y else 1.0)
+		rotate_y(-motion.relative.x * sensitivity)
+		head.rotation.x = clampf(head.rotation.x - pitch, deg_to_rad(-85), deg_to_rad(85))
 	elif event.is_action_pressed(&"lamp"):
 		_toggle_lamp()
 	elif event.is_action_pressed(&"drop"):
@@ -172,6 +229,9 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	_shout_cooldown = maxf(0.0, _shout_cooldown - delta)
 	_use_cooldown = maxf(0.0, _use_cooldown - delta)
+	_alphorn_cooldown = maxf(0.0, _alphorn_cooldown - delta)
+	if _radio != null and _radio.playing and Time.get_ticks_msec() / 1000.0 > _radio_until:
+		_radio.stop()
 	_tick_lamp(delta)
 	if not is_local():
 		_update_crouch(delta)
@@ -179,10 +239,16 @@ func _physics_process(delta: float) -> void:
 	if not alive:
 		focus = null
 		hold_progress = 0.0
+		_stop_eating()
+		_wobble_left = 0.0
 		_update_death_view(delta)
 		return
 	_move(delta)
 	_update_focus(delta)
+	_tick_eating(delta)
+	_tick_wobble(delta)
+	_tick_shake(delta)
+	_tick_rotten(delta)
 	net_position = global_position
 	net_angles = Vector2(rotation.y, head.rotation.x)
 
@@ -218,15 +284,35 @@ func _move(delta: float) -> void:
 		stamina = maxf(0.0, stamina - delta / _config.stamina_seconds)
 	elif not wants_sprint:
 		stamina = minf(1.0, stamina + delta * _config.stamina_regen_per_second)
+	if in_brine:
+		speed *= _config.brine_speed
 	var direction: Vector3 = (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
 	var accel: float = ACCEL_GROUND if is_on_floor() else ACCEL_AIR
+	_update_climbing(controls, input_dir)
+	if climbing:
+		speed *= 0.35
+		accel = ACCEL_GROUND
+	var swimming: bool = swim_lake != null and is_instance_valid(swim_lake) and not climbing
+	if swimming:
+		speed = _config.swim_speed
+		accel = ACCEL_AIR
 	velocity.x = lerpf(velocity.x, direction.x * speed, clampf(accel * delta, 0.0, 1.0))
 	velocity.z = lerpf(velocity.z, direction.z * speed, clampf(accel * delta, 0.0, 1.0))
-	if not is_on_floor():
+	if swimming:
+		# Float with the head just above the surface; swimming against a low shore pulls you out.
+		var feet: float = swim_lake.surface_y() - SWIM_DEPTH
+		velocity.y = clampf((feet - global_position.y) * 4.0, -3.0, 2.0)
+		if controls and input_dir.y < 0.0:
+			_try_climb_out()
+	elif climbing:
+		velocity.y = _climb_velocity(input_dir)
+		if controls and Input.is_action_just_pressed(&"jump"):
+			_let_go_of_climbable()
+	elif not is_on_floor():
 		velocity.y -= _gravity * delta
 	elif controls and Input.is_action_just_pressed(&"jump") and not crouching and not inventory.hands_busy():
 		velocity.y = _config.jump_velocity
-	var falling: float = -velocity.y if not is_on_floor() else 0.0
+	var falling: float = -velocity.y if not is_on_floor() and not climbing and not swimming else 0.0
 	move_and_slide()
 	if falling > 0.0 and is_on_floor():
 		var damage: int = _config.fall_damage(falling)
@@ -238,13 +324,122 @@ func _move(delta: float) -> void:
 
 func _can_sprint_with_load() -> bool:
 	var cart: Schubkarre = inventory.hands as Schubkarre
-	return cart == null and inventory.can_sprint()
+	return cart == null and inventory.can_sprint() and pushed_cart() == null and swim_lake == null
+
+
+# --- swimming (Salzsee) --------------------------------------------------------------------------------
+
+## Fell into deep water: the carbide lamp goes out and nothing heavy can be held.
+func enter_water(lake: Lake) -> void:
+	swim_lake = lake
+	climbing = false
+	if not is_local():
+		return
+	if lamp_on and not lamp_electric:
+		_set_lamp.rpc(false)
+		game().show_message(tr("MSG_LAMP_DROWNED"))
+	var held: WorldItem = inventory.hands as WorldItem
+	if held != null and held.data.weight_class != ItemData.WeightClass.LIGHT:
+		game().request_drop.rpc_id(1, held.get_path(), hold_point.global_transform, Vector3.ZERO)
+		game().show_message(tr("MSG_TOO_HEAVY_TO_SWIM"))
+
+
+func exit_water(lake: Lake) -> void:
+	if swim_lake == lake:
+		swim_lake = null
+
+
+## Pulls you up onto a shore or boat in front when there is floor just above the water there.
+func _try_climb_out() -> void:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var ahead: Vector3 = -global_basis.z * 0.8
+	var from: Vector3 = global_position + Vector3.UP * (SWIM_DEPTH + 1.2) + ahead
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from + Vector3.DOWN * 1.8, 1)
+	query.exclude = [get_rid()]
+	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty():
+		return
+	var ledge: Vector3 = hit.position
+	if ledge.y > swim_lake.surface_y() - 0.3 and ledge.y < swim_lake.surface_y() + 0.9:
+		global_position = ledge + Vector3.UP * 0.05
+		velocity = Vector3.ZERO
 
 
 func _load_speed_factor() -> float:
 	if inventory.hands is Schubkarre:
 		return _config.schubkarre_speed
+	if pushed_cart() != null:
+		return _config.rail_cart_push_speed
 	return inventory.speed_factor(_config)
+
+
+## The rail cart this player is pushing, if any (on every peer).
+func pushed_cart() -> RailCart:
+	if _pushed_cart != null and is_instance_valid(_pushed_cart) and _pushed_cart.pusher_peer == peer_id:
+		return _pushed_cart
+	_pushed_cart = null
+	return null
+
+
+# --- climbing ladders and ropes ---------------------------------------------------------------------
+
+func enter_climbable(climbable: Climbable) -> void:
+	if not climbable in _climbables:
+		_climbables.append(climbable)
+
+
+func exit_climbable(climbable: Climbable) -> void:
+	_climbables.erase(climbable)
+	if _climbables.is_empty():
+		climbing = false
+
+
+## Grabs on when moving in a ladder or rope zone (or hanging in one); never with a Schubkarre.
+func _update_climbing(controls: bool, input_dir: Vector2) -> void:
+	_climbables = _climbables.filter(func(c: Climbable) -> bool: return is_instance_valid(c))
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if _climbables.is_empty() or now < _climb_ignore_until or inventory.hands is CargoItem:
+		climbing = false
+		return
+	if not climbing:
+		climbing = (controls and input_dir.y != 0.0) or not is_on_floor()
+	elif is_on_floor() and controls and input_dir.y > 0.0:
+		climbing = false  # stepped off at the bottom
+
+
+## Up when pushing forward (down while looking down), down when pulling back. Slower with a
+## heavy load in the hands.
+func _climb_velocity(input_dir: Vector2) -> float:
+	var up: float = -input_dir.y
+	if head.rotation.x < -0.5:
+		up = -absf(up) if input_dir.y < 0.0 else up
+	var factor: float = _config.climb_heavy_factor if inventory.hands_busy() and inventory.hands_weight == ItemData.WeightClass.HEAVY else 1.0
+	return up * _config.climb_speed * factor
+
+
+## A rotten ladder creaks under you, and gives way if you carry something heavy up or down it.
+func _tick_rotten(delta: float) -> void:
+	var climb: Climbable = _climbables.back() if climbing and not _climbables.is_empty() else null
+	if climb == null or not climb.rotten:
+		_rotten_strain = 0.0
+		return
+	_creak_left -= delta
+	if _creak_left <= 0.0:
+		_creak_left = randf_range(0.7, 1.5)
+		Audio.play_at("plank_creak", global_position + Vector3.UP, &"SFX", -6.0, 15.0)
+	if not (inventory.hands_busy() and inventory.hands_weight == ItemData.WeightClass.HEAVY):
+		return
+	_rotten_strain += delta
+	var ladder: Ladder = climb.get_parent() as Ladder
+	if _rotten_strain >= _config.rotten_break_seconds and ladder != null:
+		_rotten_strain = -INF  # asked once
+		game().request_break_ladder.rpc_id(1, ladder.get_path())
+
+
+func _let_go_of_climbable() -> void:
+	climbing = false
+	_climb_ignore_until = Time.get_ticks_msec() / 1000.0 + 0.5
+	velocity += transform.basis.z * 2.0 + Vector3.UP * 1.5
 
 
 func _update_crouch(delta: float) -> void:
@@ -266,15 +461,25 @@ func _footsteps_and_bob(delta: float) -> void:
 		_bob_phase += horizontal * delta * PI / stride
 		if _step_accum >= stride:
 			_step_accum = 0.0
-			_play_footstep.rpc(global_position.y > Game.HUB_FLOOR_ABOVE)
+			_play_footstep.rpc(_surface())
 	else:
 		_bob_phase = lerpf(_bob_phase, roundf(_bob_phase / PI) * PI, clampf(6.0 * delta, 0.0, 1.0))
-	head.position.y = _head_height + absf(sin(_bob_phase)) * BOB_AMOUNT
+	var bob: float = BOB_AMOUNT if Settings.data.head_bob else 0.0
+	head.position.y = _head_height + absf(sin(_bob_phase)) * bob
+
+
+enum Surface { GRAVEL, WOOD, BRINE }
+
+
+func _surface() -> Surface:
+	if global_position.y > Game.HUB_FLOOR_ABOVE:
+		return Surface.WOOD
+	return Surface.BRINE if in_brine else Surface.GRAVEL
 
 
 @rpc("authority", "call_local", "unreliable")
-func _play_footstep(on_wood: bool) -> void:
-	Audio.play_on(footsteps, "footstep_wood" if on_wood else "footstep_gravel", 0.06)
+func _play_footstep(surface: Surface) -> void:
+	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade"][surface], 0.06)
 	footsteps.volume_db = -14.0 if crouching else -6.0
 
 
@@ -401,7 +606,7 @@ func _update_nameplate() -> void:
 # --- lamp ------------------------------------------------------------------------------------------
 
 func _toggle_lamp() -> void:
-	if lamp_fuel <= 0.0:
+	if lamp_share() <= 0.0:
 		return
 	_set_lamp.rpc(not lamp_on)
 
@@ -413,31 +618,83 @@ func _set_lamp(on: bool) -> void:
 	_update_lamp()
 
 
+## Puts on the Stirnlampe (true) or goes back to the carbide lamp (false); the new one is on.
+@rpc("authority", "call_local", "reliable")
+func _set_lamp_kind(electric: bool) -> void:
+	lamp_electric = electric
+	lamp_on = lamp_share() > 0.0
+	Audio.play_at("lamp_click", lamp.global_position, &"SFX", -8.0, 8.0)
+	_update_lamp()
+
+
 func _tick_lamp(delta: float) -> void:
-	# The carbide only burns down in the mine. Other players' fuel comes with their sync.
+	# Carbide and battery only run down in the mine. Other players' levels come with their sync.
 	if not lamp_on or global_position.y > Game.HUB_FLOOR_ABOVE:
 		return
 	if not is_local():
 		_update_lamp()
 		return
-	lamp_fuel = maxf(0.0, lamp_fuel - delta)
-	if lamp_fuel <= 0.0:
+	if lamp_electric:
+		battery = maxf(0.0, battery - delta)
+	else:
+		lamp_fuel = maxf(0.0, lamp_fuel - delta * brine_lamp_drain())
+	if lamp_share() <= 0.0:
 		lamp_on = false
 	_update_lamp()
 
 
+## Brine splashing up into the carbide lamp makes it burn faster (DESIGN.md §4 "Sole").
+func brine_lamp_drain() -> float:
+	return _config.brine_lamp_drain if in_brine and not lamp_electric else 1.0
+
+
 func _update_lamp() -> void:
-	var share: float = lamp_fuel / _config.lamp_fuel_seconds
+	var share: float = lamp_share()
 	var low: bool = share < _config.lamp_low_fuel_share
+	var strength: float = 0.6 + 0.4 * minf(1.0, share / _config.lamp_low_fuel_share)
 	lamp.visible = lamp_on
-	lamp.omni_range = _config.lamp_range * (0.6 + 0.4 * minf(1.0, share / _config.lamp_low_fuel_share))
-	lamp.base_energy = _config.lamp_energy * (0.55 if low else 1.0)
-	lamp.flicker = 0.35 if low else 0.07
-	# Only other players' lamps hiss: your own would be a constant noise in your ear.
-	if lamp_on and not lamp_sound.playing and not is_local():
+	beam.visible = lamp_on
+	var reach: float = 0.0
+	var energy: float = 0.0
+	var color: Color
+	if lamp_electric:
+		# A steady, colder, narrower beam that dims as the battery dies.
+		reach = _config.stirnlampe_range * strength
+		energy = _config.stirnlampe_energy * (0.5 if low else 1.0)
+		_lamp_flame.flicker = 0.12 if low else 0.0
+		color = Color(0.86, 0.9, 1.0)
+		beam.spot_angle = _config.stirnlampe_beam_degrees
+	else:
+		# Near firedamp the flame flares up tall and bluish.
+		reach = _config.lamp_range * strength * (1.0 + gas_flare * 0.25)
+		energy = _config.lamp_energy * (0.55 if low else 1.0) * (1.0 + gas_flare * 1.4)
+		_lamp_flame.flicker = maxf(0.35 if low else 0.07, gas_flare * 0.45)
+		color = _carbide_color.lerp(Color(0.62, 0.78, 1.0), gas_flare * 0.7)
+		beam.spot_angle = _config.lamp_beam_degrees
+	beam.spot_range = reach
+	_beam_flame.base_energy = energy * _config.lamp_beam_energy
+	_beam_flame.flicker = _lamp_flame.flicker
+	beam.light_color = color
+	lamp.omni_range = _config.lamp_glow_range * strength
+	_lamp_flame.base_energy = energy * _config.lamp_glow_energy
+	lamp.light_color = color
+	# Only other players' carbide lamps hiss: your own would be a constant noise in your ear.
+	var hiss: bool = lamp_on and not lamp_electric and not is_local()
+	if hiss and not lamp_sound.playing:
 		lamp_sound.play()
-	elif not lamp_on and lamp_sound.playing:
+	elif not hiss and lamp_sound.playing:
 		lamp_sound.stop()
+
+
+## An open flame that can set off firedamp: a burning carbide lamp.
+func has_open_flame() -> bool:
+	return alive and lamp_on and not lamp_electric
+
+
+## A fresh battery for the Stirnlampe (in the Gasthaus, before each shift).
+func recharge_battery() -> void:
+	battery = _config.stirnlampe_battery_seconds
+	_update_lamp()
 
 
 func refill_lamp(share: float) -> void:
@@ -447,7 +704,28 @@ func refill_lamp(share: float) -> void:
 		_set_lamp.rpc(true)
 
 
+## How far this player's lamp beam reaches right now (0 when it is off), on every peer.
+func light_range() -> float:
+	return beam.spot_range if lamp_on and beam.visible and alive else 0.0
+
+
+## Whether this player's lamp lights `point`: inside the beam up to `share` of its reach, or
+## within the glow close around them. Rock in between is not checked here.
+func lights_point(point: Vector3, share: float = 1.0) -> bool:
+	if light_range() <= 0.0:
+		return false
+	if point.distance_to(lamp.global_position) < lamp.omni_range * 0.8:
+		return true
+	var to: Vector3 = point - beam.global_position
+	if to.length() > beam.spot_range * share:
+		return false
+	return to.normalized().dot(-beam.global_basis.z) >= cos(deg_to_rad(beam.spot_angle))
+
+
+## What is left of the lamp in use: carbide, or the Stirnlampe's battery (0–1).
 func lamp_share() -> float:
+	if lamp_electric:
+		return battery / _config.stirnlampe_battery_seconds
 	return lamp_fuel / _config.lamp_fuel_seconds
 
 
@@ -498,7 +776,12 @@ func _try_take(item: WorldItem) -> void:
 	if item.can_help_carry(self):
 		game().request_help_carry.rpc_id(1, item.get_path())
 		return
-	if item is Schubkarre and (item as Schubkarre).try_load_from(self):
+	if item is RailCart:
+		if not (item as RailCart).try_load_from(self):
+			_pushed_cart = item as RailCart
+			game().request_push_rail.rpc_id(1, item.get_path())
+		return
+	if item is CargoItem and (item as CargoItem).try_load_from(self):
 		return
 	var cart: Schubkarre = inventory.hands as Schubkarre
 	if cart != null and item != cart and item.data.kind == ItemData.Kind.LOOT:
@@ -511,11 +794,14 @@ func _try_take(item: WorldItem) -> void:
 
 
 func _drop_active() -> void:
+	if pushed_cart() != null:
+		game().request_push_rail.rpc_id(1, pushed_cart().get_path())  # lets go of it
+		return
 	var item: WorldItem = inventory.active_item() as WorldItem
 	if item == null:
 		return
 	# Aimed at a Schubkarre: put it in instead of on the floor.
-	var aimed_cart: Schubkarre = focus as Schubkarre
+	var aimed_cart: CargoItem = focus as CargoItem
 	if aimed_cart != null and aimed_cart != item and item.is_loot():
 		game().request_load_cart.rpc_id(1, aimed_cart.get_path(), item.get_path())
 		return
@@ -528,36 +814,137 @@ func _drop_active() -> void:
 
 
 func _use_active() -> void:
-	if _use_cooldown > 0.0 or inventory.hands_busy():
+	if _use_cooldown > 0.0 or inventory.hands_busy() or _eating != null:
 		return
 	var item: WorldItem = inventory.slots[inventory.selected] as WorldItem
-	if item != null and item.data.id == &"karbidpatrone":
-		_use_cooldown = 1.0
-		game().request_consume.rpc_id(1, item.get_path(), peer_id)
-		refill_lamp(_config.karbid_refill_share)
-		return
-	var damage: int = _config.watschn_damage if item == null else item.data.melee_damage
-	if damage <= 0:
-		return
-	_use_cooldown = 0.6
-	_melee(damage, item == null)
+	var use: ItemData.Use = item.data.use if item != null else ItemData.Use.NONE
+	match use:
+		ItemData.Use.REFILL_LAMP:
+			_use_cooldown = 1.0
+			game().request_consume.rpc_id(1, item.get_path(), peer_id)
+			refill_lamp(_config.karbid_refill_share)
+		ItemData.Use.HEADLAMP:
+			_use_cooldown = 0.5
+			if not lamp_electric and battery <= 0.0:
+				game().show_message(tr("MSG_BATTERY_EMPTY"))
+				return
+			_set_lamp_kind.rpc(not lamp_electric)
+			game().show_message(tr("MSG_LAMP_ELECTRIC") if lamp_electric else tr("MSG_LAMP_CARBIDE"))
+		ItemData.Use.ALPHORN:
+			if _alphorn_cooldown > 0.0:
+				game().show_message(tr("MSG_OUT_OF_BREATH"))
+				return
+			_alphorn_cooldown = _config.alphorn_cooldown
+			_use_cooldown = 1.0
+			game().request_alphorn.rpc_id(1, camera.global_position, -camera.global_basis.z)
+		ItemData.Use.THROW:
+			_use_cooldown = 0.6
+			var toss: Vector3 = (-camera.global_basis.z + Vector3.UP * 0.25).normalized() * _config.throw_tool_speed + velocity
+			game().request_throw.rpc_id(1, item.get_path(), hand_point.global_transform, toss)
+		ItemData.Use.DRINK:
+			_use_cooldown = 1.0
+			game().request_consume.rpc_id(1, item.get_path(), peer_id)
+			_wobble_left = _config.obstler_wobble_seconds
+		ItemData.Use.EAT:
+			_eating = item
+			_eating_left = _config.leberkaese_eat_seconds
+			game().play_sound_everywhere.rpc("eat", camera.global_position)
+		ItemData.Use.ROPE:
+			_use_cooldown = 1.0
+			_place_rope(item)
+		ItemData.Use.PFEIFERL:
+			_use_cooldown = _config.pfeiferl_cooldown
+			game().request_call_cart.rpc_id(1, global_position)
+		ItemData.Use.RADIO:
+			_use_cooldown = 1.5
+			game().request_radio_call.rpc_id(1)
+		_:
+			var damage: int = _config.watschn_damage if item == null else item.data.melee_damage
+			if damage <= 0:
+				return
+			_use_cooldown = 0.6
+			_melee(damage, item == null, item != null and item.data.breaks_rock)
 
 
-func _melee(damage: int, bare_hand: bool) -> void:
+## Chewing on a Leberkässemmel: it only counts once it is eaten up, still in your hand.
+func _tick_eating(delta: float) -> void:
+	if _eating == null:
+		use_progress = 0.0
+		return
+	if not is_instance_valid(_eating) or inventory.slots[inventory.selected] != _eating or inventory.hands_busy():
+		_stop_eating()
+		return
+	_eating_left -= delta
+	use_progress = 1.0 - _eating_left / _config.leberkaese_eat_seconds
+	if _eating_left <= 0.0:
+		game().request_consume.rpc_id(1, _eating.get_path(), peer_id)
+		_stop_eating()
+
+
+func _stop_eating() -> void:
+	_eating = null
+	_eating_left = 0.0
+	use_progress = 0.0
+
+
+## After an Obstler the view sways and rolls a little, fading out at the end.
+func _tick_wobble(delta: float) -> void:
+	if _wobble_left <= 0.0:
+		camera.rotation.z = 0.0
+		return
+	_wobble_left -= delta
+	_wobble_time += delta
+	var strength: float = clampf(_wobble_left / 4.0, 0.0, 1.0)
+	camera.rotation.z = sin(_wobble_time * 1.1) * 0.07 * strength
+	camera.rotation.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
+
+
+## A jolt from a blast or a rockfall nearby (mount 0..1).
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
+
+
+func _tick_shake(delta: float) -> void:
+	_shake = maxf(0.0, _shake - delta * 1.2)
+	camera.h_offset = randf_range(-1.0, 1.0) * _shake * 0.06
+	camera.v_offset = randf_range(-1.0, 1.0) * _shake * 0.06
+
+
+## The Seil: thrown down the edge you look at; the host checks that there is a drop.
+func _place_rope(item: WorldItem) -> void:
+	if not ray.is_colliding():
+		game().show_message(tr("MSG_ROPE_NO_EDGE"))
+		return
+	var flat: Vector3 = -camera.global_basis.z
+	flat.y = 0.0
+	game().request_rope.rpc_id(1, item.get_path(), ray.get_collision_point(), flat.normalized())
+
+
+func _melee(damage: int, bare_hand: bool, breaks_rock: bool) -> void:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var from: Vector3 = camera.global_position
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * MELEE_DISTANCE, 1 | 8)
 	query.exclude = [get_rid()]
 	var hit: Dictionary = space.intersect_ray(query)
 	var creature: Node = null
+	var rock: Breakable = null
 	if not hit.is_empty():
 		creature = hit.collider as Node
+		rock = hit.collider as Breakable
 		while creature != null and not creature.is_in_group(&"creatures"):
 			creature = creature.get_parent()
-	var sound: String = ("watschn" if bare_hand else "pick_hit") if creature != null else "swing"
+	var sound: String = "swing"
+	if creature != null:
+		sound = "watschn" if bare_hand else "pick_hit"
+	elif rock != null and breaks_rock:
+		sound = "pick_hit"
 	game().play_sound_everywhere.rpc(sound, camera.global_position - camera.global_basis.z * 1.0)
 	if creature != null:
 		game().request_hit.rpc_id(1, creature.get_path(), damage, global_position)
+	elif rock != null and breaks_rock:
+		game().request_break.rpc_id(1, rock.get_path(), damage)
+	elif rock != null:
+		game().show_message(tr("MSG_NEED_PICK"))
 
 
 func _shout() -> void:
@@ -579,6 +966,20 @@ func play_shout() -> void:
 	Audio.play_on(voice, "shout_%d" % (randi() % 3 + 1), 0.05)
 
 
+## The Funkgerät in your pocket crackles for `seconds` (local player's own speaker).
+func play_radio(seconds: float) -> void:
+	if _radio == null:
+		_radio = AudioStreamPlayer.new()
+		_radio.name = "Radio"
+		_radio.bus = &"Radio"
+		_radio.volume_db = -10.0
+		_radio.stream = Audio.stream("radio_static")
+		add_child(_radio)
+	_radio_until = maxf(_radio_until, Time.get_ticks_msec() / 1000.0 + seconds)
+	if not _radio.playing:
+		_radio.play()
+
+
 # --- held items ------------------------------------------------------------------------------------
 
 ## Where an item in `place` should ride: the hands, a slot (shown in the hand when selected).
@@ -596,4 +997,22 @@ func _on_inventory_changed() -> void:
 			item.visible = i == inventory.selected and not inventory.hands_busy()
 	if is_local():
 		net_slot = inventory.selected
+		# Dropped or lost the Stirnlampe: back to the carbide lamp (deferred: items also leave
+		# the inventory while the whole scene is being freed).
+		if lamp_electric:
+			_check_headlamp.call_deferred()
 	inventory_changed.emit()
+
+
+func _check_headlamp() -> void:
+	if lamp_electric and not has_tool(&"stirnlampe"):
+		_set_lamp_kind.rpc(false)
+
+
+## Whether an item of type `id` is in the pockets or hands.
+func has_tool(id: StringName) -> bool:
+	for item: Object in inventory.all_items():
+		var world_item: WorldItem = item as WorldItem
+		if world_item != null and world_item.data.id == id:
+			return true
+	return false

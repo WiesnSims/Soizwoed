@@ -15,14 +15,23 @@ enum Phase { MENU, HUB, DESCENDING, SHIFT, ASCENDING, OVER }
 const HUB_FLOOR_ABOVE: float = 200.0
 const RIDE_SECONDS: float = 3.5
 const FADE_SECONDS: float = 0.6
-const CHUNKS: ChunkSet = preload("res://world/chunks/oberer_stollen/oberer_stollen.tres")
+## Loaded at runtime into iomes (their chunks' scripts refer back to Game).
+const BIOME_PATHS: PackedStringArray = [
+	"res://world/chunks/oberer_stollen/oberer_stollen.tres",
+	"res://world/chunks/salzsee/salzsee.tres",
+]
 const PLAYER_SCENE: PackedScene = preload("res://player/player.tscn")
 const CAGE_SCENE: PackedScene = preload("res://world/lift/foerderkorb.tscn")
 const MINE_ENVIRONMENT: Environment = preload("res://world/mine_environment.tres")
 const HUB_ENVIRONMENT: Environment = preload("res://hub/hub_environment.tres")
 ## Loaded at runtime, not preloaded: their scenes' scripts refer back to Game.
 const CATALOG_PATH: String = "res://items/item_catalog.tres"
-const CREATURE_PATHS: PackedStringArray = ["res://enemies/bergmandl/bergmandl.tres"]
+const CREATURE_PATHS: PackedStringArray = [
+	"res://enemies/bergmandl/bergmandl.tres",
+	"res://enemies/tatzelwurm/tatzelwurm.tres",
+	"res://enemies/kasermandl/kasermandl.tres",
+	"res://enemies/schichtmeister/schichtmeister.tres",
+]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
 ## ride up again. With `--wait-peers=<n>` the host first waits for n clients.
@@ -55,12 +64,22 @@ var mine_cage: Foerderkorb
 var run_info: Dictionary = {}
 var catalog: ItemCatalog
 var creature_types: Array[EnemyData] = []
+## The mine sections, in the order they unlock (DESIGN.md §4), from BIOME_PATHS.
+var biomes: Array[ChunkSet] = []
+## The mine section picked in the Gasthaus (index into biomes; host decides, sent to all).
+var biome_index: int = 0
 
 var _config: BalanceConfig
 var _next_item: int = 0
 var _next_creature: int = 0
 var _ready_peers: Dictionary = {}
+var _enemy_budget: float = 0.0
 var _enemy_budget_left: float = 0.0
+var _noise_left: float = 0.0
+## The Schichtmeister was sent this shift (once per shift).
+var _meister_came: bool = false
+## Host: smoke clouds creatures avoid, [centre: Vector3, radius: float, until: float (s)].
+var _smokes: Array[Array] = []
 var _trickle_left: float = 0.0
 var _ambience_left: float = 5.0
 var _voice_quiet_until: float = 0.0
@@ -94,6 +113,8 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	_config = Balance.config
 	catalog = load(CATALOG_PATH) as ItemCatalog
+	for path: String in BIOME_PATHS:
+		biomes.append(load(path) as ChunkSet)
 	for path: String in CREATURE_PATHS:
 		creature_types.append(load(path) as EnemyData)
 	_player_spawner.spawn_function = _spawn_player
@@ -128,6 +149,7 @@ func _process(delta: float) -> void:
 		_tick_ambience(delta)
 		if multiplayer.is_server():
 			_host_tick_shift(delta)
+			_host_tick_noise(delta)
 
 
 # --- session --------------------------------------------------------------------------------------
@@ -138,6 +160,7 @@ func _on_session_started() -> void:
 	if NetworkManager.is_host():
 		if GameState.run == null:
 			GameState.start_run(NetworkManager.player_count())
+			biome_index = 0
 			# Solo extra (DESIGN.md §8). A host waiting for friends does not get it.
 			if NetworkManager.mode == NetworkManager.Mode.SOLO and _config.solo_free_schubkarre:
 				_spawn_item_at(&"schubkarre", 0, hub.free_cart_spot())
@@ -243,11 +266,15 @@ func _spawn_item(spawn_data: Array) -> Node:
 	return item
 
 
-func _spawn_creature(spawn_data: Array) -> Node:
-	var data: EnemyData = null
+func creature_data(id: StringName) -> EnemyData:
 	for candidate: EnemyData in creature_types:
-		if candidate.id == spawn_data[1]:
-			data = candidate
+		if candidate.id == id:
+			return candidate
+	return null
+
+
+func _spawn_creature(spawn_data: Array) -> Node:
+	var data: EnemyData = creature_data(spawn_data[1])
 	var creature: Creature = data.scene.instantiate() as Creature
 	creature.name = spawn_data[0]
 	creature.data = data
@@ -279,7 +306,7 @@ func _spawn_loot(seed_value: int) -> void:
 				options.append(data)
 				weights.append(data.spawn_weight)
 		var picked: ItemData = options[rng.rand_weighted(weights)]
-		var value: int = roundi(rng.randi_range(picked.value_min, picked.value_max) * (1.0 + depth * _config.loot_value_per_depth))
+		var value: int = roundi(rng.randi_range(picked.value_min, picked.value_max) * (1.0 + depth * _config.loot_value_per_depth) * _biome_rule().loot_value_mult)
 		var xform: Transform3D = (spot[0] as Marker3D).global_transform
 		if i >= spots.size():
 			xform.origin += Vector3(rng.randf_range(-0.6, 0.6), 0.2, rng.randf_range(-0.6, 0.6))
@@ -287,7 +314,7 @@ func _spawn_loot(seed_value: int) -> void:
 	print("[game] spawned %d loot items" % count)
 
 
-func _spawn_creature_group(data: EnemyData) -> int:
+func _spawn_creature_group(rule: CreatureSpawnRule) -> int:
 	var spots: Array[Vector3] = []
 	for spot: Array in mine.markers_with_depth(&"enemy_spawn"):
 		var where: Vector3 = (spot[0] as Marker3D).global_position
@@ -296,26 +323,56 @@ func _spawn_creature_group(data: EnemyData) -> int:
 	if spots.is_empty():
 		return 0
 	var at: Vector3 = spots.pick_random()
-	var size: int = mini(randi_range(_config.bergmandl_group_min, _config.bergmandl_group_max), floori(_enemy_budget_left / data.budget_cost))
+	var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), _enemy_budget_left)
 	for i: int in size:
-		_next_creature += 1
 		var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), 0.3, randf_range(-1.0, 1.0))
-		_creature_spawner.spawn(["C%d" % _next_creature, data.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset)])
-		_enemy_budget_left -= data.budget_cost
+		spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset))
+		_enemy_budget_left -= rule.budget_cost
 	return size
 
 
+## Host: one creature of type `id` (outside the budget, e.g. the Schichtmeister).
+func spawn_creature(id: StringName, xform: Transform3D) -> Creature:
+	_next_creature += 1
+	return _creature_spawner.spawn(["C%d" % _next_creature, id, xform]) as Creature
+
+
+func alive_count(id: StringName) -> int:
+	var count: int = 0
+	for creature: Creature in creatures():
+		count += 1 if creature.data.id == id else 0
+	return count
+
+
+## Spends the enemy budget until `share_spent` of it is used, picking creature types of the
+## biome by weight (DESIGN.md §6, §8; rules in balance.tres).
 func _spawn_creatures_up_to(share_spent: float) -> void:
-	var data: EnemyData = creature_types[0]
-	var budget: float = _config.enemy_budget(GameState.run.cycle, GameState.run.player_count)
-	var spawned: int = 0
-	while _enemy_budget_left >= data.budget_cost and budget - _enemy_budget_left < budget * share_spent:
-		var group: int = _spawn_creature_group(data)
+	var spawned: Dictionary = {}
+	for _attempt: int in 32:
+		if _enemy_budget - _enemy_budget_left >= _enemy_budget * share_spent:
+			break
+		var options: Array[CreatureSpawnRule] = []
+		var weights: PackedFloat32Array = []
+		for id: StringName in mine.chunk_set.creatures:
+			var rule: CreatureSpawnRule = _config.spawn_rule(id)
+			if rule != null and creature_data(id) != null and rule.allowed(GameState.run.cycle, alive_count(id), _enemy_budget_left):
+				options.append(rule)
+				weights.append(rule.weight)
+		if options.is_empty():
+			break
+		var picked: CreatureSpawnRule = options[_rng_weighted(weights)]
+		var group: int = _spawn_creature_group(picked)
 		if group == 0:
 			break
-		spawned += group
-	if spawned > 0:
-		print("[game] spawned %d %s" % [spawned, data.id])
+		spawned[picked.id] = int(spawned.get(picked.id, 0)) + group
+	for id: StringName in spawned:
+		print("[game] spawned %d %s" % [spawned[id], id])
+
+
+func _rng_weighted(weights: PackedFloat32Array) -> int:
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.randomize()
+	return rng.rand_weighted(weights)
 
 
 # --- shift flow (host) ----------------------------------------------------------------------------
@@ -337,7 +394,7 @@ func _descend() -> void:
 	_broadcast_run()
 	var seed_value: int = randi()
 	_all_dead_time = 0.0
-	_begin_ride.rpc(true, seed_value, run.cycle)
+	_begin_ride.rpc(true, seed_value, run.cycle, biome_index)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	if phase != Phase.DESCENDING:
 		return
@@ -350,7 +407,13 @@ func _descend() -> void:
 		player.teleport.rpc(mine_cage.player_spot(index))
 		index += 1
 	_spawn_loot(seed_value)
-	_enemy_budget_left = _config.enemy_budget(run.cycle, run.player_count)
+	if mine.rails != null:
+		var cart: RailCart = _spawn_item_at(&"hunt", 0, mine.rails.transform_at(0.0)) as RailCart
+		cart.host_place(0.0)
+	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
+	_enemy_budget_left = _enemy_budget
+	_smokes.clear()
+	_meister_came = false
 	_spawn_creatures_up_to(_config.enemy_start_share)
 	_trickle_left = _config.enemy_trickle_seconds
 	_start_shift.rpc(_config.shift_seconds(run.player_count))
@@ -362,6 +425,8 @@ func _host_tick_shift(delta: float) -> void:
 	elif whistle_blown and shift_time_left <= -_config.whistle_grace_seconds:
 		_ascend()
 		return
+	if whistle_blown and shift_time_left <= -_config.schichtmeister_delay and alive_count(&"schichtmeister") == 0 and not _meister_came:
+		_send_schichtmeister()
 	if not whistle_blown and _enemy_budget_left > 0.0:
 		_trickle_left -= delta
 		if _trickle_left <= 0.0:
@@ -376,12 +441,38 @@ func _host_tick_shift(delta: float) -> void:
 		_ascend()
 
 
+## Whoever is still down after the whistle gets a visit (DESIGN.md §6): he comes out of the dark
+## behind the straggler nearest the lift, from the side away from the cage.
+func _send_schichtmeister() -> void:
+	var straggler: Player = null
+	for player: Player in players():
+		if player.alive and player.global_position.y < HUB_FLOOR_ABOVE and not mine_cage.contains(player.global_position):
+			if straggler == null or player.global_position.distance_to(mine_cage.global_position) < straggler.global_position.distance_to(mine_cage.global_position):
+				straggler = player
+	if straggler == null:
+		return
+	_meister_came = true
+	var best: Vector3 = straggler.global_position
+	var best_score: float = -INF
+	for id: int in mine.nav.get_point_ids():
+		var point: Vector3 = mine.nav.get_point_position(id)
+		var from_straggler: float = point.distance_to(straggler.global_position)
+		if from_straggler < 15.0 or from_straggler > 40.0:
+			continue
+		var score: float = point.distance_to(mine_cage.global_position) - absf(from_straggler - 25.0)
+		if score > best_score:
+			best_score = score
+			best = point
+	spawn_creature(&"schichtmeister", Transform3D(Basis.IDENTITY, best + Vector3.UP * 0.3))
+	print("[game] Schichtmeister comes for P%d" % straggler.peer_id)
+
+
 func _ascend() -> void:
 	var riders: Array[Player] = []
 	for player: Player in players():
 		if player.alive and mine_cage.contains(player.global_position):
 			riders.append(player)
-	_begin_ride.rpc(false, 0, 0)
+	_begin_ride.rpc(false, 0, 0, 0)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	var results: Dictionary = {"sold": [], "total": 0, "left_behind": [], "dead": []}
 	var rider_peers: Array[int] = []
@@ -505,7 +596,7 @@ func _arg_value(prefix: String) -> String:
 # --- shift flow (every peer) ----------------------------------------------------------------------
 
 @rpc("authority", "call_local", "reliable")
-func _begin_ride(down: bool, seed_value: int, cycle: int) -> void:
+func _begin_ride(down: bool, seed_value: int, cycle: int, biome: int) -> void:
 	phase = Phase.DESCENDING if down else Phase.ASCENDING
 	if multiplayer.is_server():
 		NetworkManager.set_joinable(false)
@@ -516,16 +607,19 @@ func _begin_ride(down: bool, seed_value: int, cycle: int) -> void:
 	_set_local_input(false)
 	await get_tree().create_timer(FADE_SECONDS).timeout
 	if down:
-		_build_mine(seed_value, cycle)
+		_build_mine(seed_value, cycle, biome)
 
 
-func _build_mine(seed_value: int, cycle: int) -> void:
+func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	_free_mine()
 	var started: int = Time.get_ticks_msec()
 	mine = Mine.new()
 	mine.name = "Mine"
 	mine_root.add_child(mine)
-	mine.build(seed_value, MineParams.from_balance(_config, cycle), CHUNKS)
+	biome_index = clampi(biome, 0, biomes.size() - 1)
+	mine.build(seed_value, MineParams.from_balance(_config, cycle), biomes[biome_index])
+	mine.add_hazards(cycle, _biome_rule())
+	Audio.set_echo(mine.chunk_set.echo)
 	var anchor: Marker3D = mine.station.find_child("LiftAnchor", true, false) as Marker3D
 	mine_cage = CAGE_SCENE.instantiate() as Foerderkorb
 	mine_cage.name = "MineCage"
@@ -550,6 +644,8 @@ func _start_shift(seconds: float) -> void:
 	shift_time_left = seconds
 	mine_cage.stop_ride()
 	hub_cage.motor.stop()
+	if local_player() != null:
+		local_player().recharge_battery()
 	_update_clocks()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
@@ -576,6 +672,7 @@ func _end_shift(results: Dictionary) -> void:
 	if multiplayer.is_server():
 		NetworkManager.set_joinable(phase == Phase.HUB)
 	_free_mine()
+	Audio.set_echo(0.0)
 	hub_cage.stop_ride()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
@@ -626,6 +723,7 @@ func _broadcast_run() -> void:
 		"shifts_left": run.shifts_left_in_cycle(),
 		"fired": run.fired,
 		"players": run.player_count,
+		"section": biome_index,
 	}
 	for peer: int in _ready_peers:
 		if peer == multiplayer.get_unique_id():
@@ -637,6 +735,7 @@ func _broadcast_run() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _apply_run_info(info: Dictionary) -> void:
 	run_info = info
+	biome_index = clampi(int(info.get("section", biome_index)), 0, biomes.size() - 1)
 	hub.update_board(info)
 	hud.update_run(info)
 
@@ -666,7 +765,7 @@ func request_take(item_path: NodePath, peer: int) -> void:
 	var player: Player = player_by_peer(peer)
 	if item == null or player == null or not player.alive:
 		return
-	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED:
+	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED or item is RailCart:
 		return
 	var place: int = player.inventory.place_for(item.data.weight_class)
 	if place == Inventory.NONE:
@@ -694,6 +793,7 @@ func request_drop(item_path: NodePath, at: Transform3D, toss: Vector3) -> void:
 	item.host_release(at, toss)
 	if item.data.weight_class == ItemData.WeightClass.HEAVY and not item is Schubkarre:
 		play_sound_everywhere.rpc("drop_thud", at.origin)
+		host_noise(at.origin, _config.noise_heavy_drop)
 
 
 ## Takes the other end of a heavy item another player carries (DESIGN.md §3).
@@ -733,14 +833,14 @@ func _host_check_carry_together() -> void:
 func request_load_cart(cart_path: NodePath, item_path: NodePath) -> void:
 	if not multiplayer.is_server():
 		return
-	var cart: Schubkarre = get_node_or_null(cart_path) as Schubkarre
+	var cart: CargoItem = get_node_or_null(cart_path) as CargoItem
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
 	if cart == null or item == null or item == cart or not item.is_loot() or item.state == WorldItem.State.CARTED:
 		return
 	if item.state == WorldItem.State.STOLEN:
 		return
 	if not cart.can_load(item):
-		_show_message_key.rpc_id(_sender(), "PROMPT_CART_FULL")
+		_show_message_key.rpc_id(_sender(), "PROMPT_HUNT_FULL" if cart is RailCart else "PROMPT_CART_FULL")
 		return
 	item.host_cart(cart.free_slot(item))
 	play_sound_everywhere.rpc("drop_thud" if item.data.weight_class == ItemData.WeightClass.HEAVY else "pickup", item.global_position)
@@ -751,9 +851,360 @@ func request_consume(item_path: NodePath, peer: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
-	if item != null and item.holder_peer == peer:
-		play_sound_everywhere.rpc("karbid_open", item.global_position)
-		item.host_vanish()
+	var player: Player = player_by_peer(peer)
+	if item == null or player == null or item.holder_peer != peer:
+		return
+	match item.data.use:
+		ItemData.Use.DRINK:
+			host_heal_player(player, _config.obstler_heal)
+			play_sound_everywhere.rpc("drink", item.global_position)
+		ItemData.Use.EAT:
+			host_heal_player(player, _config.leberkaese_heal)  # the chewing was heard already
+		_:
+			play_sound_everywhere.rpc("karbid_open", item.global_position)
+	item.host_vanish()
+
+
+func host_heal_player(player: Player, amount: int) -> void:
+	if player.alive and amount > 0:
+		player.set_health.rpc(mini(_config.player_max_health, player.health + amount))
+
+
+## Lit and thrown: a Böller or a Rauchbombe (Throwable) leaves the hand.
+@rpc("any_peer", "call_local", "reliable")
+func request_throw(item_path: NodePath, at: Transform3D, toss: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: Throwable = get_node_or_null(item_path) as Throwable
+	if item != null and not item.lit and item.holder_peer == _sender():
+		item.host_throw(at, toss.limit_length(_config.throw_tool_speed + _config.sprint_speed))
+
+
+## The Alphorn (DESIGN.md §7): stuns every creature in a cone in front, and the whole mine
+## hears it.
+@rpc("any_peer", "call_local", "reliable")
+func request_alphorn(from: Vector3, forward: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive:
+		return
+	play_sound_everywhere.rpc("alphorn", from, 6.0, 120.0)
+	host_noise(from, _config.noise_alphorn)
+	var stunned: int = 0
+	for creature: Creature in creatures():
+		if in_cone(from, forward, creature.global_position + Vector3.UP * 0.8, _config.alphorn_range, _config.alphorn_cone_degrees) \
+				and clear_line(from, creature.global_position + Vector3.UP * 0.8):
+			creature.host_stun(_config.alphorn_stun_seconds)
+			creature.host_shouted_at(from)
+			stunned += 1
+	print("[game] Alphorn by P%d stunned %d" % [player.peer_id, stunned])
+
+
+## Whether `point` lies within `reach` m of `from` and within a cone of `degrees` around `forward`.
+static func in_cone(from: Vector3, forward: Vector3, point: Vector3, reach: float, degrees: float) -> bool:
+	var to: Vector3 = point - from
+	if to.length() > reach:
+		return false
+	if to.length() < 0.5:
+		return true
+	return to.normalized().dot(forward.normalized()) >= cos(deg_to_rad(degrees / 2.0))
+
+
+## No rock between the two points.
+func clear_line(from: Vector3, to: Vector3) -> bool:
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, 1)
+	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
+
+
+## A Böller going off (host): heard far through the mine, scares Bergmandl, hurts whatever is
+## right next to it, and sets off firedamp.
+func host_bang(where: Vector3) -> void:
+	_flash.rpc(where, "boeller_bang", Color(1.0, 0.8, 0.5), 6.0)
+	host_noise(where, _config.noise_boeller)
+	host_blast(where, _config.boeller_radius, _config.boeller_damage)
+	for creature: Creature in creatures():
+		if creature.global_position.distance_to(where) <= _config.boeller_scare_radius:
+			creature.host_shouted_at(where)
+
+
+## Damage around a blast: full at the centre, nothing at `radius` (host). Rock shields.
+func host_blast(where: Vector3, radius: float, damage: int) -> void:
+	for player: Player in players():
+		var chest: Vector3 = player.global_position + Vector3.UP
+		if clear_line(where + Vector3.UP * 0.2, chest):
+			host_damage_player(player, _config.explosion_damage(chest.distance_to(where), radius, damage))
+	for creature: Creature in creatures():
+		var body: Vector3 = creature.global_position + Vector3.UP * 0.5
+		var hurt: int = _config.explosion_damage(body.distance_to(where), radius, damage)
+		if hurt > 0:
+			creature.host_hit(hurt, where)
+	host_flame(where, radius)
+
+
+## An open flame or a blast at `where` reaching `radius` m (host): firedamp there goes up.
+func host_flame(where: Vector3, radius: float) -> void:
+	if mine != null and mine.hazards != null:
+		mine.hazards.host_flame(where, radius)
+
+
+## A rotten ladder gave way under someone with a heavy load (they ask; their movement is theirs).
+@rpc("any_peer", "call_local", "reliable")
+func request_break_ladder(ladder_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var ladder: Ladder = get_node_or_null(ladder_path) as Ladder
+	var player: Player = player_by_peer(_sender())
+	if ladder != null and ladder.rotten and not ladder.broken and player != null and player.global_position.distance_to(ladder.global_position) < ladder.height + 2.0:
+		_break_ladder.rpc(ladder_path)
+		print("[hazards] %s gave way under P%d" % [ladder.name, player.peer_id])
+
+
+@rpc("authority", "call_local", "reliable")
+func _break_ladder(ladder_path: NodePath) -> void:
+	var ladder: Ladder = get_node_or_null(ladder_path) as Ladder
+	if ladder != null:
+		ladder.break_apart()
+
+
+## The "Bierzelt" bomb bursts: a stinking cloud creatures keep out of (host).
+func host_smoke(where: Vector3) -> void:
+	add_smoke(where, _config.rauchbombe_radius, _config.rauchbombe_seconds)
+	_show_smoke.rpc(where)
+	print("[game] Bierzelt cloud at %s" % where.snapped(Vector3.ONE * 0.1))
+
+
+@rpc("authority", "call_local", "reliable")
+func _show_smoke(where: Vector3) -> void:
+	Audio.play_at("smoke_puff", where, &"SFX", 0.0, 30.0)
+	var cloud: SmokeCloud = SmokeCloud.new()
+	cloud.radius = _config.rauchbombe_radius
+	cloud.seconds = _config.rauchbombe_seconds
+	(mine if mine != null else mine_root).add_child(cloud)
+	cloud.global_position = where
+
+
+## A bang with a flash of light, on every peer.
+@rpc("authority", "call_local", "reliable")
+func _flash(where: Vector3, sound: String, color: Color, energy: float) -> void:
+	Audio.play_at(sound, where, &"SFX", 4.0, 60.0)
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = energy
+	light.omni_range = 9.0
+	mine_root.add_child(light)
+	light.global_position = where + Vector3.UP * 0.4
+	var tween: Tween = light.create_tween()
+	tween.tween_property(light, "light_energy", 0.0, 0.35)
+	tween.tween_callback(light.queue_free)
+
+
+## A pick hit on a salt wall or rubble (only the Spitzhacke breaks rock).
+@rpc("any_peer", "call_local", "reliable")
+func request_break(rock_path: NodePath, damage: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var rock: Breakable = get_node_or_null(rock_path) as Breakable
+	var player: Player = player_by_peer(_sender())
+	if rock == null or player == null or not player.alive or rock.health <= 0:
+		return
+	var tool: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
+	if tool == null or not tool.data.breaks_rock or player.global_position.distance_to(rock.global_position) > rock.size.x:
+		return
+	rock.host_hit(clampi(damage, 0, 100))
+
+
+## Host: a wall or pile just broke. A salt wall leaves a crystal or two in its rubble.
+func host_broke(rock: Breakable) -> void:
+	print("[game] %s broken" % rock.name)
+	if rock.kind != Breakable.Kind.SALT_WALL:
+		return
+	for i: int in randi_range(1, 2):
+		var at: Vector3 = rock.global_position + rock.global_basis.z * randf_range(-0.6, 0.6) + Vector3(randf_range(-1.0, 1.0), 0.6, 0.0)
+		_spawn_item_at(&"salzkristall", randi_range(8, 18), Transform3D(Basis.IDENTITY, at))
+
+
+## E on a rail cart: start or stop pushing it.
+@rpc("any_peer", "call_local", "reliable")
+func request_push_rail(cart_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var cart: RailCart = get_node_or_null(cart_path) as RailCart
+	var player: Player = player_by_peer(_sender())
+	if cart == null or player == null or not player.alive or player.inventory.hands_busy():
+		return
+	if cart.pusher_peer == player.peer_id:
+		cart.host_set_pusher(0)
+	elif cart.pusher_peer == 0 and player.global_position.distance_to(cart.global_position) < _config.interact_distance + 1.0:
+		cart.host_set_pusher(player.peer_id)
+
+
+## The Grubenhund-Pfeiferl: the nearest rail cart rolls over to whoever blew it.
+@rpc("any_peer", "call_local", "reliable")
+func request_call_cart(where: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive:
+		return
+	play_sound_everywhere.rpc("pfeiferl", where + Vector3.UP * 1.5, 2.0, 50.0)
+	var nearest: RailCart = null
+	for item: WorldItem in _items():
+		var cart: RailCart = item as RailCart
+		if cart != null and (nearest == null or cart.global_position.distance_to(where) < nearest.global_position.distance_to(where)):
+			nearest = cart
+	if nearest == null or mine == null or mine.rails == null:
+		_show_message_key.rpc_id(player.peer_id, "MSG_NO_RAILS")
+		return
+	if mine.rails.distance_to(where) > mine.chunk_set.cell_size:
+		_show_message_key.rpc_id(player.peer_id, "MSG_RAILS_FAR")
+	nearest.host_call(where)
+	print("[game] Hunt called by P%d" % player.peer_id)
+
+
+## The Seil: thrown down the edge at `point` (looking along `flat`), where there is a drop.
+@rpc("any_peer", "call_local", "reliable")
+func request_rope(item_path: NodePath, point: Vector3, flat: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var player: Player = player_by_peer(_sender())
+	if item == null or player == null or item.holder_peer != player.peer_id or mine == null:
+		return
+	if point.distance_to(player.global_position) > _config.interact_distance + 1.5:
+		return
+	var edge: Array[Vector3] = _find_drop(point, flat.normalized())
+	if edge.is_empty():
+		_show_message_key.rpc_id(player.peer_id, "MSG_ROPE_NO_EDGE")
+		return
+	item.host_vanish()
+	_next_item += 1
+	_place_rope.rpc("Rope%d" % _next_item, edge[0], edge[1])
+	play_sound_everywhere.rpc("rope", edge[0])
+
+
+## Walks from `point` along `flat` in small steps until the floor drops away by more than a
+## man's height: [top of the rope, bottom], or [] when there is no edge within reach.
+func _find_drop(point: Vector3, flat: Vector3) -> Array[Vector3]:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var depth: float = _config.seil_length + 1.5
+	for i: int in 14:
+		var probe: Vector3 = point + flat * (0.2 * i) + Vector3.UP * 0.4
+		if not clear_line(point + Vector3.UP * 0.4, probe):
+			return []  # a wall before any edge
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(probe, probe + Vector3.DOWN * depth, 1)
+		var hit: Dictionary = space.intersect_ray(query)
+		var floor_y: float = (hit.position as Vector3).y if not hit.is_empty() else probe.y - depth
+		if point.y - floor_y > 1.8:
+			# A bulge of the wall just under the edge is not the bottom: look a little further out.
+			for extra: int in range(1, 4):
+				var further: Vector3 = probe + flat * (0.2 * extra)
+				var deeper: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(further, further + Vector3.DOWN * depth, 1))
+				floor_y = minf(floor_y, (deeper.position as Vector3).y if not deeper.is_empty() else further.y - depth)
+			var top: Vector3 = Vector3(probe.x, point.y, probe.z) + flat * 0.1
+			return [top, Vector3(top.x, maxf(floor_y, top.y - _config.seil_length), top.z)]
+	return []
+
+
+@rpc("authority", "call_local", "reliable")
+func _place_rope(rope_name: String, top: Vector3, bottom: Vector3) -> void:
+	if mine == null:
+		return
+	var rope: Rope = Rope.new()
+	rope.name = rope_name
+	mine.add_child(rope)
+	rope.setup(top, bottom)
+
+
+## Hold E on a rope's hook: the Seil comes back up into your pocket.
+@rpc("any_peer", "call_local", "reliable")
+func request_take_rope(rope_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var rope: Rope = get_node_or_null(rope_path) as Rope
+	var player: Player = player_by_peer(_sender())
+	if rope == null or player == null or not player.alive or player.inventory.place_for(ItemData.WeightClass.LIGHT) == Inventory.NONE:
+		return
+	if player.global_position.distance_to(rope.top) > _config.interact_distance + 1.5:
+		return
+	var top: Vector3 = rope.top
+	_remove_rope.rpc(rope.get_path())
+	play_sound_everywhere.rpc("rope", top)
+	var item: WorldItem = _spawn_item_at(&"seil", 0, Transform3D(Basis.IDENTITY, top + Vector3.UP * 0.3))
+	# Into the pocket once every peer has the new item.
+	await get_tree().create_timer(0.3).timeout
+	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
+	if is_instance_valid(item) and place != Inventory.NONE and item.state == WorldItem.State.FREE:
+		item.host_take(player.peer_id, place)
+
+
+@rpc("authority", "call_local", "reliable")
+func _remove_rope(rope_path: NodePath) -> void:
+	var rope: Node = get_node_or_null(rope_path)
+	if rope != null:
+		rope.queue_free()
+
+
+## The bell at a Salzsee landing: the ferry crosses over. The bell carries far.
+@rpc("any_peer", "call_local", "reliable")
+func request_ferry(ferry_path: NodePath, bell_at: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var ferry: Ferry = get_node_or_null(ferry_path) as Ferry
+	var player: Player = player_by_peer(_sender())
+	if ferry == null or player == null or not player.alive or player.global_position.distance_to(bell_at) > _config.interact_distance + 2.0:
+		return
+	play_sound_everywhere.rpc("ferry_bell", bell_at, 4.0, 70.0)
+	host_noise(bell_at, _config.noise_bell)
+	if ferry.host_ring():
+		print("[game] ferry crossing")
+
+
+## A message for one player (host), by translation key.
+func message_to(peer: int, key: String) -> void:
+	if peer == multiplayer.get_unique_id():
+		_show_message_key(key)
+	else:
+		_show_message_key.rpc_id(peer, key)
+
+
+## Picked a mine section on the Grubnplan in the Gasthaus (only unlocked ones, only in the hub).
+@rpc("any_peer", "call_local", "reliable")
+func request_section(index: int) -> void:
+	if not multiplayer.is_server() or phase != Phase.HUB or index < 0 or index >= biomes.size():
+		return
+	if not section_unlocked(index, GameState.run.cycle):
+		return
+	biome_index = index
+	_broadcast_run()
+	print("[game] section %s picked" % biomes[index].id)
+
+
+## Whether mine section `index` can be picked in quota cycle `cycle` (BiomeRule.unlock_cycle).
+func section_unlocked(index: int, cycle: int) -> bool:
+	var rule: BiomeRule = _config.biome_rule(biomes[index].id)
+	return rule == null or cycle >= rule.unlock_cycle
+
+
+## The Funkgerät's call button: a crackle on every other Funkgerät in the crew.
+@rpc("any_peer", "call_local", "reliable")
+func request_radio_call() -> void:
+	if not multiplayer.is_server():
+		return
+	var caller: Player = player_by_peer(_sender())
+	if caller != null and caller.alive and caller.has_tool(&"funkgeraet"):
+		_radio_call.rpc(caller.peer_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func _radio_call(caller_peer: int) -> void:
+	var me: Player = local_player()
+	var caller: Player = player_by_peer(caller_peer)
+	if me == null or caller == null or not me.has_tool(&"funkgeraet"):
+		return
+	me.play_radio(0.9)
+	if me != caller:
+		show_message(tr("MSG_RADIO_CALL") % caller.display_name())
 
 
 ## The owner's character landed hard (movement is client-side, health is the host's).
@@ -803,6 +1254,8 @@ func request_shout(peer: int, where: Vector3, with_sound: bool = true) -> void:
 		return
 	if with_sound:
 		_play_shout.rpc(peer)
+	# Loud voices draw the Tatzelwurm (DESIGN.md §9).
+	host_noise(where, _config.noise_shout)
 	for creature: Creature in creatures():
 		if creature.global_position.distance_to(where) <= _config.shout_radius:
 			creature.host_shouted_at(where)
@@ -816,8 +1269,8 @@ func _play_shout(peer: int) -> void:
 
 
 @rpc("any_peer", "call_local", "reliable")
-func play_sound_everywhere(sound: String, where: Vector3) -> void:
-	Audio.play_at(sound, where)
+func play_sound_everywhere(sound: String, where: Vector3, volume_db: float = 0.0, max_distance: float = 30.0) -> void:
+	Audio.play_at(sound, where, &"SFX", volume_db, max_distance)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -918,6 +1371,76 @@ func claim_voice_slot() -> bool:
 		return false
 	_voice_quiet_until = now + _config.voice_global_gap
 	return true
+
+
+# --- noise and smoke (host) -----------------------------------------------------------------------
+
+## A noise or vibration at `where` that carries `reach` metres: every creature in reach hears
+## it (the Tatzelwurm hunts by it, DESIGN.md §6).
+func host_noise(where: Vector3, reach: float) -> void:
+	if not multiplayer.is_server() or phase != Phase.SHIFT or reach <= 0.0:
+		return
+	for creature: Creature in creatures():
+		if creature.global_position.distance_to(where) <= reach:
+			creature.host_heard(where, reach)
+
+
+## How far a player's movement carries right now: sprinting is loud, walking a little,
+## crouching (sneaking) not at all; a rattling Schubkarre is loud too.
+func movement_noise(player: Player) -> float:
+	if not player.alive or player.global_position.y > HUB_FLOOR_ABOVE or not player.is_on_floor_now():
+		return 0.0
+	var speed: float = Vector2(player.velocity.x, player.velocity.z).length()
+	if speed < 0.5 or player.crouching:
+		return 0.0
+	var reach: float = _config.noise_sprint if speed > _config.walk_speed * 1.2 else _config.noise_walk
+	if player.inventory.hands is Schubkarre:
+		reach = maxf(reach, _config.noise_schubkarre)
+	return reach
+
+
+func _host_tick_noise(delta: float) -> void:
+	_noise_left -= delta
+	if _noise_left > 0.0:
+		return
+	_noise_left = _config.noise_step_seconds
+	for player: Player in players():
+		host_noise(player.global_position, movement_noise(player))
+	for item: WorldItem in _items():
+		if item is RailCart and (item as RailCart).moving:
+			host_noise(item.global_position, _config.noise_rail_cart)
+	var now: float = Time.get_ticks_msec() / 1000.0
+	_smokes = _smokes.filter(func(smoke: Array) -> bool: return float(smoke[2]) > now)
+
+
+func add_smoke(centre: Vector3, radius: float, seconds: float) -> void:
+	_smokes.append([centre, radius, Time.get_ticks_msec() / 1000.0 + seconds])
+
+
+func in_smoke(point: Vector3) -> bool:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	for smoke: Array in _smokes:
+		if float(smoke[2]) > now and (smoke[0] as Vector3).distance_to(point) < float(smoke[1]):
+			return true
+	return false
+
+
+## A point just outside the smoke cloud around `point`, straight away from its centre.
+func smoke_exit(point: Vector3) -> Vector3:
+	for smoke: Array in _smokes:
+		var centre: Vector3 = smoke[0]
+		if centre.distance_to(point) < float(smoke[1]):
+			var away: Vector3 = point - centre
+			away.y = 0.0
+			if away.length() < 0.1:
+				away = Vector3.FORWARD
+			return centre + away.normalized() * (float(smoke[1]) + 1.0)
+	return point
+
+
+func _biome_rule() -> BiomeRule:
+	var rule: BiomeRule = _config.biome_rule(biomes[clampi(biome_index, 0, biomes.size() - 1)].id)
+	return rule if rule != null else BiomeRule.new()
 
 
 # --- lookups --------------------------------------------------------------------------------------

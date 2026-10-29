@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_olive"]
+albedo_color = Color(0.22, 0.27, 0.16, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="mat_black"]
+albedo_color = Color(0.06, 0.06, 0.06, 1)
+roughness = 0.8
+
+[sub_resource type="BoxMesh" id="mesh_0"]
+size = Vector3(0.075, 0.16, 0.045)
+
+[sub_resource type="CylinderMesh" id="mesh_1"]
+top_radius = 0.005
+bottom_radius = 0.006
+height = 0.15
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.009
+bottom_radius = 0.009
+height = 0.012
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxMesh" id="mesh_3"]
+size = Vector3(0.05, 0.04, 0.004)
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.08, 0.3, 0.05)
+
+[node name="Funkgeraet" type="RigidBody3D"]
+mass = 0.6
+script = ExtResource("1_item")
+
+[node name="Part1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_olive")
+
+[node name="Part2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.025, 0.235, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_black")
+
+[node name="Part3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.02, 0.165, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_black")
+
+[node name="Part4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, -0.024)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_black")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+shape = SubResource("shape")

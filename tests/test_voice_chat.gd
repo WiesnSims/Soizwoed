@@ -39,3 +39,20 @@ func test_peak_level() -> void:
 	assert_almost_eq(VoiceChat.peak_level(_pcm([100, -16384, 2000])), 0.5, 0.0001)
 	assert_eq(VoiceChat.peak_level(PackedByteArray()), 0.0)
 	assert_almost_eq(VoiceChat.peak_level(_pcm([100, -16384]), 2), 100.0 / 32768.0, 0.0001)
+
+
+func test_far_apart_with_radios_comes_over_the_radio() -> void:
+	assert_eq(VoiceChat.hearing(true, true, true, 25.0, 30.0), VoiceChat.Hearing.RADIO)
+
+
+func test_close_by_with_radios_stays_in_3d() -> void:
+	assert_eq(VoiceChat.hearing(true, true, true, 5.0, 30.0), VoiceChat.Hearing.POSITIONAL)
+
+
+func test_no_radio_without_both_radios() -> void:
+	assert_eq(VoiceChat.hearing(true, true, false, 200.0, 30.0), VoiceChat.Hearing.POSITIONAL)
+
+
+func test_the_dead_do_not_use_the_radio() -> void:
+	assert_eq(VoiceChat.hearing(false, true, true, 200.0, 30.0), VoiceChat.Hearing.NONE)
+	assert_eq(VoiceChat.hearing(true, false, true, 200.0, 30.0), VoiceChat.Hearing.POSITIONAL)

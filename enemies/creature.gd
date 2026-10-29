@@ -10,6 +10,9 @@ const LAYER_CREATURES: int = 8  # physics layer 4
 const ARRIVE_DISTANCE: float = 0.6
 const REPATH_SECONDS: float = 1.0
 const STUCK_SECONDS: float = 1.2
+const WEDGED_SECONDS: float = 4.0
+const DODGE_AFTER: float = 0.25
+const DODGE_SECONDS: float = 0.7
 
 var data: EnemyData
 var health: int = 1
@@ -24,8 +27,14 @@ var _path_index: int = 0
 var _path_goal: Vector3 = Vector3.INF
 var _repath_left: float = 0.0
 var _stuck_time: float = 0.0
+var _progress_from: Vector3 = Vector3.INF
+var _progress_time: float = 0.0
+var _dodge_left: float = 0.0
+var _dodge_side: float = 1.0
 var _last_line_at: float = -INF
 var _net: NetInterpolator = NetInterpolator.new()
+## Host: seconds left of being stunned (Alphorn); the AI does nothing meanwhile.
+var stunned_left: float = 0.0
 
 @onready var voice: AudioStreamPlayer3D = $Voice
 @onready var sync: MultiplayerSynchronizer = $Sync
@@ -34,7 +43,6 @@ var _net: NetInterpolator = NetInterpolator.new()
 func _ready() -> void:
 	add_to_group(&"creatures")
 	_config = Balance.config
-	health = data.max_health
 	collision_layer = LAYER_CREATURES
 	collision_mask = 1
 	_net.delay = sync.replication_interval * 2.0
@@ -44,7 +52,11 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server() and Game.instance != null and Game.instance.mine != null:
-		_think(delta)
+		if stunned_left > 0.0:
+			stunned_left -= delta
+			_halt(delta)
+		else:
+			_think(delta)
 		net_position = global_position
 		net_yaw = rotation.y
 
@@ -74,6 +86,22 @@ func host_shouted_at(_from: Vector3) -> void:
 	pass
 
 
+## Called on the host for every noise or vibration within its reach (Game.host_noise):
+## `where` it came from and how far it carries (m). Override for creatures that listen.
+func host_heard(_where: Vector3, _reach: float) -> void:
+	pass
+
+
+## The Alphorn's blast: stands dazed for `seconds` (host).
+func host_stun(seconds: float) -> void:
+	stunned_left = maxf(stunned_left, seconds)
+
+
+## Whether a point lies in the smoke of a "Bierzelt" bomb, which creatures avoid.
+func in_smoke(point: Vector3) -> bool:
+	return Game.instance != null and Game.instance.in_smoke(point)
+
+
 # --- movement --------------------------------------------------------------------------------------
 
 ## Walks towards `goal` along the waypoint graph; true once there.
@@ -91,6 +119,12 @@ func walk_to(goal: Vector3, speed: float, delta: float) -> bool:
 			_path_index += 1
 		if _path_index < _path.size():
 			next = _path[_path_index]
+	# The stink of a "Bierzelt" bomb: get out of it, and never walk into it.
+	if in_smoke(global_position):
+		next = Game.instance.smoke_exit(global_position)
+	elif in_smoke(next):
+		_halt(delta)
+		return false
 	_step_towards(next, speed, delta)
 	return false
 
@@ -109,13 +143,32 @@ func _step_towards(target: Vector3, speed: float, delta: float) -> void:
 	var dir: Vector3 = target - global_position
 	dir.y = 0.0
 	dir = dir.normalized()
+	var facing: Vector3 = dir
+	# Something in the way (a cart, a crate, another creature): step around it for a moment.
+	_dodge_left -= delta
+	if _dodge_left > 0.0:
+		dir = (dir + dir.cross(Vector3.UP) * _dodge_side * 1.3).normalized()
 	velocity.x = dir.x * speed
 	velocity.z = dir.z * speed
 	velocity.y = 0.0 if is_on_floor() else velocity.y - _gravity * delta
 	var before: Vector3 = global_position
 	move_and_slide()
-	if dir.length_squared() > 0.0:
-		rotation.y = lerp_angle(rotation.y, atan2(-dir.x, -dir.z), clampf(10.0 * delta, 0.0, 1.0))
+	if facing.length_squared() > 0.0:
+		rotation.y = lerp_angle(rotation.y, atan2(-facing.x, -facing.z), clampf(10.0 * delta, 0.0, 1.0))
+	if _dodge_left <= 0.0 and before.distance_to(global_position) < speed * delta * 0.25 and _stuck_time > DODGE_AFTER:
+		_dodge_side = -_dodge_side
+		_dodge_left = DODGE_SECONDS
+	# Wedged for good (re-pathing keeps sending it into the same rock): back onto the graph.
+	_progress_time += delta
+	if global_position.distance_to(_progress_from) > 0.5:
+		_progress_from = global_position
+		_progress_time = 0.0
+	elif _progress_time > WEDGED_SECONDS:
+		_progress_time = 0.0
+		var nav: AStar3D = Game.instance.mine.nav
+		global_position = nav.get_point_position(nav.get_closest_point(global_position)) + Vector3.UP * 0.3
+		_path_index = mini(_path_index + 1, _path.size())
+		print("[creature] %s was wedged, back on the path" % name)
 	# Stuck on a rock: skip to the next waypoint, then hop.
 	if before.distance_to(global_position) < speed * delta * 0.25:
 		_stuck_time += delta

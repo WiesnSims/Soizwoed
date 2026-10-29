@@ -144,3 +144,171 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 
 ### Testing
 - `tools/steam_test.ps1` (Steam running, one account): a headless host creates a public lobby, a second instance must find exactly it with the filtered search, and joining it must be refused (own account). Real joining and voice need a second account on another PC.
+
+## 2026-10-29 – M4 start (chosen by Claude unless marked, change any time)
+
+### Steam invites without the overlay
+- **"Freind eiladn" did nothing** (owner report): it only opened the Steam overlay's invite dialog, and Steam hooks its overlay into a Vulkan game only when Steam itself starts the game. Soizwoed.exe started from its folder (the normal case with App ID 480) has no overlay, so Shift+Tab does nothing either.
+- **Now:** if Steam reports the overlay as enabled, the button opens it as before; otherwise an in-game list of your Steam friends (online first, "(spüt grad)" for friends in Spacewar/Soizwöd) with an "Eiladn" button each, which sends a normal Steam lobby invite (`inviteUserToLobby`). The friend gets it in their Steam chat; accepting it starts or joins the game as before. DESIGN.md §9 already allowed "an in-game friends list".
+
+### Settings menu (owner request, moved from M5 to M4)
+- **"Einstellungen"** in the main menu and the Esc menu, four tabs, every change applied and saved right away to `user://settings.cfg` ("Standard" resets everything):
+  - **Ton:** overall volume, music, sounds (effects, creatures and ambience together), teammates' voices, "Gegner redn" (DESIGN.md §6), open mic.
+  - **Anzeige:** window / borderless fullscreen / exclusive fullscreen, VSync, frame rate cap (30–240 or none), field of view (60–100°, default 78), brightness (multiplies the tuned exposure; the mine stays meant to be dark).
+  - **Grafik:** quality preset Niedrig / Mittel / Hoch / Ultra (shadow atlas and soft-shadow quality, SSAO, SSIL, volumetric fog resolution; "Hoch" is the look the game was tuned with), 3D resolution 50–100 % (FSR below 100 %), dust in the light (volumetric fog) on/off, anti-aliasing (off, FXAA, TAA, MSAA + TAA = the old default).
+  - **Spü:** mouse sensitivity, invert mouse Y, head bob.
+- Default window mode stays "Im Fenster", so local multi-instance tests don't open fullscreen. Headless and `--shots` runs never touch the window.
+- Key rebinding and a language choice are left for M5 (only German exists so far).
+
+### Taskbar icon (owner report)
+- **Taskbar showed the generic Windows icon** while the file, the shortcut and the window corner showed the lamp: Godot 4.7.2's exporter rewrites the exe's icons but writes the icon group's name (`GODOT_ICON`) with a broken offset. Explorer just takes the first group, but the game loads its window-class icon by that name at startup, gets nothing and falls back to the generic icon, which the Windows 11 taskbar shows.
+- **Now:** `tools/build.ps1` runs `tools/fix_exe_icon.ps1` after the export. It rewrites the exe's resources from `icon.ico` (all 7 sizes, Godot kept only 6), restores the group name and keeps version info and manifest. This only works because the pck is not embedded. An export straight from the editor still has the bug; use the build script.
+
+### Creature spawning
+- **Each biome lists its creatures** (`ChunkSet.creatures`). The host spends the shift's enemy budget on them by weight: half at the start, the rest every 90 s, as before. The rules (`CreatureSpawnRule`, in `balance.tres`) give each type a budget cost, a weight, a group size, the first cycle it appears and a maximum alive at once:
+  - Bergmandl: cost 1, weight 3, groups of 2–3.
+  - Tatzelwurm: cost 3, weight 1, at most 1.
+  - Kasermandl: cost 2.5, weight 1, at most 1.
+  - Schichtmeister: outside the budget, only after the whistle.
+- **Mine sections** (`BiomeRule`): the Salzsee unlocks from cycle 2 (`unlock_cycle = 1`) with 1.35× loot values and 1.2× enemy budget.
+
+### Noise (for the Tatzelwurm)
+- Every noise has a reach in metres; creatures within it hear where it came from (`Game.host_noise`):
+  - movement: sprinting 22, walking 6, crouching 0, pushing the Schubkarre 12;
+  - heavy drop 20, shout or loud voice 25;
+  - rail cart 20, Böller 35, bell 40, explosion 60, Alphorn 80.
+- Movement is checked every 0.5 s.
+
+### Tatzelwurm
+- Underground it is invisible and only heard: grinding rock, muffled through walls. It roams slowly, and heads for the last noise it heard.
+- It bursts out of the floor there and stays up about 6 s. It lunges (55 damage) at anyone within 3.2 m who moves faster than 2.2 m/s, so crouching or standing still is safe; walking is not. Then it dives and rests about 10 s.
+- 120 HP. Any hit makes it dive at once, so the Spitzhacke chases it off but rarely kills it.
+
+### Kasermandl
+- **Lit = frozen:** it counts as lit when a lamp's light reaches it (within 90 % of the lamp's range, no rock in between – whichever way the player looks) or a hanging lantern is within 6 m. Lit, it stands still, falls silent and fades out; in the dark it fades back in.
+- In the dark it creeps (2.2 m/s) after the nearest miner and rushes (4.8 m/s) at one whose lamp is off. A touch does 35 damage, then it slips back into the dark for 12 s.
+- It cannot be hurt: the pick goes right through it. Light is the only counter. Close by in the dark you hear it breathe.
+
+### Schichtmeister
+- Comes 12 s after the whistle, once per shift, for the miner outside the cage who is nearest the lift. He appears 15–40 m behind them, on the side away from the cage.
+- 6.4 m/s (faster than a sprint); one touch kills. He never enters the Förderkorb and vanishes when the lift goes up. Hits only annoy him. The Alphorn stuns him, and he won't walk into a "Bierzelt" cloud.
+
+### Creature voices
+- **Kasermandl and Schichtmeister use variant A** (picked by the owner after the M4 playtest).
+- Each creature's `.tres` is generated from `tools/audio/voices.py` (`tools/audio/creature_tres.py`), so lines and files never drift apart.
+
+### Creature movement
+- A creature blocked by something (the parked mine cart, a crate) sidesteps for 0.7 s.
+- If it makes no progress for 4 s, it hops back to the nearest waypoint. Without this, a Bergmandl could stay wedged at one spot for good.
+
+### Tools (§7)
+- **Using a tool:** select it in a pocket slot and click (left mouse). The HUD shows what the click does. Prices:
+  - Stirnlampe 220 S, Alphorn 300 S, Funkgerät 120 S, Seil 90 S, Pfeiferl 80 S (tools: they stay yours for the run as long as they ride up with you).
+  - Böller 30 S, Rauchbombe 60 S, Obstler 45 S, Leberkässemmel 55 S (used up).
+  - Spitzhacke, Karbidpatrone and Schubkarre are unchanged.
+- **Elektrische Stirnlampe:** click switches between carbide and the Stirnlampe. While it is on: no flame (safe in firedamp), steady colder light, a little more reach, no hiss. Its battery lasts 12 min and is charged in the Gasthaus before every shift. Lose it and you're back on carbide. The Kasermandl freezes in either light.
+- **Alphorn** (a "travel size" one that fits a pocket): every creature within 20 m in a 70° cone in front, not behind rock, is stunned for 6 s and then reacts as if shouted at. The blast is a noise that carries 80 m, so a Tatzelwurm comes. 12 s until you have breath again.
+- **Böller:** lit and thrown. After 2.5 s it bangs:
+  - noise 35 m (draws the Tatzelwurm);
+  - Bergmandl within 12 m run;
+  - up to 20 damage within 3 m, to creatures and players, shielded by rock;
+  - it is a flame: firedamp goes up.
+- **Rauchbombe "Bierzelt":** thrown; 1.2 s later a 5 m cloud for 35 s. Creatures leave it and do not path into it. It does not hurt players.
+- **Funkgerät:** if both you and a teammate carry one and you are more than 12 m apart (40 % of the voice range), you also hear each other out of the radio: tinny, never quieter than −6 dB, with static while a creature is within 10 m of either end. Click = a crackle on every other Funkgerät plus "… funkt di an!", which works without voice chat (ENet) too.
+- **Obstler:** +25 health at once, the view sways and rolls for 20 s. **Leberkässemmel:** 4 s of eating (bar under the crosshair, cancelled if you switch slot or pick up something heavy), then +40.
+- **Seil & Kletterhaken:** click while looking at the floor near an edge with a drop of more than 1.8 m: the rope hangs down from there (up to 7 m) for the rest of the shift. Climb it like a ladder: forward = up (down while looking down), back = down, jump = let go. With something heavy in your hands you climb at 40 % speed; never with a Schubkarre. Hold E on the hook to take the rope back.
+- **Rail track and Hunt (Oberer Stollen):**
+  - A track runs from just outside the Förderkorb along the main path, as far as the chunks allow (pits and water stop it). The decorative rails and parked carts on that path make way for it.
+  - One Hunt stands at the lift. Press E to push it: it stays 1.4 m ahead of you on the track at 85 % walking speed, both ways; G or walking more than 3.2 m away lets go.
+  - It holds 6 units of loot (a heavy item counts 3). It is loud (noise 20 m), and Bergmandl steal from it too.
+  - It never rides up: unload it into the cage.
+  - The Grubenhund-Pfeiferl calls it: it rolls along the track to the point nearest you at 3 m/s and stops 1.6 m short.
+- **Salt walls:**
+  - The generator closes half of the loop passages (shortcuts) and a quarter of the dead-end entrances (niches) with a salt wall.
+  - The Spitzhacke breaks one in 3 hits (100 HP); bare hands only get "Do brauchst a Spitzhackn". A broken wall leaves 1–2 small salt crystals.
+  - Creatures do not path through an unbroken wall, except the Tatzelwurm underground.
+
+### Hazards (§4)
+- **Placement:** every peer places firedamp and brine from the seed, in chunks two or more steps from the lift. The host decides what happens: ignition, rockfalls, the bridge giving way.
+- **Schlagende Wetter (firedamp):**
+  - A pocket is a 3 m sphere just under the roof, at the middle of a chunk. 30 % of chunks get one in cycle 1, plus 5 % per cycle (at most 80 %). Never in a chunk with a hanging lantern.
+  - All you see is a faint shimmer, like hot air.
+  - Within 2.5 m of a pocket the carbide flame flares up tall and bluish, with a whoosh: the old miners' warning sign.
+  - A carbide flame inside the pocket for 1 s sets it off: up to 90 damage within 7 m (rock shields), the mine hears it 60 m away, the camera shakes. Bangs and other explosions also set pockets off, so pockets can chain.
+  - Pass with the lamp off (in the dark, with the Kasermandl) or with the Stirnlampe.
+- **Steinschlag (rockfall):**
+  - About every 75 s (±30 %), with a 50 % chance, the roof gives at a waypoint 3–12 m from a random miner outside the station. You hear creaking and see grit trickling down; 2.5 s later the rock comes down: 45 damage within 2.2 m.
+  - In 35 % of cases it leaves a pile blocking the tunnel (60 HP: 2 pick hits). It only blocks if:
+    - every miner still has another way back to the lift;
+    - the spot is not a crossing;
+    - nobody stands where the pile would be.
+- **Gesenk (new Oberer Stollen chunk, 2+ steps deep, no rails, no gas or brine):**
+  - A 5 m deep pit in a small room, with loot at the bottom. Narrow ledges along the sides lead around it.
+  - A rotten plank bridge crosses it. The bridge creaks under anyone and gives way under someone carrying something heavy: a salt block, a body, or a Schubkarre with a heavy load. A heavy item dropped on it breaks it too.
+  - Two rotten ladders lead down. They creak, and give way after 0.6 s of climbing with something heavy in your hands.
+  - The fall costs about 25 health. The Seil is the safe way up with a load.
+- **Sole (brine):** pools of 2.2 m radius in 12 % of chunks (more in the Salzsee). Wading through one slows you to 60 %, the carbide burns 3× as fast while you are in it, and footsteps slosh.
+
+### Salzsee (§4) and the Grubnplan
+- **Picking a section:** a yellowed "Grubnplan" hangs right of the notice board in the Gasthaus. E opens the list of sections: the Oberer Stollen from the start, the Salzsee from quota cycle 2.
+  - Anyone in the crew can pick; the host checks the pick is unlocked.
+  - The choice holds for the following shifts until someone changes it, and the plan shows "Heit: …".
+  - A new run starts in the Oberer Stollen again.
+- **The Salzsee:**
+  - **Layout:** 16 m cells; passages 5 m wide and 4.5 m high. Tunnels, a grotto with a salt column, a "Salzdom" (12 × 9 × 12 m with two columns), and the lake cavern. No rails.
+  - **Balance:** loot is worth 1.35×, the enemy budget is 1.2×, and brine pools are in 30 % of chunks. Same creatures as the Oberer Stollen.
+  - **Echo:** a long reverb on sounds, creatures and ambience (echo 0.6; the Oberer Stollen 0.2; the Gasthaus none).
+- **The lake cavern (Seehalle):**
+  - A 14 × 13 m hall with an 11.5 × 8 m lake of black brine, 2.6 m deep, between two landings. Along one wall runs a wet path about 2.5 m wide; creatures always take that path.
+  - **The ferry:** a flat Zille between the landings. Ring the bell at either landing ("Hol über!") and it crosses to the other side in 7 s: to you, or with you on it. The bell is a noise that carries 40 m.
+  - **Swimming:** falling in means swimming at 1.6 m/s with the head above water. The carbide lamp goes out ("ersoffn"); the Stirnlampe keeps working.
+  - Anything medium or heavy slips from your hands and sinks for good: heavy loot crosses on the ferry.
+  - After 2 s in the water something down there gets hold of you: 12 damage a second, with gurgling, until you are out.
+  - Swim against a landing (or the boat) to pull yourself out.
+
+### Version and tests
+- **Version 0.4.0** (M4). Lobbies of 0.3.0 builds and 0.4.0 builds do not see each other.
+- **New headless checks:**
+  - `smoke_tools`, `smoke_hazards`, `smoke_salzsee` (in `tools/smoke_test.ps1`);
+  - `tools/mp_test.ps1 -Tools`: a client uses Stirnlampe, Obstler, Böller, Alphorn, Rauchbombe, Funkgerät and Pfeiferl; the host must see each use arrive and the client must see the Hunt roll.
+- The hazards and Salzsee checks build a Gesenk or lake chunk far below the generated mine, so they never depend on the seed.
+
+## 2026-10-30 – M4 playtest feedback
+
+### Confirmed by the owner
+- **Voices:** variant A is final for the Kasermandl and the Schichtmeister.
+- **Stirnlampe haze** in the big Salzsee caverns stays as it is.
+
+### Chosen by Claude (change any time)
+- **The settings page was cut off in fullscreen.** It is now a full-screen layer that keeps its panel centred.
+- **The UI scales with the screen:** canvas_items stretch from 1280×720, aspect "expand". It used to stay at its pixel size.
+- **Window mode labels:** "Fenster", "Randloses Fenster", "Vollbild".
+- **Performance in fullscreen** (it rendered everything at native resolution, uncapped):
+  - **Automatic 3D resolution (new, on by default):** the 3D picture is rendered at no more than 1080 lines and upscaled with FSR 2, so 1440p renders at 75 % and 4K at 50 %. The UI stays sharp. Turn it off to use the 3D resolution slider. Below 100 %, FSR 2 replaces the other anti-aliasing.
+  - **Defaults:** 60 fps cap (new choices: 90 and 165) and TAA instead of MSAA 2× + TAA + FXAA. Settings files saved by the M4 build move to these once, if they still had the old uncapped frame rate or the MSAA combination.
+  - **"Hoch" preset:**
+    - 4K shadow atlas instead of 8K, soft shadows quality 2;
+    - SSAO quality 2, SSIL quality 1;
+    - volumetric fog 96×64;
+    - reflections (SSR) with 24 steps.
+    "Ultra" keeps the full look. "Mittel" and "Niedrig" turn reflections off.
+  - **Lamps and lanterns:** they stop casting shadows beyond a distance set by the preset (14 / 18 / 24 / 40 m) and fade out entirely beyond 32–40 m. Every shadowed lantern used to render the scene six more times, however far away.
+- **DLSS / AMD's AI upscaler (FSR 4):** not available in stock Godot 4.7, which only has FSR 1 and FSR 2. DLSS would need NVIDIA's SDK compiled into a custom engine build: no stock export templates, licence terms, and maintenance on every Godot update. FSR 4 has no Godot integration. We stay on FSR 2 for now.
+
+## 2026-10-30 – M4 playtest feedback, round 2
+
+### Asked for by the owner
+- **No lamp haze in your own view:** your own lamp no longer lights the volumetric dust at all. Others still see your beam in it.
+- **Directional lamp:** the lamp is now a beam where you look, plus a weak glow close around you.
+  - Beam: half-angle 38° for carbide, 30° for the Stirnlampe; reach 14 m (Stirnlampe 16 m); shadowed. A spot shadow costs one shadow render; the old omni lamp cost six.
+  - Glow: 4.5 m, no shadow.
+  - Items in your hands cast no shadow.
+  - The Kasermandl now freezes only inside a beam or the near glow.
+- **Native 3D resolution by default.** FSR 2 is the switch "FSR 2: 3D-Auflösung automatisch". Settings files from the previous build are moved back to native once.
+- **Gasthaus:**
+  - The notice board text fits its sheet.
+  - The Grubnplan (1.0 × 0.75 m) hangs between the board and the window.
+  - The Stubenmusi is 6 dB quieter.
+
+### Chosen by Claude
+- **Mine sections load at runtime** (`Game.BIOME_PATHS` → `biomes`), like the item catalog. Preloading them made the export fail with a cyclic script reference.

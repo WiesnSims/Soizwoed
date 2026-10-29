@@ -7,7 +7,8 @@ extends RefCounted
 ## 2. A self-avoiding random walk from it makes the main path.
 ## 3. Branches grow off random cells (dead ends).
 ## 4. Some neighbouring cells get joined to make loops (to escape creatures).
-## 5. Each cell gets a chunk whose openings cover the cell's open sides.
+## 5. Some loop passages and dead-end entrances get a salt wall (Spitzhacke shortcuts, niches).
+## 6. Each cell gets a chunk whose openings cover the cell's open sides.
 
 const WALK_ATTEMPTS: int = 64
 ## A straight step is this many times as likely as a turn: long corridors, not zig-zag.
@@ -24,6 +25,7 @@ static func generate(seed_value: int, params: MineParams, chunks: ChunkSet) -> M
 		_carve_branch(layout, rng, params.branch_max_length)
 	_add_loops(layout, rng, params)
 	layout.compute_depth()
+	_add_dead_end_walls(layout, rng, params)
 	_pick_chunks(layout, rng, chunks)
 	return layout
 
@@ -106,6 +108,24 @@ static func _add_loops(layout: MineLayout, rng: RandomNumberGenerator, params: M
 		if rng.randf() < params.loop_chance:
 			layout.connect_cells(picked[0], picked[1])
 			added += 1
+			if rng.randf() < params.wall_loop_chance:
+				layout.walls.append(Vector3i(picked[0].x, picked[0].y, picked[1]))
+
+
+## A dead end two or more steps from the lift may hide behind a salt wall: a niche for whoever
+## brought a Spitzhacke. The wall stands on the neighbour's side of the passage.
+static func _add_dead_end_walls(layout: MineLayout, rng: RandomNumberGenerator, params: MineParams) -> void:
+	for cell: Vector2i in layout.cells:
+		var mask: int = layout.cells[cell]
+		var open: Array[int] = []
+		for dir: int in GridDir.ALL:
+			if mask & dir:
+				open.append(dir)
+		if cell == layout.start or open.size() != 1 or int(layout.depth.get(cell, 0)) < 2:
+			continue
+		if rng.randf() < params.wall_dead_end_chance:
+			var into: Vector2i = cell + GridDir.offset(open[0])
+			layout.walls.append(Vector3i(into.x, into.y, GridDir.opposite(open[0])))
 
 
 static func _pick_chunks(layout: MineLayout, rng: RandomNumberGenerator, chunks: ChunkSet) -> void:

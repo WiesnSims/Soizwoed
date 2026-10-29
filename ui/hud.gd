@@ -37,6 +37,7 @@ var _panel: PanelContainer
 var _panel_box: VBoxContainer
 var _panel_kind: String = ""
 var _run_info: Dictionary = {}
+var _settings: SettingsPanel
 
 
 func _ready() -> void:
@@ -49,6 +50,9 @@ func _ready() -> void:
 	_build_bottom()
 	_build_top()
 	_build_panel()
+	_settings = SettingsPanel.new()
+	_settings.closed.connect(_on_settings_closed)
+	_root.add_child(_settings)
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -92,7 +96,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"pause") or Game.instance == null or Game.instance.local_player() == null:
 		return
 	get_viewport().set_input_as_handled()
-	if modal_open():
+	if _settings.visible:
+		_settings.close()
+	elif modal_open():
 		if _panel_kind != "over":
 			close_panels()
 	else:
@@ -126,14 +132,17 @@ func update_run(info: Dictionary) -> void:
 		_run_label.text += "\n" + tr("HUD_CREW") % int(info.players)
 	if _panel_kind == "shop":
 		open_shop()
+	elif _panel_kind == "sections":
+		open_sections()
 
 
 func modal_open() -> bool:
-	return _panel.visible
+	return _panel.visible or _settings.visible
 
 
 func close_panels() -> void:
 	_panel.hide()
+	_settings.hide()
 	_panel_kind = ""
 	_apply_modal()
 
@@ -142,6 +151,14 @@ func open_shop() -> void:
 	_start_panel("shop", tr("SHOP_TITLE"))
 	_add_text(tr("SHOP_MONEY") % int(_run_info.get("money", 0)), ACCENT)
 	var money: int = int(_run_info.get("money", 0))
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(640, 430)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list: VBoxContainer = VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	scroll.add_child(list)
+	_panel_box.add_child(scroll)
 	for data: ItemData in Game.instance.catalog.shop():
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
@@ -154,9 +171,47 @@ func open_shop() -> void:
 		buy.disabled = data.price > money
 		buy.pressed.connect(_on_buy_pressed.bind(data.id))
 		row.add_child(buy)
+		list.add_child(row)
+	_add_button(tr("PANEL_CLOSE"), close_panels)
+	_apply_modal()
+
+
+## The Grubnplan: pick the mine section for the next shift (later ones unlock with the cycles).
+func open_sections() -> void:
+	_start_panel("sections", tr("PLAN_TITLE"))
+	var game: Game = Game.instance
+	var cycle: int = int(_run_info.get("cycle", 0))
+	for index: int in Game.instance.biomes.size():
+		var section: ChunkSet = Game.instance.biomes[index]
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		var rule: BiomeRule = Balance.config.biome_rule(section.id)
+		var text: String = tr(section.biome_name_key) + "\n" + tr(section.biome_name_key + "_DESC")
+		var label: Label = _label(text, 17)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.custom_minimum_size = Vector2(380, 0)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(label)
+		var pick: Button = Button.new()
+		pick.custom_minimum_size = Vector2(170, 0)
+		if index == game.biome_index:
+			pick.text = tr("PLAN_PICKED")
+			pick.disabled = true
+		elif not game.section_unlocked(index, cycle):
+			pick.text = tr("PLAN_LOCKED") % (rule.unlock_cycle + 1)
+			pick.disabled = true
+		else:
+			pick.text = tr("PLAN_PICK")
+			pick.pressed.connect(_on_section_pressed.bind(index))
+		row.add_child(pick)
 		_panel_box.add_child(row)
 	_add_button(tr("PANEL_CLOSE"), close_panels)
 	_apply_modal()
+
+
+func _on_section_pressed(index: int) -> void:
+	Audio.play_ui("ui_click")
+	Game.instance.request_section.rpc_id(1, index)
 
 
 func show_results(results: Dictionary, left_behind: bool, dead: bool = false) -> void:
@@ -189,16 +244,71 @@ func _open_pause() -> void:
 	_add_text(tr("PAUSE_KEYS"), DIM_COLOR, 15)
 	_add_button(tr("PANEL_CONTINUE"), close_panels)
 	if NetworkManager.can_invite():
-		_add_button(tr("PAUSE_INVITE"), NetworkManager.invite_friends)
+		_add_button(tr("PAUSE_INVITE"), _open_invite)
 	if NetworkManager.voice_enabled():
 		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT"), _toggle_open_mic)
 		_add_button(tr("PAUSE_MIC_TEST_ON") if VoiceChat.echo else tr("PAUSE_MIC_TEST_OFF"), _toggle_mic_test)
+	_add_button(tr("MENU_SETTINGS"), _open_settings)
 	_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
 	_apply_modal()
 
 
+## The Steam overlay's invite dialog when there is one, else our own list of Steam friends
+## (the overlay is missing when Steam did not start the game, DESIGN.md §9 "in-game friends list").
+func _open_invite() -> void:
+	if NetworkManager.invite_friends():
+		close_panels()
+		return
+	_start_panel("invite", tr("INVITE_TITLE"))
+	var friends: Array[Dictionary] = NetworkManager.invitable_friends()
+	if friends.is_empty():
+		_add_text(tr("INVITE_NO_FRIENDS"), DIM_COLOR)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, mini(friends.size(), 8) * 44)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list: VBoxContainer = VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	_panel_box.add_child(scroll)
+	for friend: Dictionary in friends:
+		var row: HBoxContainer = HBoxContainer.new()
+		var name_text: String = str(friend.name)
+		if bool(friend.in_game):
+			name_text += "  " + tr("INVITE_IN_GAME")
+		var name_label: Label = _label(name_text, 17)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_label.modulate.a = 1.0 if bool(friend.online) else 0.5
+		row.add_child(name_label)
+		var invite: Button = Button.new()
+		invite.text = tr("INVITE_SEND")
+		invite.custom_minimum_size = Vector2(130, 36)
+		invite.pressed.connect(_on_invite_pressed.bind(int(friend.id), invite))
+		row.add_child(invite)
+		list.add_child(row)
+	_add_button(tr("PANEL_CLOSE"), _open_pause)
+	_apply_modal()
+
+
+func _on_invite_pressed(friend_id: int, button: Button) -> void:
+	Audio.play_ui("ui_click")
+	var sent: bool = NetworkManager.invite_friend(friend_id)
+	button.text = tr("INVITE_SENT") if sent else tr("INVITE_FAILED")
+	button.disabled = sent
+
+
 func _toggle_open_mic() -> void:
-	Audio.voice_open_mic = not Audio.voice_open_mic
+	Settings.data.voice_open_mic = not Settings.data.voice_open_mic
+	Settings.apply()
+	_open_pause()
+
+
+func _open_settings() -> void:
+	_panel.hide()
+	_settings.open()
+	_apply_modal()
+
+
+func _on_settings_closed() -> void:
 	_open_pause()
 
 
@@ -258,8 +368,9 @@ func _update_prompt(player: Player) -> void:
 		text = ("[E …] " if hold else "[E] ") + text
 	_prompt.text = text
 	_prompt.visible = text != ""
-	_hold_bar.visible = player.hold_progress > 0.0
-	_hold_bar.value = player.hold_progress
+	var progress: float = maxf(player.hold_progress, player.use_progress)
+	_hold_bar.visible = progress > 0.0
+	_hold_bar.value = progress
 
 
 func _update_slots(player: Player) -> void:
@@ -269,7 +380,10 @@ func _update_slots(player: Player) -> void:
 		_slot_labels[i].text = "%d  %s" % [i + 1, item.display_name() if item != null else "–"]
 		_slot_panels[i].modulate = Color(1, 1, 1, 1) if i == inventory.selected else Color(1, 1, 1, 0.55)
 	var hands: WorldItem = inventory.hands as WorldItem
-	_hands_label.visible = hands != null
+	var pocket: WorldItem = inventory.slots[inventory.selected] as WorldItem
+	_hands_label.visible = hands != null or (pocket != null and pocket.data.use != ItemData.Use.NONE)
+	if hands == null and _hands_label.visible:
+		_hands_label.text = "[%s] %s" % [tr("HUD_USE_KEY"), tr("USE_" + ItemData.Use.keys()[pocket.data.use])]
 	if hands != null:
 		var text: String = tr("HUD_HANDS") % hands.display_name()
 		var cart: Schubkarre = hands as Schubkarre

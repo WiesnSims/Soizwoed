@@ -12,5 +12,8 @@ $ok = Wait-Godot $export 600
 $exe = Join-Path $buildDir "Soizwoed.exe"
 if (-not $ok -or -not (Test-Path $exe)) { Write-Host "EXPORT FAILED (log: build/logs/export.log)" -ForegroundColor Red; exit 1 }
 
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "fix_exe_icon.ps1") -Exe $exe
+if ($LASTEXITCODE -ne 0) { exit 1 }
+
 Copy-Item (Join-Path $ProjectRoot "steam_appid.txt") $buildDir -Force
 Write-Host "BUILD OK: $exe" -ForegroundColor Green

@@ -17,3 +17,4 @@ spawn_weight = 0.0
 min_depth = 0
 scene = ExtResource("2_scene")
 melee_damage = 34
+breaks_rock = true

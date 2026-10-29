@@ -11,3 +11,7 @@ extends Resource
 @export var min_depth: int = 0
 ## The Förderkorb station: only used for the start cell.
 @export var is_station: bool = false
+## The track may run through it (no pits or water in the way).
+@export var rails: bool = true
+## Firedamp and brine may be put in it.
+@export var hazards: bool = true

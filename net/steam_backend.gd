@@ -179,9 +179,46 @@ func can_invite() -> bool:
 	return _lobby_id != 0 and _state == State.IN_LOBBY
 
 
-func invite_friends() -> void:
-	if can_invite():
-		Steam.activateGameOverlayInviteDialog(_lobby_id)
+## Only works when the Steam overlay is in the game. Steam hooks it into Vulkan games it
+## starts itself, so a Soizwoed.exe started from its folder has none.
+func invite_friends() -> bool:
+	if not can_invite() or not Steam.isOverlayEnabled():
+		print("[steam] overlay not available, using the in-game friends list")
+		return false
+	Steam.activateGameOverlayInviteDialog(_lobby_id)
+	return true
+
+
+func invitable_friends() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for i: int in Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE):
+		var friend: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+		var game: Dictionary = Steam.getFriendGamePlayed(friend)
+		result.append({
+			"id": friend,
+			"name": Steam.getFriendPersonaName(friend),
+			"online": Steam.getFriendPersonaState(friend) != Steam.PERSONA_STATE_OFFLINE,
+			"in_game": int(game.get("id", 0)) == APP_ID,
+		})
+	return sort_friends(result)
+
+
+## Online friends first, then by name.
+static func sort_friends(friends: Array[Dictionary]) -> Array[Dictionary]:
+	friends.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if bool(a.online) != bool(b.online):
+			return bool(a.online)
+		return str(a.name).naturalnocasecmp_to(str(b.name)) < 0)
+	return friends
+
+
+## A Steam invite to our lobby; the friend accepts it in their Steam chat.
+func invite_friend(friend_id: int) -> bool:
+	if not can_invite():
+		return false
+	var sent: bool = Steam.inviteUserToLobby(_lobby_id, friend_id)
+	print("[steam] invite to %d %s" % [friend_id, "sent" if sent else "failed"])
+	return sent
 
 
 ## Accepted an invite in the overlay or clicked "join game" on a friend in a lobby.

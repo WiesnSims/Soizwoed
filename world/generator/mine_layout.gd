@@ -14,6 +14,8 @@ var depth: Dictionary = {}
 var chunk_index: Dictionary = {}
 ## Vector2i -> int, quarter turns clockwise.
 var chunk_rotation: Dictionary = {}
+## Salt walls closing a passage: Vector3i(cell.x, cell.y, dir) for the side of cell they close.
+var walls: Array[Vector3i] = []
 
 
 func has_cell(cell: Vector2i) -> bool:
@@ -70,4 +72,6 @@ func signature() -> String:
 	var parts: PackedStringArray = []
 	for cell: Vector2i in cells:
 		parts.append("%d,%d:%d:%d:%d" % [cell.x, cell.y, cells[cell], chunk_index.get(cell, -1), chunk_rotation.get(cell, 0)])
+	for wall: Vector3i in walls:
+		parts.append("w%d,%d,%d" % [wall.x, wall.y, wall.z])
 	return ";".join(parts)

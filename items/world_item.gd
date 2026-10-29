@@ -28,8 +28,8 @@ var state: State = State.FREE
 var holder_peer: int = 0
 ## Peer id of the second player carrying a heavy item together, 0 otherwise.
 var helper_peer: int = 0
-## The cart carrying this item (CARTED).
-var cart: Schubkarre
+## The Schubkarre or rail cart carrying this item (CARTED).
+var cart: CargoItem
 var follow: Node3D
 
 var _impact_cooldown: float = 0.0
@@ -189,7 +189,7 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 				player.ray.add_exception(self)
 		State.CARTED:
 			follow = get_node_or_null(follow_path) as Node3D
-			cart = follow.get_parent() as Schubkarre if follow != null else null
+			cart = follow.get_parent() as CargoItem if follow != null else null
 			if cart != null:
 				cart.cargo.append(self)
 		State.STOLEN:
@@ -202,6 +202,11 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 			_net.push(Time.get_ticks_msec() / 1000.0, at.origin, at.basis.get_rotation_quaternion())
 	freeze = new_state != State.FREE or not multiplayer.is_server()
 	collision_layer = _layer_for(new_state)
+	# In a hand it sits right in front of the lamp's beam: no shadow over the whole view.
+	var shadow: GeometryInstance3D.ShadowCastingSetting = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF \
+			if new_state == State.HELD or new_state == State.STORED else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for node: Node in find_children("*", "GeometryInstance3D", true, false):
+		(node as GeometryInstance3D).cast_shadow = shadow
 	if new_state != State.STORED:
 		visible = true
 	state_changed.emit()

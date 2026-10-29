@@ -97,8 +97,100 @@ def mandl_c(text):
 
 MANDL_VARIANTS = {"A": mandl_a, "B": mandl_b, "C": mandl_c}
 
+
+def tremolo(x, rate, depth):
+    t = np.arange(len(x)) / SR
+    return x * (1.0 + depth * np.sin(2 * np.pi * rate * t))
+
+
+def layered(a, b, gain_a=1.0, gain_b=1.0):
+    n = min(len(a), len(b))
+    return gain_a * d.normalize(a[:n]) + gain_b * d.normalize(b[:n])
+
+
+# --- Kasermandl: an old herder's ghost, heard only in the dark ----------------------------------------
+
+def kaser_a(text):
+    """A: Hauch – a slow, breathy whisper right next to you, long cold tail."""
+    x, sr = speak(text, "de+whisper", 115, 38, 4)
+    x = tremolo(at_pitch(x, sr, 0.92), 4.0, 0.15)
+    return finish(d.highpass(x, 160), 0.4, 1.6)
+
+
+def kaser_b(text):
+    """B: Oida Hirt – a croaky old man, half voice, half breath, shaking."""
+    voiced, sr = speak(text, "de+croak", 115, 28, 3)
+    whisper, sr2 = speak(text, "de+whisper", 115, 28, 3)
+    x = layered(rasp(at_pitch(voiced, sr, 0.86), 0.6), at_pitch(whisper, sr2, 0.86), 0.7, 0.6)
+    x = tremolo(d.bandpass(x, 200, 4500), 5.5, 0.25)
+    return finish(x, 0.32, 1.3)
+
+
+def kaser_c(text):
+    """C: Geist – a hollow chorus of whispers, slightly out of tune with itself, far away."""
+    whisper, sr = speak(text, "de+whisper", 125, 45, 2)
+    voiced, sr2 = speak(text, "de+m7", 125, 45, 2)
+    low = at_pitch(voiced, sr2, 0.8)
+    x = layered(at_pitch(whisper, sr, 1.0), low, 0.9, 0.35)
+    x = layered(x, at_pitch(whisper, sr, 1.015), 1.0, 0.5)
+    return finish(d.bandpass(x, 250, 6000), 0.45, 1.9)
+
+
+KASER_VARIANTS = {"A": kaser_a, "B": kaser_b, "C": kaser_c}
+
+KASERMANDL_LINES = {
+    "spot_kimm": ("SPOT", "Kimm her. Kimm zu mir."),
+    "spot_siag": ("SPOT", "I siag di."),
+    "idle_koid": ("IDLE", "I friar so. So koid is do herunt."),
+    "idle_kua": ("IDLE", "Wo is denn mei Kua?"),
+    "idle_liacht": ("IDLE", "Mach's Liacht aus, Bua."),
+    "strike_hob": ("ACTION", "Hob di!"),
+    "strike_mei": ("ACTION", "Jetzt bist mei."),
+    "hit_spuer": ("HIT", "Hehe. Des spür i ned."),
+}
+
+
+# --- Schichtmeister: the dead foreman, after the whistle --------------------------------------------
+
+def meister_a(text):
+    """A: Kommandant – a deep, booming barking voice filling the tunnels."""
+    x, sr = speak(text, "de+m3", 140, 22)
+    x = d.drive(d.normalize(at_pitch(x, sr, 0.82)), 2.0)
+    return d.echo(finish(d.bandpass(x, 80, 6000), 0.32, 1.6), 0.3, 0.25, 2)
+
+
+def meister_b(text):
+    """B: Geisterstimme – the same bark doubled an octave down, dead and hollow."""
+    x, sr = speak(text, "de+m1", 135, 20)
+    x = layered(at_pitch(x, sr, 0.8), at_pitch(x, sr, 0.5), 1.0, 0.45)
+    x = layered(x, at_pitch(*speak(text, "de+m1", 135, 20), 0.81), 1.0, 0.5)
+    return finish(d.lowpass(d.drive(x, 1.5), 5000), 0.4, 1.9)
+
+
+def meister_c(text):
+    """C: Megafon – shouted through an old tin funnel, nasal, with the shaft's echo."""
+    x, sr = speak(text, "de+m3", 150, 30)
+    x = d.drive(d.normalize(at_pitch(x, sr, 0.9)), 3.0)
+    x = d.bandpass(x, 380, 3300) + 0.5 * d.resonator(x, 1100, 5)
+    return d.echo(finish(x, 0.25, 1.2), 0.38, 0.3, 2)
+
+
+MEISTER_VARIANTS = {"A": meister_a, "B": meister_b, "C": meister_c}
+
+SCHICHTMEISTER_LINES = {
+    "appear_aus": ("ACTION", "Schicht is aus! Wer is no do unten?!"),
+    "appear_aufi": ("ACTION", "Aufi mit eich, ihr Hundling!"),
+    "spot_siag": ("SPOT", "I siag di, Kumpl!"),
+    "spot_troedl": ("SPOT", "Wer trödelt, bleibt do!"),
+    "idle_wo": ("IDLE", "Wo seid's denn?!"),
+    "idle_stempl": ("IDLE", "Wer ned stempelt, kriagt nix!"),
+    "die_zspat": ("DIE", "Zspät, Kumpl."),
+    "hit_vorgsetzt": ("HIT", "An Vorgsetztn haun? Des werd vermerkt!"),
+}
+
 # The voice the game uses until the user picks one in the sample check.
-CHOICE = {"bergmandl": "A"}
+# Bergmandl A was approved 2026-10-29; Kasermandl and Schichtmeister wait for the check.
+CHOICE = {"bergmandl": "A", "kasermandl": "A", "schichtmeister": "A"}
 
 
 def giggle(fn):
@@ -128,6 +220,13 @@ BERGMANDL_LINES = {
     "idle_wer": ("IDLE", "Wer is do? Wer is do?"),
 }
 
+# Creature -> (voice variants, lines). Folders and file names follow the creature id.
+CREATURES = {
+    "bergmandl": (MANDL_VARIANTS, BERGMANDL_LINES),
+    "kasermandl": (KASER_VARIANTS, KASERMANDL_LINES),
+    "schichtmeister": (MEISTER_VARIANTS, SCHICHTMEISTER_LINES),
+}
+
 
 # --- players' shouts --------------------------------------------------------------------------------
 
@@ -145,20 +244,24 @@ SHOUTS = ["He! Schleichts eich!", "Hoi! Weg do!", "Schauts, dass weiterkummts!"]
 def voice_jobs():
     """(folder, file name, recipe) for every voice file the game uses."""
     jobs = []
+    for creature, (variants, lines) in CREATURES.items():
+        fn = variants[CHOICE[creature]]
+        for line_id, (_moment, text) in lines.items():
+            jobs.append((f"voices/{creature}", line_id, lambda _v, f=fn, t=text: f(t)))
     mandl = MANDL_VARIANTS[CHOICE["bergmandl"]]
-    for line_id, (_moment, text) in BERGMANDL_LINES.items():
-        jobs.append(("voices/bergmandl", line_id, lambda _v, t=text: mandl(t)))
     jobs.append(("voices/bergmandl", "giggle", lambda _v: giggle(mandl)("")))
     for i, text in enumerate(SHOUTS, 1):
         jobs.append(("sfx", f"shout_{i}", lambda _v, t=text: shouter(t)))
     return jobs
 
 
-def sample_jobs():
-    """Every Bergmandl line in every variant, for the user's sample check."""
+def sample_jobs(creatures=None):
+    """Every line of the given creatures (default: all) in every variant, for the sample check."""
     jobs = []
-    for variant, fn in MANDL_VARIANTS.items():
-        for line_id, (_moment, text) in BERGMANDL_LINES.items():
-            jobs.append((f"bergmandl_{variant}", line_id, lambda _v, f=fn, t=text: f(t)))
-        jobs.append((f"bergmandl_{variant}", "giggle", lambda _v, f=fn: giggle(f)("")))
+    for creature, (variants, lines) in CREATURES.items():
+        if creatures and creature not in creatures:
+            continue
+        for variant, fn in variants.items():
+            for line_id, (_moment, text) in lines.items():
+                jobs.append((f"{creature}_{variant}", line_id, lambda _v, f=fn, t=text: f(t)))
     return jobs

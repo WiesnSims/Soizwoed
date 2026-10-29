@@ -98,3 +98,108 @@ PAUSE_VOICE_PTT,"Redn: mit V (drucka)"
 PAUSE_VOICE_OPEN,"Redn: Mikro offn"
 PAUSE_MIC_TEST_OFF,"Mikro probiern: aus"
 PAUSE_MIC_TEST_ON,"Mikro probiern: ein (du hörst di selber)"
+INVITE_TITLE,Freind eiladn
+INVITE_NO_FRIENDS,Koane Steam-Freind gfundn.
+INVITE_IN_GAME,(spüt grad)
+INVITE_SEND,Eiladn
+INVITE_SENT,Eiglodn!
+INVITE_FAILED,Hot ned highaut
+MENU_SETTINGS,Einstellungen
+SETTINGS_TITLE,Einstellungen
+SETTINGS_AUDIO,Ton
+SETTINGS_DISPLAY,Anzeige
+SETTINGS_GRAPHICS,Grafik
+SETTINGS_GAMEPLAY,Spü
+SET_MASTER,Gsamtlautstärke
+SET_MUSIC,Musi
+SET_EFFECTS,Gräusch
+SET_VOICE,Stimmen vo de Kumpl
+SET_CREATURE_LINES,Gegner redn
+SET_OPEN_MIC,"Mikro offn (sunst redst mit V)"
+SET_WINDOW_MODE,Fenstermodus
+SET_WINDOWED,Fenster
+SET_BORDERLESS,Randloses Fenster
+SET_FULLSCREEN,Vollbild
+SET_VSYNC,VSync
+SET_FPS,Bildrate
+SET_FPS_UNLIMITED,Unbegrenzt
+SET_FOV,Blickwinkel
+SET_BRIGHTNESS,Helligkeit
+SET_QUALITY,Qualität
+SET_Q_LOW,Niedrig
+SET_Q_MEDIUM,Mittel
+SET_Q_HIGH,Hoch
+SET_Q_ULTRA,Ultra
+SET_RENDER_SCALE,3D-Auflösung
+SET_FOG,Staub im Liacht (Nebel)
+SET_AA,Kantenglättung
+SET_AA_OFF,Aus
+SET_AA_FXAA,FXAA
+SET_AA_TAA,TAA
+SET_AA_MSAA,MSAA + TAA
+SET_SENSITIVITY,Maus-Empfindlichkeit
+SET_INVERT_Y,Maus aufwärts umdrahn
+SET_HEAD_BOB,Kopfwackln beim Gehn
+SET_DEFAULTS,Standard
+CREATURE_TATZELWURM,Tatzelwurm
+CREATURE_KASERMANDL,Kasermandl
+CREATURE_SCHICHTMEISTER,Da Schichtmeister
+ITEM_STIRNLAMPE,Elektrische Stirnlampe
+ITEM_STIRNLAMPE_DESC,"Ka Flamm, ka Explosion. Klick: umschoitn zwischn Karbid und Batterie."
+ITEM_ALPHORN,Alphorn (Reiseformat)
+ITEM_ALPHORN_DESC,"Klick: a Trumm vom Ton. Wos vor dir is, steht deppat do – und de ganze Grubn hört's."
+ITEM_BOELLER,Böller
+ITEM_BOELLER_DESC,"Klick: anzündn und schmeißn. Kracht, lockt, verscheucht Bergmandl."
+ITEM_RAUCHBOMBE,"Rauchbombe ""Bierzelt"""
+ITEM_RAUCHBOMBE_DESC,"Klick: schmeißn. Stinkt wia 's Bierzelt am Montag in da Fruah – do geht nix eini."
+ITEM_FUNKGERAET,Funkgerät
+ITEM_FUNKGERAET_DESC,"Wer ans hot, hört de ondern mit Funk a von weit weg. Klick: anfunkn. Rauscht, wenn wos in da Näh is."
+ITEM_OBSTLER,Obstler
+ITEM_OBSTLER_DESC,"Klick: a Stamperl. +25 Gsundheit, dann draht si's a bissl."
+ITEM_LEBERKAESSEMMEL,Leberkässemmel
+ITEM_LEBERKAESSEMMEL_DESC,"Klick: in Ruah essn (4 Sekundn). +40 Gsundheit."
+ITEM_SEIL,Seil & Kletterhakn
+ITEM_SEIL_DESC,"Klick auf a Kantn: Seil owi lossn, rauf- und runterklettern. E hoitn am Hakn: wieder einholn."
+ITEM_PFEIFERL,Grubenhund-Pfeiferl
+ITEM_PFEIFERL_DESC,"Klick: da Hunt kummt auf de Gleis daher. Laut!"
+ITEM_HUNT,Hunt
+MSG_BATTERY_EMPTY,De Batterie is laar.
+MSG_LAMP_ELECTRIC,Stirnlampe an – ka Flamm.
+MSG_LAMP_CARBIDE,Zruck zur Karbidlampn.
+MSG_OUT_OF_BREATH,"Z'weng Luft, wort a bissl."
+MSG_ROPE_NO_EDGE,Do geht's net weit gnua owi.
+MSG_RADIO_CALL,%s funkt di an!
+MSG_NO_RAILS,Do gibt's ka Gleis.
+MSG_RAILS_FAR,"Da Hunt kummt, oba bis zu de Gleis muasst scho selber."
+MSG_NEED_PICK,Do brauchst a Spitzhackn.
+PROMPT_RAIL_PUSH,Hunt schiabn
+PROMPT_RAIL_LET_GO,Hunt auslossn
+PROMPT_LOAD_HUNT,In Hunt legn
+PROMPT_HUNT_FULL,Da Hunt is voll.
+PROMPT_ROPE_TAKE,Seil einholn
+HUD_USE_KEY,Klick
+USE_NONE,–
+USE_REFILL_LAMP,Lampn nachfülln
+USE_HEADLAMP,Lampn umschoitn
+USE_ALPHORN,Blosn
+USE_THROW,Anzündn und schmeißn
+USE_DRINK,Trinkn
+USE_EAT,Essn
+USE_ROPE,Seil owi lossn
+USE_PFEIFERL,Pfeifn
+USE_RADIO,Anfunkn
+BIOME_OBERER_STOLLEN_DESC,"Hoiz, Gleis und oide Lampn. Da Hunt rennt auf de Schienen."
+BIOME_SALZSEE,Salzsee
+BIOME_SALZSEE_DESC,"Riesige Hallen, a schwoaze Sole-See und a Fähre. Mehr wert – und wos im Wossa."
+PLAN_TITLE,Grubnplan
+PLAN_TODAY,Heit: %s
+PLAN_PICK,Do eini
+PLAN_PICKED,Do geht's eini
+PLAN_LOCKED,Ab Quotenrundn %d
+PROMPT_PLAN,Grubnplan – Abschnitt aussuachn
+PROMPT_FERRY_BELL,"Glockn läutn – ""Hol über!"""
+PROMPT_FERRY_BUSY,De Fähre is unterwegs.
+MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
+MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
+MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."
+SET_AUTO_RESOLUTION,"FSR 2: 3D-Auflösung automatisch (höchstens 1080p)"

@@ -1,0 +1,68 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_rope"]
+albedo_color = Color(0.62, 0.5, 0.32, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="mat_steel"]
+albedo_color = Color(0.5, 0.5, 0.5, 1)
+metallic = 0.9
+roughness = 0.35
+
+[sub_resource type="TorusMesh" id="mesh_0"]
+inner_radius = 0.08
+outer_radius = 0.14
+rings = 20
+ring_segments = 8
+
+[sub_resource type="TorusMesh" id="mesh_1"]
+inner_radius = 0.08
+outer_radius = 0.14
+rings = 20
+ring_segments = 8
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.008
+bottom_radius = 0.008
+height = 0.16
+radial_segments = 12
+rings = 1
+
+[sub_resource type="TorusMesh" id="mesh_3"]
+inner_radius = 0.012
+outer_radius = 0.022
+rings = 20
+ring_segments = 8
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.3, 0.1, 0.3)
+
+[node name="Seil" type="RigidBody3D"]
+mass = 1.5
+script = ExtResource("1_item")
+
+[node name="Part1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_rope")
+
+[node name="Part2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.90631, 0, -0.42262, 0, 1, 0, 0.42262, 0, 0.90631, 0, 0.06, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_rope")
+
+[node name="Part3" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.34202, 0.93969, 0, -0.93969, 0.34202, 0, 0, 0, 1, 0.13, 0.08, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_steel")
+
+[node name="Part4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0.2, 0.1, 0)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_steel")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+shape = SubResource("shape")
