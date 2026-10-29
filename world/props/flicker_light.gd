@@ -1,6 +1,7 @@
 class_name FlickerLight
-extends OmniLight3D
-## A flame's light: energy wobbles with smooth noise. Used by lanterns and the carbide lamp.
+extends Light3D
+## A flame's light: energy wobbles with smooth noise. Used by lanterns (omni) and the miners'
+## lamps (the beam is a spot, the glow around them an omni).
 
 @export var base_energy: float = 1.0
 @export_range(0.0, 1.0) var flicker: float = 0.12

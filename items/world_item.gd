@@ -202,6 +202,11 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 			_net.push(Time.get_ticks_msec() / 1000.0, at.origin, at.basis.get_rotation_quaternion())
 	freeze = new_state != State.FREE or not multiplayer.is_server()
 	collision_layer = _layer_for(new_state)
+	# In a hand it sits right in front of the lamp's beam: no shadow over the whole view.
+	var shadow: GeometryInstance3D.ShadowCastingSetting = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF \
+			if new_state == State.HELD or new_state == State.STORED else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	for node: Node in find_children("*", "GeometryInstance3D", true, false):
+		(node as GeometryInstance3D).cast_shadow = shadow
 	if new_state != State.STORED:
 		visible = true
 	state_changed.emit()

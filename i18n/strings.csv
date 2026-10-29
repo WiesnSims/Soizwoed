@@ -202,4 +202,4 @@ PROMPT_FERRY_BUSY,De Fähre is unterwegs.
 MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
 MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
 MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."
-SET_AUTO_RESOLUTION,"3D-Auflösung automatisch (höchstens 1080p, FSR 2)"
+SET_AUTO_RESOLUTION,"FSR 2: 3D-Auflösung automatisch (höchstens 1080p)"

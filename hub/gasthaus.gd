@@ -66,7 +66,7 @@ func update_board(info: Dictionary) -> void:
 		tr("BOARD_SHIFTS") % int(info.shifts_left),
 	]
 	if _plan != null:
-		var section: ChunkSet = Game.BIOMES[clampi(int(info.get("section", 0)), 0, Game.BIOMES.size() - 1)]
+		var section: ChunkSet = Game.instance.biomes[clampi(int(info.get("section", 0)), 0, Game.instance.biomes.size() - 1)]
 		_plan.text = "%s\n\n%s" % [tr("PLAN_TITLE"), tr("PLAN_TODAY") % tr(section.biome_name_key)]
 
 
@@ -79,18 +79,21 @@ func _build_plan() -> void:
 	paper.roughness = 0.9
 	var plan: SectionPlan = SectionPlan.new()
 	plan.name = "Plan"
-	plan.position = Vector3(1.4, 1.7, -HALF_Z + 0.05)
+	# Between the notice board (x -2.35..-0.65) and the window (from x 1.9).
+	plan.position = Vector3(0.6, 1.75, -HALF_Z + 0.05)
 	add_child(plan)
 	var sheet: MeshInstance3D = MeshInstance3D.new()
 	var box: BoxMesh = BoxMesh.new()
-	box.size = Vector3(1.3, 0.9, 0.02)
+	box.size = Vector3(1.0, 0.75, 0.02)
 	sheet.mesh = box
 	sheet.material_override = paper
 	plan.add_child(sheet)
 	_plan = Label3D.new()
 	_plan.text = tr("PLAN_TITLE")
-	_plan.font_size = 32
-	_plan.pixel_size = 0.0035
+	_plan.font_size = 30
+	_plan.pixel_size = 0.0026
+	_plan.width = 340.0
+	_plan.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_plan.modulate = Color(0.2, 0.14, 0.08)
 	_plan.outline_size = 0
 	_plan.position = Vector3(0.0, 0.0, 0.02)
@@ -105,7 +108,7 @@ class SectionPlan:
 		collision_mask = 0
 		var shape: CollisionShape3D = CollisionShape3D.new()
 		var box: BoxShape3D = BoxShape3D.new()
-		box.size = Vector3(1.3, 0.9, 0.1)
+		box.size = Vector3(1.0, 0.75, 0.1)
 		shape.shape = box
 		add_child(shape)
 

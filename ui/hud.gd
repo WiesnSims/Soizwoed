@@ -181,8 +181,8 @@ func open_sections() -> void:
 	_start_panel("sections", tr("PLAN_TITLE"))
 	var game: Game = Game.instance
 	var cycle: int = int(_run_info.get("cycle", 0))
-	for index: int in Game.BIOMES.size():
-		var section: ChunkSet = Game.BIOMES[index]
+	for index: int in Game.instance.biomes.size():
+		var section: ChunkSet = Game.instance.biomes[index]
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
 		var rule: BiomeRule = Balance.config.biome_rule(section.id)

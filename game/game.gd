@@ -15,10 +15,10 @@ enum Phase { MENU, HUB, DESCENDING, SHIFT, ASCENDING, OVER }
 const HUB_FLOOR_ABOVE: float = 200.0
 const RIDE_SECONDS: float = 3.5
 const FADE_SECONDS: float = 0.6
-## The mine sections, in the order they unlock (DESIGN.md §4).
-const BIOMES: Array[ChunkSet] = [
-	preload("res://world/chunks/oberer_stollen/oberer_stollen.tres"),
-	preload("res://world/chunks/salzsee/salzsee.tres"),
+## Loaded at runtime into iomes (their chunks' scripts refer back to Game).
+const BIOME_PATHS: PackedStringArray = [
+	"res://world/chunks/oberer_stollen/oberer_stollen.tres",
+	"res://world/chunks/salzsee/salzsee.tres",
 ]
 const PLAYER_SCENE: PackedScene = preload("res://player/player.tscn")
 const CAGE_SCENE: PackedScene = preload("res://world/lift/foerderkorb.tscn")
@@ -64,7 +64,9 @@ var mine_cage: Foerderkorb
 var run_info: Dictionary = {}
 var catalog: ItemCatalog
 var creature_types: Array[EnemyData] = []
-## The mine section picked in the Gasthaus (index into BIOMES; host decides, sent to all).
+## The mine sections, in the order they unlock (DESIGN.md §4), from BIOME_PATHS.
+var biomes: Array[ChunkSet] = []
+## The mine section picked in the Gasthaus (index into biomes; host decides, sent to all).
 var biome_index: int = 0
 
 var _config: BalanceConfig
@@ -111,6 +113,8 @@ func _exit_tree() -> void:
 func _ready() -> void:
 	_config = Balance.config
 	catalog = load(CATALOG_PATH) as ItemCatalog
+	for path: String in BIOME_PATHS:
+		biomes.append(load(path) as ChunkSet)
 	for path: String in CREATURE_PATHS:
 		creature_types.append(load(path) as EnemyData)
 	_player_spawner.spawn_function = _spawn_player
@@ -612,8 +616,8 @@ func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	mine = Mine.new()
 	mine.name = "Mine"
 	mine_root.add_child(mine)
-	biome_index = clampi(biome, 0, BIOMES.size() - 1)
-	mine.build(seed_value, MineParams.from_balance(_config, cycle), BIOMES[biome_index])
+	biome_index = clampi(biome, 0, biomes.size() - 1)
+	mine.build(seed_value, MineParams.from_balance(_config, cycle), biomes[biome_index])
 	mine.add_hazards(cycle, _biome_rule())
 	Audio.set_echo(mine.chunk_set.echo)
 	var anchor: Marker3D = mine.station.find_child("LiftAnchor", true, false) as Marker3D
@@ -731,7 +735,7 @@ func _broadcast_run() -> void:
 @rpc("authority", "call_remote", "reliable")
 func _apply_run_info(info: Dictionary) -> void:
 	run_info = info
-	biome_index = clampi(int(info.get("section", biome_index)), 0, BIOMES.size() - 1)
+	biome_index = clampi(int(info.get("section", biome_index)), 0, biomes.size() - 1)
 	hub.update_board(info)
 	hud.update_run(info)
 
@@ -1167,18 +1171,18 @@ func message_to(peer: int, key: String) -> void:
 ## Picked a mine section on the Grubnplan in the Gasthaus (only unlocked ones, only in the hub).
 @rpc("any_peer", "call_local", "reliable")
 func request_section(index: int) -> void:
-	if not multiplayer.is_server() or phase != Phase.HUB or index < 0 or index >= BIOMES.size():
+	if not multiplayer.is_server() or phase != Phase.HUB or index < 0 or index >= biomes.size():
 		return
 	if not section_unlocked(index, GameState.run.cycle):
 		return
 	biome_index = index
 	_broadcast_run()
-	print("[game] section %s picked" % BIOMES[index].id)
+	print("[game] section %s picked" % biomes[index].id)
 
 
 ## Whether mine section `index` can be picked in quota cycle `cycle` (BiomeRule.unlock_cycle).
 func section_unlocked(index: int, cycle: int) -> bool:
-	var rule: BiomeRule = _config.biome_rule(BIOMES[index].id)
+	var rule: BiomeRule = _config.biome_rule(biomes[index].id)
 	return rule == null or cycle >= rule.unlock_cycle
 
 
@@ -1435,7 +1439,7 @@ func smoke_exit(point: Vector3) -> Vector3:
 
 
 func _biome_rule() -> BiomeRule:
-	var rule: BiomeRule = _config.biome_rule(BIOMES[clampi(biome_index, 0, BIOMES.size() - 1)].id)
+	var rule: BiomeRule = _config.biome_rule(biomes[clampi(biome_index, 0, biomes.size() - 1)].id)
 	return rule if rule != null else BiomeRule.new()
 
 

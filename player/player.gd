@@ -25,9 +25,6 @@ const MELEE_DISTANCE: float = 2.2
 const DEATH_VIEW_SECONDS: float = 2.5
 ## Another player's name shows when you look at them from this close.
 const NAMEPLATE_DISTANCE: float = 10.0
-## Your own lamp hangs right in front of your eyes: at full strength it would light the fog
-## there and wash out the top of the screen. Others still see its full glow in the dust.
-const OWN_LAMP_FOG_ENERGY: float = 0.15
 ## Swimming, the feet hang this far under the surface (the head stays above it).
 const SWIM_DEPTH: float = 1.35
 
@@ -121,7 +118,11 @@ var _creak_left: float = 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
-@onready var lamp: FlickerLight = $Head/Lamp
+## The lamp: a beam where you look (with shadows) and a weak glow around you (without).
+@onready var lamp: OmniLight3D = $Head/Lamp
+@onready var beam: SpotLight3D = $Head/Camera/Beam
+@onready var _lamp_flame: FlickerLight = $Head/Lamp as FlickerLight
+@onready var _beam_flame: FlickerLight = $Head/Camera/Beam as FlickerLight
 @onready var lamp_sound: AudioStreamPlayer3D = $Head/Lamp/Hiss
 @onready var hold_point: Node3D = $Head/Camera/HoldPoint
 @onready var hand_point: Node3D = $Head/Camera/HandPoint
@@ -155,7 +156,8 @@ func _ready() -> void:
 	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if local:
-		lamp.light_volumetric_fog_energy = OWN_LAMP_FOG_ENERGY
+		lamp.light_volumetric_fog_energy = 0.0
+		beam.light_volumetric_fog_energy = 0.0
 		_on_settings_changed()
 		Settings.changed.connect(_on_settings_changed)
 	if NetworkManager.voice_enabled():
@@ -651,18 +653,31 @@ func _update_lamp() -> void:
 	var low: bool = share < _config.lamp_low_fuel_share
 	var strength: float = 0.6 + 0.4 * minf(1.0, share / _config.lamp_low_fuel_share)
 	lamp.visible = lamp_on
+	beam.visible = lamp_on
+	var reach: float = 0.0
+	var energy: float = 0.0
+	var color: Color
 	if lamp_electric:
-		# A steady, colder light that dims as the battery dies.
-		lamp.omni_range = _config.stirnlampe_range * strength
-		lamp.base_energy = _config.stirnlampe_energy * (0.5 if low else 1.0)
-		lamp.flicker = 0.12 if low else 0.0
-		lamp.light_color = Color(0.86, 0.9, 1.0)
+		# A steady, colder, narrower beam that dims as the battery dies.
+		reach = _config.stirnlampe_range * strength
+		energy = _config.stirnlampe_energy * (0.5 if low else 1.0)
+		_lamp_flame.flicker = 0.12 if low else 0.0
+		color = Color(0.86, 0.9, 1.0)
+		beam.spot_angle = _config.stirnlampe_beam_degrees
 	else:
 		# Near firedamp the flame flares up tall and bluish.
-		lamp.omni_range = _config.lamp_range * strength * (1.0 + gas_flare * 0.25)
-		lamp.base_energy = _config.lamp_energy * (0.55 if low else 1.0) * (1.0 + gas_flare * 1.4)
-		lamp.flicker = maxf(0.35 if low else 0.07, gas_flare * 0.45)
-		lamp.light_color = _carbide_color.lerp(Color(0.62, 0.78, 1.0), gas_flare * 0.7)
+		reach = _config.lamp_range * strength * (1.0 + gas_flare * 0.25)
+		energy = _config.lamp_energy * (0.55 if low else 1.0) * (1.0 + gas_flare * 1.4)
+		_lamp_flame.flicker = maxf(0.35 if low else 0.07, gas_flare * 0.45)
+		color = _carbide_color.lerp(Color(0.62, 0.78, 1.0), gas_flare * 0.7)
+		beam.spot_angle = _config.lamp_beam_degrees
+	beam.spot_range = reach
+	_beam_flame.base_energy = energy * _config.lamp_beam_energy
+	_beam_flame.flicker = _lamp_flame.flicker
+	beam.light_color = color
+	lamp.omni_range = _config.lamp_glow_range * strength
+	_lamp_flame.base_energy = energy * _config.lamp_glow_energy
+	lamp.light_color = color
 	# Only other players' carbide lamps hiss: your own would be a constant noise in your ear.
 	var hiss: bool = lamp_on and not lamp_electric and not is_local()
 	if hiss and not lamp_sound.playing:
@@ -689,9 +704,22 @@ func refill_lamp(share: float) -> void:
 		_set_lamp.rpc(true)
 
 
-## How far this player's lamp lights right now (0 when it is off), on every peer.
+## How far this player's lamp beam reaches right now (0 when it is off), on every peer.
 func light_range() -> float:
-	return lamp.omni_range if lamp_on and lamp.visible and alive else 0.0
+	return beam.spot_range if lamp_on and beam.visible and alive else 0.0
+
+
+## Whether this player's lamp lights `point`: inside the beam up to `share` of its reach, or
+## within the glow close around them. Rock in between is not checked here.
+func lights_point(point: Vector3, share: float = 1.0) -> bool:
+	if light_range() <= 0.0:
+		return false
+	if point.distance_to(lamp.global_position) < lamp.omni_range * 0.8:
+		return true
+	var to: Vector3 = point - beam.global_position
+	if to.length() > beam.spot_range * share:
+		return false
+	return to.normalized().dot(-beam.global_basis.z) >= cos(deg_to_rad(beam.spot_angle))
 
 
 ## What is left of the lamp in use: carbide, or the Stirnlampe's battery (0–1).

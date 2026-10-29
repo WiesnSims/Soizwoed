@@ -27,6 +27,12 @@ func run(game: Game, scenario: String) -> void:
 	if scenario == "settings":
 		_game.hud._open_settings()  # for screenshots of its layout
 		return
+	if scenario == "hublook":
+		# The notice board and the Grubnplan on the north wall, for screenshots.
+		var viewer: Player = _game.local_player()
+		viewer.teleport(_game.hub.global_transform * Transform3D(Basis.IDENTITY, Vector3(-0.5, 0.0, -3.2)))
+		viewer.head.rotation.x = 0.05
+		return
 	if scenario == "coopclient":
 		await _coop_client()
 		return
@@ -54,6 +60,16 @@ func run(game: Game, scenario: String) -> void:
 			await _salzsee()
 		"salzseelook":
 			await _salzsee_look()
+		"lamplook":
+			# The beam down a tunnel, then held low (screenshots).
+			for creature: Creature in _game.creatures():
+				creature.queue_free()
+			var miner: Player = _game.local_player()
+			for light: OmniLight3D in _game.mine.lights:
+				light.visible = false
+			miner.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(10.0)))
+			await get_tree().create_timer(6.0).timeout
+			miner.head.rotation.x = -0.4
 		"mptools":
 			await _mp_tools()
 		"mandl":

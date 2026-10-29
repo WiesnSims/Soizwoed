@@ -7,7 +7,7 @@ func test_defaults_are_the_tuned_look_at_a_sane_cost() -> void:
 	assert_eq(data.quality, SettingsData.Quality.HIGH)
 	assert_eq(data.anti_aliasing, SettingsData.AntiAliasing.TAA)
 	assert_eq(data.fps_limit, 60)
-	assert_true(data.auto_resolution)
+	assert_false(data.auto_resolution, "native 3D resolution unless FSR 2 is chosen")
 	assert_eq(data.fov, 78.0)
 	assert_true(data.creature_lines, "Gegner reden is on by default (DESIGN.md §6)")
 	var high: Dictionary = SettingsData.quality_values(SettingsData.Quality.HIGH)
@@ -96,6 +96,8 @@ func test_new_files_keep_an_unlimited_frame_rate() -> void:
 
 func test_auto_resolution_renders_at_most_1080p() -> void:
 	var data: SettingsData = SettingsData.new()
+	assert_eq(data.effective_render_scale(2160), 1.0, "native by default")
+	data.auto_resolution = true
 	assert_eq(data.effective_render_scale(1080), 1.0)
 	assert_eq(data.effective_render_scale(720), 1.0)
 	assert_almost_eq(data.effective_render_scale(1440), 0.75, 0.001)
@@ -103,3 +105,12 @@ func test_auto_resolution_renders_at_most_1080p() -> void:
 	data.auto_resolution = false
 	data.render_scale = 0.8
 	assert_almost_eq(data.effective_render_scale(2160), 0.8, 0.001)
+
+
+func test_fsr_default_of_version_2_goes_back_to_native() -> void:
+	var file: ConfigFile = ConfigFile.new()
+	file.set_value("meta", "version", 2)
+	file.set_value("graphics", "auto_resolution", true)
+	var data: SettingsData = SettingsData.new()
+	data.load_from(file)
+	assert_false(data.auto_resolution)

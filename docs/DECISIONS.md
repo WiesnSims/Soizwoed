@@ -294,3 +294,21 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
     "Ultra" keeps the full look. "Mittel" and "Niedrig" turn reflections off.
   - **Lamps and lanterns:** they stop casting shadows beyond a distance set by the preset (14 / 18 / 24 / 40 m) and fade out entirely beyond 32–40 m. Every shadowed lantern used to render the scene six more times, however far away.
 - **DLSS / AMD's AI upscaler (FSR 4):** not available in stock Godot 4.7, which only has FSR 1 and FSR 2. DLSS would need NVIDIA's SDK compiled into a custom engine build: no stock export templates, licence terms, and maintenance on every Godot update. FSR 4 has no Godot integration. We stay on FSR 2 for now.
+
+## 2026-10-30 – M4 playtest feedback, round 2
+
+### Asked for by the owner
+- **No lamp haze in your own view:** your own lamp no longer lights the volumetric dust at all. Others still see your beam in it.
+- **Directional lamp:** the lamp is now a beam where you look, plus a weak glow close around you.
+  - Beam: half-angle 38° for carbide, 30° for the Stirnlampe; reach 14 m (Stirnlampe 16 m); shadowed. A spot shadow costs one shadow render; the old omni lamp cost six.
+  - Glow: 4.5 m, no shadow.
+  - Items in your hands cast no shadow.
+  - The Kasermandl now freezes only inside a beam or the near glow.
+- **Native 3D resolution by default.** FSR 2 is the switch "FSR 2: 3D-Auflösung automatisch". Settings files from the previous build are moved back to native once.
+- **Gasthaus:**
+  - The notice board text fits its sheet.
+  - The Grubnplan (1.0 × 0.75 m) hangs between the board and the window.
+  - The Stubenmusi is 6 dB quieter.
+
+### Chosen by Claude
+- **Mine sections load at runtime** (`Game.BIOME_PATHS` → `biomes`), like the item catalog. Preloading them made the export fail with a cyclic script reference.

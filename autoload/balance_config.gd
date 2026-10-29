@@ -84,7 +84,15 @@ extends Resource
 @export var lamp_fuel_seconds: float = 480.0
 @export var lamp_low_fuel_share: float = 0.15
 @export var lamp_energy: float = 1.9
-@export var lamp_range: float = 11.0
+## How far the lamp's beam reaches (m).
+@export var lamp_range: float = 14.0
+## Half-angle of the beam (degrees): the carbide lamp's reflector, the Stirnlampe's lens.
+@export var lamp_beam_degrees: float = 38.0
+@export var stirnlampe_beam_degrees: float = 30.0
+## The beam is this many times lamp_energy; the glow around the miner this much, this far.
+@export var lamp_beam_energy: float = 1.7
+@export var lamp_glow_energy: float = 0.22
+@export var lamp_glow_range: float = 4.5
 ## A Karbidpatrone refills this share of the tank.
 @export var karbid_refill_share: float = 0.6
 
@@ -134,7 +142,7 @@ extends Resource
 @export_group("Tools")
 @export var stirnlampe_battery_seconds: float = 720.0
 @export var stirnlampe_energy: float = 2.1
-@export var stirnlampe_range: float = 13.0
+@export var stirnlampe_range: float = 16.0
 @export var alphorn_cone_degrees: float = 70.0
 @export var alphorn_range: float = 20.0
 @export var alphorn_stun_seconds: float = 6.0

@@ -90,13 +90,12 @@ func _think(delta: float) -> void:
 		state = State.RETREAT
 
 
-## Any lamp or lantern whose light reaches it (in range and nothing in between).
+## Any lamp beam or lantern whose light reaches it (in range and nothing in between).
 func _is_lit() -> bool:
 	var chest: Vector3 = global_position + Vector3.UP * 0.9
 	for player: Player in Game.instance.players():
-		var reach: float = player.light_range() * _config.kasermandl_lamp_share
-		var source: Vector3 = player.global_position + Vector3.UP * 1.6
-		if reach > 0.0 and source.distance_to(chest) < reach and _clear(source, chest):
+		# In the beam (or the glow right around the miner), with nothing in between.
+		if player.lights_point(chest, _config.kasermandl_lamp_share) and _clear(player.beam.global_position, chest):
 			return true
 	for light: OmniLight3D in Game.instance.mine.lights:
 		if is_instance_valid(light) and light.is_visible_in_tree() and light.global_position.distance_to(chest) < _config.kasermandl_lantern_range \

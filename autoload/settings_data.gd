@@ -15,7 +15,7 @@ const DEFAULT_FPS_LIMIT: int = 60
 ## upscaled with FSR 2 (the UI stays sharp).
 const AUTO_RENDER_HEIGHT: float = 1080.0
 ## Bumped when defaults change in a way old settings files should pick up (see load_from).
-const VERSION: int = 2
+const VERSION: int = 3
 const FOV_MIN: float = 60.0
 const FOV_MAX: float = 100.0
 const SENSITIVITY_MIN: float = 0.2
@@ -41,8 +41,9 @@ var brightness: float = 1.0
 var quality: Quality = Quality.HIGH
 ## 3D resolution share (FSR 2 upscaling below 1), used when auto_resolution is off.
 var render_scale: float = 1.0
-## Render 3D at no more than 1080p on bigger screens (FSR 2 upscaling).
-var auto_resolution: bool = true
+## Render 3D at no more than 1080p on bigger screens (FSR 2 upscaling). Off: native, or the
+## render_scale slider.
+var auto_resolution: bool = false
 var volumetric_fog: bool = true
 var anti_aliasing: AntiAliasing = AntiAliasing.TAA
 # Gameplay
@@ -114,7 +115,11 @@ func load_from(file: ConfigFile) -> void:
 	head_bob = bool(file.get_value("gameplay", "head_bob", head_bob))
 	# Files from before version 2 saved the old, heavy defaults (uncapped frame rate, MSAA on top
 	# of TAA) whether or not the player chose them: move those to the new defaults.
-	if int(file.get_value("meta", "version", 1)) < 2:
+	var version: int = int(file.get_value("meta", "version", 1))
+	# Version 2 had FSR 2 on by default; the owner wants native resolution unless chosen.
+	if version == 2:
+		auto_resolution = false
+	if version < 2:
 		if fps_limit == 0:
 			fps_limit = DEFAULT_FPS_LIMIT
 		if anti_aliasing == AntiAliasing.MSAA_TAA:
