@@ -1,7 +1,8 @@
 class_name Creature
 extends CharacterBody3D
 ## Base of every creature. The AI runs on the host only (`_think`); clients see the result
-## through the MultiplayerSynchronizer (position) and RPCs (voice lines, sounds). Shared
+## through the MultiplayerSynchronizer (`net_position` / `net_yaw`, smoothed by a
+## NetInterpolator) and RPCs (voice lines, sounds). Shared
 ## helpers: walking the mine's waypoint graph, line of sight, and creature voices with their
 ## cooldowns (DESIGN.md §6 "Creature voices").
 
@@ -12,6 +13,9 @@ const STUCK_SECONDS: float = 1.2
 
 var data: EnemyData
 var health: int = 1
+## Synced from the host (Sync node).
+var net_position: Vector3 = Vector3.ZERO
+var net_yaw: float = 0.0
 
 var _config: BalanceConfig
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
@@ -21,8 +25,10 @@ var _path_goal: Vector3 = Vector3.INF
 var _repath_left: float = 0.0
 var _stuck_time: float = 0.0
 var _last_line_at: float = -INF
+var _net: NetInterpolator = NetInterpolator.new()
 
 @onready var voice: AudioStreamPlayer3D = $Voice
+@onready var sync: MultiplayerSynchronizer = $Sync
 
 
 func _ready() -> void:
@@ -31,11 +37,26 @@ func _ready() -> void:
 	health = data.max_health
 	collision_layer = LAYER_CREATURES
 	collision_mask = 1
+	_net.delay = sync.replication_interval * 2.0
+	if not multiplayer.is_server():
+		sync.synchronized.connect(_on_synchronized)
 
 
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server() and Game.instance != null and Game.instance.mine != null:
 		_think(delta)
+		net_position = global_position
+		net_yaw = rotation.y
+
+
+func _process(_delta: float) -> void:
+	if not multiplayer.is_server() and _net.sample(Time.get_ticks_msec() / 1000.0):
+		global_position = _net.position
+		rotation.y = Basis(_net.rotation).get_euler().y
+
+
+func _on_synchronized() -> void:
+	_net.push(Time.get_ticks_msec() / 1000.0, net_position, Quaternion(Vector3.UP, net_yaw))
 
 
 ## The host's AI step; override.

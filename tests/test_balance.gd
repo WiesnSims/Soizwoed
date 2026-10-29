@@ -40,3 +40,16 @@ func test_quota_grows_each_cycle() -> void:
 
 func test_solo_quota_is_scaled_down() -> void:
 	assert_eq(config.quota_for_cycle(0, 1), int(round(config.quota_base * 0.45)))
+
+
+func test_soft_landings_do_not_hurt() -> void:
+	assert_eq(config.fall_damage(config.jump_velocity), 0, "landing from a jump")
+	assert_eq(config.fall_damage(config.fall_damage_min_speed), 0)
+
+
+func test_hard_landings_hurt_more_the_faster() -> void:
+	var low: int = config.fall_damage(config.fall_damage_min_speed + 1.0)
+	var high: int = config.fall_damage(config.fall_damage_min_speed + 6.0)
+	assert_gt(low, 0)
+	assert_gt(high, low)
+	assert_gte(config.fall_damage(30.0), config.player_max_health, "a long fall kills")

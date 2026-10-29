@@ -8,6 +8,9 @@ extends Node
 ##   look   – a Bergmandl standing still right in front of the player (for screenshots).
 ##   loot   – the player fetches the three nearest loot items into the Förderkorb, rides up,
 ##            and they get sold.
+##   coop   – host with one ENet client (`--wait-peers=1`): drops a crystal from above, carries
+##            a salt block together with the client, hands it over, then the client dies.
+##   coopclient – the client side of coop: logs what it sees of all that.
 
 var _game: Game
 var _log_left: float = 0.0
@@ -21,6 +24,16 @@ func run(game: Game, scenario: String) -> void:
 	if scenario == "cart":
 		await _cart()
 		return
+	if scenario == "coopclient":
+		await _coop_client()
+		return
+	if scenario == "coop":
+		# Already in a pocket before the client joins: the join snapshot must say so.
+		var pick: WorldItem = _game._spawn_item_at(&"spitzhacke", 0, _game.hub.counter_spot(), "ITestPick")
+		await get_tree().create_timer(0.5).timeout
+		_game.request_take(pick.get_path(), _game.local_player().peer_id)
+		while _game._ready_peers.size() < 2:
+			await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
@@ -32,6 +45,8 @@ func run(game: Game, scenario: String) -> void:
 			await _loot()
 		"look":
 			await _look()
+		"coop":
+			await _coop()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -157,3 +172,73 @@ func _look() -> void:
 	var mandl: Creature = _game._creature_spawner.spawn(["CLook", &"bergmandl", Transform3D(cage.global_basis.rotated(Vector3.UP, PI), at)]) as Creature
 	mandl.set_physics_process(false)
 	player.head.rotation.x = -0.45
+
+
+func _coop() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var cage: Foerderkorb = _game.mine_cage
+	var forward: Vector3 = -cage.global_basis.z
+	var host: Player = _game.local_player()
+	var client: Player = null
+	for player: Player in _game.players():
+		if player != host:
+			client = player
+	await get_tree().create_timer(1.0).timeout
+	var fall_at: Vector3 = cage.global_position + forward * 3.0 + Vector3.UP * 2.5
+	var falling: WorldItem = _game._spawn_item_at(&"salzkristall", 20, Transform3D(Basis.IDENTITY, fall_at), "ITestFall")
+	await get_tree().create_timer(3.0).timeout
+	print("[scenario] host: ITestFall fell %.2f m" % (fall_at.y - falling.global_position.y))
+	var block: WorldItem = _game._spawn_item_at(&"steinsalz_block", 120, host.global_transform.translated(forward * 1.0 + Vector3.UP * 0.3), "ITestBlock")
+	await get_tree().create_timer(1.0).timeout
+	_game.request_take(block.get_path(), host.peer_id)
+	client.teleport.rpc(host.global_transform.translated(host.global_basis.x * 1.0))
+	await get_tree().create_timer(1.0).timeout
+	_game.host_help_carry(block, client)
+	await get_tree().create_timer(1.5).timeout
+	print("[scenario] host: block holder %d helper %d, speed %.2f" % [block.holder_peer, block.helper_peer, host.inventory.speed_factor(Balance.config)])
+	_game.request_drop(block.get_path(), host.hold_point.global_transform, Vector3.ZERO)
+	await get_tree().create_timer(1.5).timeout
+	print("[scenario] host: after letting go, block holder %d helper %d" % [block.holder_peer, block.helper_peer])
+	_game.host_damage_player(client, 1000)
+	await get_tree().create_timer(5.0).timeout
+	var corpses: int = 0
+	for item: WorldItem in _game._items():
+		corpses += 1 if item.data.id == &"leiche" else 0
+	print("[scenario] host: %d corpse(s), client alive %s" % [corpses, client.alive])
+	host.teleport(cage.player_spot(0))
+	await get_tree().create_timer(0.5).timeout
+	_game.request_lift()
+
+
+func _coop_client() -> void:
+	await get_tree().create_timer(1.0).timeout
+	var pick: WorldItem = _game.items_root.get_node_or_null(^"ITestPick") as WorldItem
+	if pick != null:
+		print("[scenario] client sees ITestPick %s by P%d" % [WorldItem.State.keys()[pick.state], pick.holder_peer])
+	while _game.phase != Game.Phase.SHIFT:
+		await get_tree().process_frame
+	var me: Player = _game.local_player()
+	var seen: Dictionary = {}
+	var fall_start: float = INF
+	for i: int in 80:
+		await get_tree().create_timer(0.25).timeout
+		if _game.phase != Game.Phase.SHIFT:
+			break
+		var falling: WorldItem = _game.items_root.get_node_or_null(^"ITestFall") as WorldItem
+		if falling != null:
+			if fall_start == INF:
+				fall_start = falling.global_position.y
+			if fall_start - falling.global_position.y > 1.0 and not seen.has("fall"):
+				seen.fall = true
+				print("[scenario] client saw ITestFall fall %.2f m" % (fall_start - falling.global_position.y))
+		var block: WorldItem = _game.items_root.get_node_or_null(^"ITestBlock") as WorldItem
+		if block != null and block.helper_peer == me.peer_id and not seen.has("helper"):
+			seen.helper = true
+			print("[scenario] client carrying together with P%d, speed %.2f" % [block.holder_peer, me.inventory.speed_factor(Balance.config)])
+		if block != null and block.holder_peer == me.peer_id and seen.has("helper") and not seen.has("holder"):
+			seen.holder = true
+			print("[scenario] client took the block over")
+		if not me.alive and me.spectating != null and not seen.has("dead"):
+			seen.dead = true
+			print("[scenario] client dead, spectating P%d" % me.spectating.peer_id)

@@ -33,7 +33,8 @@ The full game design is here and must be followed:
 - Script versions (PowerShell, logs in `build/logs/`, exit code 1 on any error or warning):
   - `tools/run_tests.ps1` – GUT tests
   - `tools/smoke_test.ps1` – headless main menu + solo session
-  - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients
+  - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients playing a short shift
+  - `tools/mp_test.ps1 -Coop` – headless co-op scenario: item sync, carrying together, death and spectating
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it
   - Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`
 - Test runs must never disturb the user at the PC: prefer `--headless`. When a window is needed (screenshots), always run `godot --audio-driver Dummy -- ... --shots=<dir>`; `--shots` makes the window small in the screen corner, without focus, without mouse capture and muted.

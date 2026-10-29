@@ -69,3 +69,14 @@ RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.
 RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!
 RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S
 PROMPT_CART_DROP_IN,[G] %s einilegn
+PLAYER_NAME,Kumpl %d
+ITEM_LEICHE,Hiniger Kumpl (Sterbegeld)
+PROMPT_CARRY_TOGETHER,Mittrogn: %s
+MSG_LOST_GRIP,Auskemma! Ihr seid's z'weit ausanand.
+MSG_PLAYER_DIED,%s is hin!
+MSG_YOU_DIED,Du bist hin. Bis zur nächstn Schicht schaust nur mehr zua.
+HUD_SPECTATING,Du bist hin – du schaust %s zua.   [Klick] wechseln
+HUD_DEAD,Du bist hin.
+HUD_CREW,Kumpl dabei: %d
+RESULTS_DIED,Du bist hin worn!
+HUD_TOGETHER,(zu zweit)

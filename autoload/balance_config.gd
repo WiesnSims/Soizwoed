@@ -64,6 +64,17 @@ extends Resource
 @export var interact_distance: float = 2.6
 @export var watschn_damage: int = 8
 @export var throw_speed: float = 5.0
+## Two players carrying one heavy item together (DESIGN.md §3): speed factor for both, and how
+## far apart they may get before the helper loses their grip.
+@export var carry_together_speed: float = 0.95
+@export var carry_together_max_distance: float = 2.8
+## Landing faster than this (m/s) hurts; every m/s above it costs this much health.
+@export var fall_damage_min_speed: float = 8.0
+@export var fall_damage_per_speed: float = 12.0
+## A dead miner's body carried back to the lift pays this "Sterbegeld" (DESIGN.md §3).
+@export var sterbegeld: int = 60
+## Seconds the shift goes on after the last living player died, before the lift goes up.
+@export var all_dead_delay: float = 4.0
 
 @export_group("Lamp")
 @export var lamp_fuel_seconds: float = 480.0
@@ -121,6 +132,13 @@ func loot_count(cycle: int, player_count: int) -> int:
 
 func enemy_budget(cycle: int, player_count: int) -> float:
 	return (enemy_budget_base + enemy_budget_per_cycle * cycle) * enemy_budget_mult(player_count)
+
+
+## Health lost when landing at `speed` m/s (0 for a soft landing).
+func fall_damage(speed: float) -> int:
+	if speed <= fall_damage_min_speed:
+		return 0
+	return ceili((speed - fall_damage_min_speed) * fall_damage_per_speed)
 
 
 static func by_players(values: Array[float], player_count: int) -> float:
