@@ -159,3 +159,7 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - **Spü:** mouse sensitivity, invert mouse Y, head bob.
 - Default window mode stays "Im Fenster", so local multi-instance tests don't open fullscreen. Headless and `--shots` runs never touch the window.
 - Key rebinding and a language choice are left for M5 (only German exists so far).
+
+### Taskbar icon (owner report)
+- **Taskbar showed the generic Windows icon** while the file, the shortcut and the window corner showed the lamp: Godot 4.7.2's exporter rewrites the exe's icons but writes the icon group's name (`GODOT_ICON`) with a broken offset. Explorer just takes the first group, but the game loads its window-class icon by that name at startup, gets nothing and falls back to the generic icon, which the Windows 11 taskbar shows.
+- **Now:** `tools/build.ps1` runs `tools/fix_exe_icon.ps1` after the export. It rewrites the exe's resources from `icon.ico` (all 7 sizes, Godot kept only 6), restores the group name and keeps version info and manifest. This only works because the pck is not embedded. An export straight from the editor still has the bug; use the build script.
