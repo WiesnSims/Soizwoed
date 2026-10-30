@@ -51,7 +51,8 @@ Fail (timer runs out, or the whole crew is dead) → Kündigung: run over
 3. **Alarm** – picking it up starts the **Rückweg-timer** (starts at ~4 min, shrinks with difficulty, scales with mine size so it is always possible). The lift's bell rings through the mine. From now on:
    - extra waves spawn every ~30 s **between the crew and the lift**, and on their tracks;
    - every creature that hears the alarm knows where the carrier is (pulses like the old cursed relic);
-   - the Fundstück is **medium/heavy**: its carrier has both hands full and **cannot shoot** (melee shove only). It can be dropped, handed over or thrown a short way.
+   - the Fundstück is **medium/heavy**: its carrier has both hands full and **cannot shoot** (melee shove only). It can be dropped or **handed over** to a teammate (not thrown);
+   - creatures **focus the carrier**: whoever holds the Fundstück is every creature's preferred target.
 4. **Extraction** – the shift is won when the Fundstück is inside the Förderkorb and someone pulls the lever (riders go up; whoever is outside is left behind, see §3). The lift **cannot** go up without the Fundstück (except "aufgeben" = give up = run over).
 5. **Timer runs out** – the lift goes up empty, the crew is fired. Run over.
 
@@ -65,6 +66,7 @@ Fail (timer runs out, or the whole crew is dead) → Kündigung: run over
 - **Light:** carbide lamp (flame, ignites firedamp) or electric Stirnlampe. Lights still matter: the Kasermandl, darkness hiding enemies, muzzle flashes and flares.
 - **Inventory:** 4 slots for weapons and tools, hands for medium/heavy things (loot, the Fundstück). **Ammo does not take slots**: each ammo type is a counter with a carry cap (upgradable).
 - **Shooting:** aim with the mouse, left click fires, right click aims down the sights (less spread, slower move), R reloads (magazine by magazine, interruptible). Weapons have spread, recoil, damage falloff and a noise radius (gunfire draws listening creatures).
+- **Friendly fire is on**, at 33 % of the damage to start with (owner decision 2026-10-30; `balance.tres`): watch where you shoot.
 - **Downed and dead:** at 0 health a miner is **downed** for 20 s (crawls slowly, can shoot the pistol only). A teammate holding E for 3 s gets them up with 30 health. Downed again within the shift or bled out → **dead**: drops everything (weapons too – teammates can pick them up), spectates, comes back next shift with the starting kit and their permanent upgrades. The **Wunderheilerin-Salbe** still revives the dead (within 30 s of death).
 - **Solo:** no downed state (nobody to help) – instead one free "Zweite Luft" per shift: at 0 health you stay at 1 and get 3 s of invulnerability.
 - Left behind when the lift goes up = dead for the rest of the shift (unchanged).
@@ -239,7 +241,5 @@ As in v1 (GUT unit tests for pure logic, headless smoke runs and scripted scenar
 ## 14. Open Questions (decide during development)
 
 - Exact Rückweg-timer and difficulty curve – tune in M7 playtests.
-- Friendly fire: off, or reduced (e.g. 25 %)?
-- Should the Fundstück be passable by throwing, or only hand-to-hand?
 - Max player count: 4 fixed, or allow 6?
 - Do run upgrades get bought only in the hub, or also found in the mine (rare "Werkzeugkisten")?

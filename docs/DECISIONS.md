@@ -375,3 +375,11 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 
 ### Chosen by Claude (change any time)
 - **Wunderheilerin-Salbe:** rare loot (spawn weight 0.15, 3+ steps deep, any section, 60–90 S if sold instead). Select it in a pocket, look at a dead teammate's body and click: within 30 s of their death they stand up where the body lay with 40 health; the body and the salve are gone. Later: "Z'spät". In solo it can only be sold (nobody is left to use it on you).
+
+## 2026-10-30 – DESIGN v2 (action redesign)
+
+### Confirmed by the owner
+- **v1 played as boring;** DESIGN.md is rewritten as v2: Lethal-Company pace with guns and scarce ammo, a Fundstück per shift (often boss-guarded; alarm, Rückweg-timer, carry it to the lift) instead of the money quota, attacking and killable creatures (all v1 creatures kept), roguelite run upgrades plus permanent upgrades, co-op first with solo scaled down. Only the gameplay layer is rebuilt; networking, generator, sections, hub, settings, audio and tests stay.
+- **Friendly fire on, 33 %** of the damage to start with.
+- **The Fundstück is handed over, not thrown;** creatures focus its carrier.
+- DESIGN v2 approved; milestones M6–M10.
