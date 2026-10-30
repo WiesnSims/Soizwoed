@@ -13,4 +13,4 @@ price = 40
 spawn_weight = 2.0
 scene = ExtResource("2_scene")
 ammo_type = &"pistole"
-ammo_amount = 10
+ammo_amount = 12

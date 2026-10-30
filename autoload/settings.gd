@@ -127,6 +127,13 @@ func _apply_audio() -> void:
 	_set_bus(&"Voice", data.voice_volume)
 	Audio.creature_lines_enabled = data.creature_lines
 	Audio.voice_open_mic = data.voice_open_mic
+	# A device that is gone (unplugged headset) falls back to the default.
+	var output: String = data.output_device if data.output_device in AudioServer.get_output_device_list() else "Default"
+	if AudioServer.output_device != output:
+		AudioServer.output_device = output
+	var input: String = data.input_device if data.input_device in AudioServer.get_input_device_list() else "Default"
+	if AudioServer.input_device != input:
+		AudioServer.input_device = input
 
 
 func _set_bus(bus_name: StringName, linear: float) -> void:

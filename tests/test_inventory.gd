@@ -1,29 +1,51 @@
 extends GutTest
+## The pocket layout (owner decision): 1–3 weapons, 4 a throwable, 5–9 everything else, and the
+## hands for one medium or heavy thing.
 
 const LIGHT: int = ItemData.WeightClass.LIGHT
 const MEDIUM: int = ItemData.WeightClass.MEDIUM
 const HEAVY: int = ItemData.WeightClass.HEAVY
+const WEAPON: int = ItemData.SlotKind.WEAPON
+const THROWABLE: int = ItemData.SlotKind.THROWABLE
+const ITEM: int = ItemData.SlotKind.ITEM
 
 var inventory: Inventory
 
 
 func before_each() -> void:
-	inventory = Inventory.new(4)
+	inventory = Inventory.new(Inventory.layout(BalanceConfig.new()))
 
 
 func _thing() -> RefCounted:
 	return RefCounted.new()
 
 
-func test_light_items_fill_slots_then_stop() -> void:
-	for i: int in 4:
-		assert_ne(inventory.add(_thing(), LIGHT), Inventory.NONE)
-	assert_eq(inventory.add(_thing(), LIGHT), Inventory.NONE)
+func test_layout_is_three_one_five() -> void:
+	assert_eq(inventory.slot_kinds, PackedInt32Array([WEAPON, WEAPON, WEAPON, THROWABLE, ITEM, ITEM, ITEM, ITEM, ITEM]))
 
 
-func test_light_item_goes_to_selected_slot_first() -> void:
-	inventory.select(2)
-	assert_eq(inventory.add(_thing(), LIGHT), 2)
+func test_weapons_fill_slots_1_to_3_then_stop() -> void:
+	for i: int in 3:
+		assert_eq(inventory.add(_thing(), LIGHT, WEAPON), i)
+	assert_eq(inventory.add(_thing(), LIGHT, WEAPON), Inventory.NONE, "no gun in an item pocket")
+
+
+func test_items_never_take_weapon_slots() -> void:
+	for i: int in 5:
+		assert_eq(inventory.add(_thing(), LIGHT, ITEM), 4 + i)
+	assert_eq(inventory.add(_thing(), LIGHT, ITEM), Inventory.NONE)
+	assert_eq(inventory.slots[0], null)
+
+
+func test_second_throwable_goes_into_an_item_pocket() -> void:
+	assert_eq(inventory.add(_thing(), LIGHT, THROWABLE), 3)
+	assert_eq(inventory.add(_thing(), LIGHT, THROWABLE), 4)
+
+
+func test_selected_slot_of_the_right_kind_comes_first() -> void:
+	inventory.select(6)
+	assert_eq(inventory.add(_thing(), LIGHT, ITEM), 6)
+	assert_eq(inventory.add(_thing(), LIGHT, WEAPON), 0, "the selected slot is an item pocket")
 
 
 func test_heavy_goes_to_hands_once() -> void:
@@ -47,7 +69,7 @@ func test_medium_allows_sprint() -> void:
 func test_active_item_prefers_hands() -> void:
 	var small: RefCounted = _thing()
 	var big: RefCounted = _thing()
-	inventory.add(small, LIGHT)
+	inventory.add(small, LIGHT, WEAPON)
 	assert_eq(inventory.active_item(), small)
 	inventory.add(big, HEAVY)
 	assert_eq(inventory.active_item(), big)
@@ -57,9 +79,21 @@ func test_active_item_prefers_hands() -> void:
 
 func test_select_wraps() -> void:
 	inventory.select(-1)
-	assert_eq(inventory.selected, 3)
-	inventory.select(4)
+	assert_eq(inventory.selected, 8)
+	inventory.select(9)
 	assert_eq(inventory.selected, 0)
+
+
+func test_wheel_skips_empty_slots() -> void:
+	inventory.add(_thing(), LIGHT, WEAPON)
+	inventory.add(_thing(), LIGHT, ITEM)
+	inventory.select(0)
+	inventory.select_next(1)
+	assert_eq(inventory.selected, 4)
+	inventory.select_next(1)
+	assert_eq(inventory.selected, 0, "around to the gun again")
+	inventory.select_next(-1)
+	assert_eq(inventory.selected, 4)
 
 
 func test_all_items_and_clear() -> void:
@@ -85,3 +119,12 @@ func test_letting_go_ends_carrying_together() -> void:
 	inventory.shared_carry = true
 	inventory.remove(block)
 	assert_false(inventory.shared_carry)
+
+
+func test_item_kinds() -> void:
+	var catalog: ItemCatalog = load("res://items/item_catalog.tres")
+	assert_eq(catalog.by_id(&"dienstpistole").slot_kind(), ItemData.SlotKind.WEAPON)
+	assert_eq(catalog.by_id(&"spitzhacke").slot_kind(), ItemData.SlotKind.WEAPON)
+	assert_eq(catalog.by_id(&"boeller").slot_kind(), ItemData.SlotKind.THROWABLE)
+	assert_eq(catalog.by_id(&"obstler").slot_kind(), ItemData.SlotKind.ITEM)
+	assert_eq(catalog.by_id(&"salzkristall").slot_kind(), ItemData.SlotKind.ITEM)

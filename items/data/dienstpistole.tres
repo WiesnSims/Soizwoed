@@ -21,6 +21,8 @@ recoil = 2.5
 noise = 30.0
 ads_zoom = 0.82
 usable_downed = true
+sight_height = 0.025
+aim_distance = 0.36
 sound = "pistol_shot"
 reload_sound = "reload_pistol"
 

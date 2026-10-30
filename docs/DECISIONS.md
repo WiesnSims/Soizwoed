@@ -417,3 +417,34 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - `smoke_combat`: the kit, a dog pack shot down with aimed pistol fire, the shotgun's shell reload, Bergmandl stones, a dog bite, the solo second wind.
 - `mp_test.ps1 -Coop` adds friendly fire (30 → 10), downed, helped up (30 health), down for good; `-Tools` adds a client shooting a Grubenhund dead with the host applying it.
 - Version **0.6.0**.
+
+## 2026-10-30 – M6 playtest feedback
+
+### Asked for by the owner
+- **Movement stutter and wriggling held items – fixed.** Cause: movement ran in 60 Hz physics steps while the screen draws at its own rate, so the camera jumped unevenly ("physics jitter"); held items were smoothed towards that jumping camera and wriggled. Now:
+  - physics interpolation is on (with Godot's jitter fix off, as recommended for interpolation);
+  - the camera is placed every rendered frame from the interpolated body, with the current mouse look (no input delay);
+  - held items follow their point exactly;
+  - things moved per frame (remote players, clients' creatures and items) opt out of interpolation.
+  - Measured while walking (`--scenario=smooth`): frame-to-frame unevenness 117 % → 0 %.
+- **No 60 fps cap by default any more:** VSync follows the screen. A 60 cap on a 144 Hz screen paces frames unevenly. Settings files that still have the old 60 default move to "no cap" once.
+- **Aiming down the sights:** the gun comes up so its sight line lies exactly on the screen centre, where the shots go (bead 0.07° off in the check). The pistol and the shotgun have a rear notch and a front bead. The crosshair hides while aiming, and the gun glides between hip and eye. A red-dot sight can come later as an upgrade.
+- **Slots:** keys 1–3 weapons (guns and the Spitzhacke), 4 a throwable (Böller, Rauchbombe; a second one goes into a pocket), 5–9 everything else. The owner's message said "4 for items" but "5–9 items"; we went with 5 item slots so every number key has a slot. The mouse wheel skips empty slots.
+- **HUD like other shooters:**
+  - a hotbar of 9 squares with icons rendered from each item's own 3D model, the key number, and the magazine count on guns, in three groups; the selected slot is lit and its name shows briefly when switching;
+  - health (with its number), lamp and breath bars with drawn icons, bottom left;
+  - a large magazine count, the spare rounds and a bullet or shell icon, bottom right.
+- **More ammo** (the misaligned sights wasted a lot of it): ration 24 pistol rounds per shift (was 16), 3.5 boxes per miner in the mine (was 2.5), pistol boxes of 12 (was 10).
+
+### Microphone and audio devices (owner request)
+- **Why the mic seemed dead:**
+  - voice only worked in Steam sessions;
+  - it used Steam's own recorder, so the microphone was whatever the Steam client was set to (Steam → Settings → Voice);
+  - it is push-to-talk on V by default;
+  - solo and ENet games had no voice at all.
+- **Now the game records the microphone itself** (`Mic` autoload): from the input device picked in the settings, 16 kHz mono, μ-law coded (~16 KB/s while talking), sent over the game's own connection. Voice works the same over Steam and ENet, so it can be tested locally.
+  - Push-to-talk V or open mic (open mic now sends only while you are louder than a small gate).
+  - The mic only records while voice chat runs or the sound settings are open, and never in automated runs.
+- **Settings → Ton:** "Lautsprecher / Kopfhörer" (output device) and "Mikrofon" (input device), both "Standard vom System" by default, and a live mic level meter. A device that is unplugged falls back to the default.
+- The Salzweibl's snippets now keep these packets, so its voice lure no longer needs Steam either.
+- `mp_test.ps1 -Coop` checks that a client's voice reaches the host and is kept as a snippet.

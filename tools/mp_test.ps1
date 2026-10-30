@@ -26,8 +26,8 @@ if ($HostLeavesFirst) {
     $clientSeconds = 39
     $hostArgs += @("--scenario=coop", "--wait-peers=1")
     $clientExtra = @("--scenario=coopclient")
-    $hostExpect = @("host: ITestFall fell [1-9]", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "friendly fire, client health 90", "client downed true, alive true", "helped up, downed false, health 30", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
-    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client carrying together with P1, speed 0\.95", "client took the block over", "client downed, crouching true", "client up again, health 30", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
+    $hostExpect = @("host: ITestFall fell [1-9]", "voice snippets from the client 1", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "friendly fire, client health 90", "client downed true, alive true", "helped up, downed false, health 30", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
+    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client sent 1 s of voice", "client carrying together with P1, speed 0\.95", "client took the block over", "client downed, crouching true", "client up again, health 30", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
 } elseif ($Tools) {
     $hostSeconds = 36
     $clientSeconds = 32

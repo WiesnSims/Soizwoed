@@ -831,7 +831,7 @@ func request_take(item_path: NodePath, peer: int) -> void:
 	if item.data.kind == ItemData.Kind.AMMO:
 		_pick_up_ammo(item, player)
 		return
-	var place: int = player.inventory.place_for(item.data.weight_class)
+	var place: int = player.inventory.place_for(item.data.weight_class, item.data.slot_kind())
 	if place == Inventory.NONE:
 		return
 	item.host_take(peer, place)
@@ -984,7 +984,7 @@ func _hand_out_kit(player: Player) -> void:
 			return
 	var gun: WorldItem = _spawn_item_at(&"dienstpistole", 0, player.global_transform.translated(Vector3.UP * 1.0))
 	await get_tree().create_timer(0.3).timeout
-	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
+	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT, ItemData.SlotKind.WEAPON) if is_instance_valid(player) else Inventory.NONE
 	if is_instance_valid(gun) and place != Inventory.NONE and gun.state == WorldItem.State.FREE:
 		gun.host_take(player.peer_id, place)
 

@@ -53,7 +53,10 @@ extends Resource
 
 @export_group("Player")
 @export var player_max_health: int = 100
-@export var inventory_slots: int = 4
+## Pocket slots (owner decision): keys 1–3 weapons, 4 a throwable, 5–9 everything else.
+@export var weapon_slots: int = 3
+@export var throwable_slots: int = 1
+@export var item_slots: int = 5
 @export var solo_free_schubkarre: bool = true
 @export var walk_speed: float = 3.4
 @export var sprint_speed: float = 5.8
@@ -103,9 +106,9 @@ extends Resource
 @export var ammo_cap_pistole: int = 48
 @export var ammo_cap_schrot: int = 20
 ## The company's ration at the start of every shift: whoever has less gets topped up to this.
-@export var ration_pistole: int = 16
+@export var ration_pistole: int = 24
 ## Ammo boxes lying in a mine per miner (at least one), before the section's share.
-@export var ammo_boxes_per_player: float = 2.5
+@export var ammo_boxes_per_player: float = 3.5
 ## Moving while aiming down the sights is this much slower.
 @export var ads_move_speed: float = 0.6
 ## Downed (co-op, DESIGN.md §3): seconds until a downed miner bleeds out, crawling speed,

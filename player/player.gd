@@ -156,7 +156,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	add_to_group(&"players")
 	_config = Balance.config
-	inventory = Inventory.new(_config.inventory_slots)
+	inventory = Inventory.new(Inventory.layout(_config))
 	inventory.changed.connect(_on_inventory_changed)
 	health = _config.player_max_health
 	lamp_fuel = _config.lamp_fuel_seconds
@@ -262,9 +262,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"emote_point"):
 		game().request_emote.rpc_id(1, Emote.POINT)
 	elif event.is_action_pressed(&"slot_next"):
-		inventory.select(inventory.selected + 1)
+		inventory.select_next(1)
 	elif event.is_action_pressed(&"slot_prev"):
-		inventory.select(inventory.selected - 1)
+		inventory.select_next(-1)
 	else:
 		for i: int in inventory.slots.size():
 			if event.is_action_pressed(StringName("slot_%d" % (i + 1))):
@@ -889,7 +889,7 @@ func _try_take(item: WorldItem) -> void:
 	if cart != null and item != cart and item.data.kind == ItemData.Kind.LOOT:
 		game().request_load_cart.rpc_id(1, cart.get_path(), item.get_path())
 		return
-	if inventory.place_for(item.data.weight_class) == Inventory.NONE:
+	if inventory.place_for(item.data.weight_class, item.data.slot_kind()) == Inventory.NONE:
 		game().show_message(tr("MSG_HANDS_FULL"))
 		return
 	game().request_take.rpc_id(1, item.get_path(), peer_id)

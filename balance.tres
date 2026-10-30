@@ -107,7 +107,6 @@ enemy_min_depth = 2
 enemy_start_share = 0.5
 enemy_trickle_seconds = 90.0
 player_max_health = 100
-inventory_slots = 4
 solo_free_schubkarre = true
 walk_speed = 3.4
 sprint_speed = 5.8

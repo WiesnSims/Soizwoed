@@ -28,6 +28,11 @@ extends Resource
 @export var recoil: float = 2.5
 ## Creatures that listen hear the shot this far (m).
 @export var noise: float = 30.0
+## Height of the sight line (top of the rear notch and the front bead) above the gun's origin,
+## and how far in front of the eye the gun sits when aiming: the sights then line up with the
+## screen centre, where the shots go.
+@export var sight_height: float = 0.025
+@export var aim_distance: float = 0.3
 ## Field of view while aiming, as a share of the normal one.
 @export var ads_zoom: float = 0.8
 ## Name of the shot sound (assets/audio/sfx).

@@ -119,6 +119,13 @@ func run(game: Game, scenario: String) -> void:
 			await get_tree().create_timer(0.5).timeout
 			dog.look_at(Vector3(miner.global_position.x, dog.global_position.y, miner.global_position.z), Vector3.UP)
 			miner.head.rotation.x = -0.15
+			for id: StringName in [&"salzschrot_flinte", &"boeller", &"obstler", &"seil", &"karbidpatrone"]:
+				await _give(id)
+			for slot: int in miner.inventory.slots.size():
+				if miner.inventory.slots[slot] != null and (miner.inventory.slots[slot] as WorldItem).data.id == &"dienstpistole":
+					miner.inventory.select(slot)
+			await get_tree().create_timer(4.0).timeout
+			Input.action_press(&"aim")  # then down the sights
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -178,7 +185,7 @@ func _loot() -> void:
 			break
 		player.teleport(Transform3D(Basis.IDENTITY, item.global_position + Vector3(0.0, 0.2, 0.8)))
 		await get_tree().create_timer(0.4).timeout
-		if player.inventory.place_for(item.data.weight_class) == Inventory.NONE:
+		if player.inventory.place_for(item.data.weight_class, item.data.slot_kind()) == Inventory.NONE:
 			continue
 		_game.request_take(item.get_path(), player.peer_id)
 		await get_tree().create_timer(0.3).timeout
@@ -222,6 +229,7 @@ func _cart() -> void:
 	await get_tree().create_timer(1.5).timeout
 	_game.request_take(pocket.get_path(), player.peer_id)
 	await get_tree().create_timer(0.3).timeout
+	player.inventory.select(player.inventory.slots.find(pocket))  # it went into an item pocket (5–9)
 	player.focus = cart
 	player._drop_active()
 	await get_tree().create_timer(0.3).timeout
@@ -272,6 +280,7 @@ func _coop() -> void:
 	var falling: WorldItem = _game._spawn_item_at(&"salzkristall", 20, Transform3D(Basis.IDENTITY, fall_at), "ITestFall")
 	await get_tree().create_timer(3.0).timeout
 	print("[scenario] host: ITestFall fell %.2f m" % (fall_at.y - falling.global_position.y))
+	print("[scenario] host: voice snippets from the client %d" % (VoiceChat.snippets.get(client.peer_id, []) as Array).size())
 	# Thrown while walking forward: the client must see the same arc.
 	var thrown: WorldItem = _game._spawn_item_at(&"salzkristall", 20, host.global_transform.translated(Vector3.UP * 1.0), "ITestThrow")
 	await get_tree().create_timer(0.5).timeout
@@ -549,6 +558,15 @@ func _combat() -> void:
 	print("[scenario] kit: pistol %s, rounds %d, spare %d" % [pistol != null, pistol.rounds if pistol != null else -1, player.ammo_count(&"pistole")])
 	player.inventory.select(player.inventory.slots.find(pistol))
 	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(4.0)))
+	# Aiming down the sights: the bead and the notch sit on the screen centre, where shots go.
+	Input.action_press(&"aim")
+	await get_tree().create_timer(0.6).timeout
+	var sights: PackedStringArray = []
+	for part: String in ["Bead", "NotchL"]:
+		var at: Vector3 = player.camera.to_local((pistol.find_child(part, false, false) as Node3D).global_position)
+		sights.append("%s %.2f°" % [part, rad_to_deg(atan2(Vector2(at.x, at.y).length(), -at.z))])
+	Input.action_release(&"aim")
+	print("[scenario] sights off the centre while aiming: %s" % ", ".join(sights))
 	player.lamp_on = true
 	await get_tree().create_timer(0.3).timeout
 	var dogs: Array[Creature] = []
@@ -667,9 +685,9 @@ func _give(id: StringName) -> WorldItem:
 	var player: Player = _game.local_player()
 	var item: WorldItem = _game._spawn_item_at(id, 0, player.global_transform.translated(Vector3.UP * 1.0))
 	await get_tree().create_timer(0.3).timeout
-	player.inventory.select(player.inventory.slots.find(null))
 	_game.request_take(item.get_path(), player.peer_id)
 	await get_tree().create_timer(0.2).timeout
+	player.inventory.select(player.inventory.slots.find(item))
 	return item
 
 
@@ -1066,6 +1084,7 @@ func _coop_client() -> void:
 	var me: Player = _game.local_player()
 	var seen: Dictionary = {}
 	_track_when_thrown()
+	_send_test_voice(me)
 	var fall_start: float = INF
 	for i: int in 140:
 		await get_tree().create_timer(0.25).timeout
@@ -1097,6 +1116,19 @@ func _coop_client() -> void:
 		if seen.has("dead") and me.alive and me.health < Balance.config.player_max_health and not seen.has("revived"):
 			seen.revived = true
 			print("[scenario] client revived, health %d, own camera %s" % [me.health, me.camera.current])
+
+
+## One second of a tone as voice packets, the way the voice chat sends them (no microphone in
+## headless runs): the host must get them and keep them as a snippet.
+func _send_test_voice(me: Player) -> void:
+	await get_tree().create_timer(1.0).timeout
+	for i: int in 25:
+		var samples: PackedFloat32Array = PackedFloat32Array()
+		for n: int in Mic.PACKET_SAMPLES:
+			samples.append(sin(TAU * 220.0 * (i * Mic.PACKET_SAMPLES + n) / Mic.RATE) * 0.3)
+		me.voice_chat._voice_packet.rpc(Mic.encode(samples))
+		await get_tree().create_timer(0.04).timeout
+	print("[scenario] client sent 1 s of voice")
 
 
 ## Logs where a thrown item flies, every 0.1 s from the moment it is let go (host and client).

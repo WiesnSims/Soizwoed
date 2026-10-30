@@ -32,6 +32,28 @@ size = Vector3(0.045, 0.03, 0.18)
 size = Vector3(0.06, 0.12, 0.95)
 
 
+[sub_resource type="StandardMaterial3D" id="sightmat"]
+albedo_color = Color(0.08, 0.08, 0.09, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="beadmat"]
+albedo_color = Color(0.95, 0.9, 0.75, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="post"]
+size = Vector3(0.005, 0.009, 0.006)
+
+[sub_resource type="SphereMesh" id="bead"]
+radius = 0.0028
+height = 0.0056
+radial_segments = 8
+rings = 4
+
+[sub_resource type="BoxMesh" id="rib"]
+size = Vector3(0.008, 0.004, 0.56)
+
 [node name="SalzschrotFlinte" type="RigidBody3D"]
 mass = 3.4
 script = ExtResource("1_item")
@@ -60,6 +82,26 @@ surface_material_override/0 = SubResource("wood")
 transform = Transform3D(1, 0, 0, 0, 0.9903, -0.1392, 0, 0.1392, 0.9903, 0, -0.04, 0.22)
 mesh = SubResource("stock")
 surface_material_override/0 = SubResource("wood")
+
+[node name="Rib" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, -0.3)
+mesh = SubResource("rib")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="Bead" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0195, -0.57)
+mesh = SubResource("bead")
+surface_material_override/0 = SubResource("beadmat")
+
+[node name="NotchL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, 0.0195, 0.06)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="NotchR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.005, 0.0195, 0.06)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
 
 [node name="Shape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.02, -0.05)

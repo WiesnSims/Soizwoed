@@ -8,7 +8,7 @@ metallic = 0.85
 roughness = 0.38
 
 [sub_resource type="StandardMaterial3D" id="wood"]
-albedo_color = Color(0.33, 0.19, 0.09, 1)
+albedo_color = Color(0.11, 0.07, 0.05, 1)
 metallic = 0.0
 roughness = 0.6
 
@@ -16,7 +16,7 @@ roughness = 0.6
 size = Vector3(0.032, 0.035, 0.2)
 
 [sub_resource type="BoxMesh" id="grip"]
-size = Vector3(0.03, 0.11, 0.05)
+size = Vector3(0.026, 0.1, 0.04)
 
 [sub_resource type="BoxMesh" id="guard"]
 size = Vector3(0.008, 0.025, 0.05)
@@ -31,6 +31,25 @@ rings = 1
 [sub_resource type="BoxShape3D" id="shape"]
 size = Vector3(0.05, 0.15, 0.24)
 
+
+[sub_resource type="StandardMaterial3D" id="sightmat"]
+albedo_color = Color(0.08, 0.08, 0.09, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="beadmat"]
+albedo_color = Color(0.95, 0.9, 0.75, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="BoxMesh" id="post"]
+size = Vector3(0.005, 0.009, 0.006)
+
+[sub_resource type="SphereMesh" id="bead"]
+radius = 0.0028
+height = 0.0056
+radial_segments = 8
+rings = 4
 
 [node name="Dienstpistole" type="RigidBody3D"]
 mass = 1.0
@@ -55,6 +74,26 @@ surface_material_override/0 = SubResource("steel")
 transform = Transform3D(1, 0, 0, 0, 0.0, 1.0, 0, -1.0, 0.0, 0, 0.0, -0.13)
 mesh = SubResource("barrel")
 surface_material_override/0 = SubResource("steel")
+
+[node name="NotchL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, 0.022, 0.075)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="NotchR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.005, 0.022, 0.075)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="FrontPost" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.021, -0.112)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="Bead" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0255, -0.112)
+mesh = SubResource("bead")
+surface_material_override/0 = SubResource("beadmat")
 
 [node name="Shape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)

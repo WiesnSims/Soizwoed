@@ -25,7 +25,8 @@ const LANGUAGES: Array[String] = ["", "de", "en"]
 ## Input actions the player may put on other keys (Tastn tab), in the order shown.
 const REBINDABLE: Array[StringName] = [&"move_forward", &"move_back", &"move_left", &"move_right", &"jump", &"sprint",
 		&"crouch", &"interact", &"drop", &"use", &"aim", &"reload", &"lamp", &"shout", &"voice_talk", &"watch", &"emote_jodler",
-		&"emote_wave", &"emote_point", &"slot_1", &"slot_2", &"slot_3", &"slot_4"]
+		&"emote_wave", &"emote_point", &"slot_1", &"slot_2", &"slot_3", &"slot_4",
+		&"slot_5", &"slot_6", &"slot_7", &"slot_8", &"slot_9"]
 
 # Audio (volumes 0–1, linear)
 var master_volume: float = 1.0
@@ -36,6 +37,9 @@ var voice_volume: float = 1.0
 var creature_lines: bool = true
 ## Voice chat: open mic instead of push-to-talk (V).
 var voice_open_mic: bool = false
+## Audio devices by name ("" = the system's default).
+var output_device: String = ""
+var input_device: String = ""
 ## The Salzweibl may play back things you said to lure your teammates (DESIGN.md §6).
 var voice_lure: bool = true
 # Display
@@ -94,6 +98,8 @@ func save_to(file: ConfigFile) -> void:
 	file.set_value("audio", "creature_lines", creature_lines)
 	file.set_value("voice", "open_mic", voice_open_mic)
 	file.set_value("voice", "lure", voice_lure)
+	file.set_value("audio", "output_device", output_device)
+	file.set_value("voice", "input_device", input_device)
 	file.set_value("display", "window_mode", window_mode)
 	file.set_value("display", "vsync", vsync)
 	file.set_value("display", "fps_limit", fps_limit)
@@ -124,6 +130,8 @@ func load_from(file: ConfigFile) -> void:
 	creature_lines = bool(file.get_value("audio", "creature_lines", creature_lines))
 	voice_open_mic = bool(file.get_value("voice", "open_mic", voice_open_mic))
 	voice_lure = bool(file.get_value("voice", "lure", voice_lure))
+	output_device = str(file.get_value("audio", "output_device", output_device))
+	input_device = str(file.get_value("voice", "input_device", input_device))
 	window_mode = int(file.get_value("display", "window_mode", window_mode)) as WindowMode
 	vsync = bool(file.get_value("display", "vsync", vsync))
 	fps_limit = int(file.get_value("display", "fps_limit", fps_limit))

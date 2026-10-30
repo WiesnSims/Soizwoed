@@ -12,6 +12,10 @@ const RAY_MASK: int = 1 | 2 | 8  # rock, players, creatures
 const RECOIL_RECOVERY: float = 7.0
 const RECOIL_RECOVER_SHARE: float = 0.65
 const HIT_MARKER_SECONDS: float = 0.18
+## Where a gun sits from the hip: low on the right, pointing where you look.
+const HIP: Vector3 = Vector3(0.17, -0.17, -0.46)
+## How fast the gun comes up to the eye and back down (higher = snappier).
+const ADS_SHARPNESS: float = 16.0
 
 var player: Player
 var aiming: bool = false
@@ -27,23 +31,18 @@ var _reload_left: float = 0.0
 var _reload_item: WorldItem
 var _recoil_left: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-var _aim_point: Node3D
-## Where a gun sits from the hip: low on the right, pointing where you look.
-var _hip_point: Node3D
+## The point the gun in hand follows: it glides between the hip and the sights.
+var _gun_point: Node3D
 var _base_fov: float = 78.0
 
 
 func _ready() -> void:
 	player = get_parent() as Player
 	_rng.randomize()
-	_aim_point = Node3D.new()
-	_aim_point.name = "AimPoint"
-	_aim_point.position = Vector3(0.0, -0.1, -0.32)
-	player.camera.add_child(_aim_point)
-	_hip_point = Node3D.new()
-	_hip_point.name = "HipPoint"
-	_hip_point.position = Vector3(0.17, -0.17, -0.46)
-	player.camera.add_child(_hip_point)
+	_gun_point = Node3D.new()
+	_gun_point.name = "GunPoint"
+	_gun_point.position = HIP
+	player.camera.add_child(_gun_point)
 
 
 ## The gun in the selected pocket, if the hands are free for it (or the miner is downed –
@@ -65,6 +64,7 @@ func _process(delta: float) -> void:
 	var item: WorldItem = weapon_item()
 	var can_aim: bool = item != null and player.input_enabled and player.alive and not reloading
 	_set_aiming(can_aim and Input.is_action_pressed(&"aim"), item)
+	_move_gun(delta, item)
 	_tick_reload(delta, item)
 	_tick_recoil(delta)
 	var fov: float = Settings.data.fov * (item.data.weapon.ads_zoom if aiming and item != null else 1.0)
@@ -77,11 +77,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _set_aiming(on: bool, item: WorldItem) -> void:
-	if item != null and item.state == WorldItem.State.STORED:
-		var point: Node3D = _aim_point if on else _hip_point
-		if item.follow != point and not item.worn:
-			item.follow = point
+	if item != null and item.state == WorldItem.State.STORED and item.follow != _gun_point and not item.worn:
+		item.follow = _gun_point
 	aiming = on
+
+
+## Glides the gun between the hip and the eye. Aiming, its sight line sits exactly on the
+## screen centre (where the shots go), the notch and bead lined up.
+func _move_gun(delta: float, item: WorldItem) -> void:
+	var target: Vector3 = HIP
+	if aiming and item != null:
+		target = Vector3(0.0, -item.data.weapon.sight_height, -item.data.weapon.aim_distance)
+	_gun_point.position = _gun_point.position.lerp(target, 1.0 - exp(-ADS_SHARPNESS * delta))
 
 
 ## Pulls the trigger. True when a shot went off.

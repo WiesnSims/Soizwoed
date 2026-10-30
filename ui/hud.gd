@@ -14,15 +14,21 @@ const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _root: Control
 var _crosshair: ColorRect
-var _ammo_label: Label
+var _icons: ItemIcons
+var _hotbar: Hotbar
+## Bottom right: the gun in hand.
+var _ammo_box: Control
+var _ammo_name: Label
+var _ammo_magazine: Label
+var _ammo_spare: Label
+var _ammo_icon: HudIcon
+var _health_value: Label
 var _prompt: Label
 var _hold_bar: ProgressBar
 var _message: Label
 var _message_tween: Tween
 var _run_label: Label
 var _hands_label: Label
-var _slot_panels: Array[PanelContainer] = []
-var _slot_labels: Array[Label] = []
 var _health_bar: ProgressBar
 var _stamina_bar: ProgressBar
 var _lamp_bar: ProgressBar
@@ -47,6 +53,9 @@ func _ready() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	_icons = ItemIcons.new()
+	_icons.name = "ItemIcons"
+	add_child(_icons)
 	_build_center()
 	_build_bottom()
 	_build_ammo()
@@ -87,6 +96,7 @@ func _process(_delta: float) -> void:
 	_update_slots(player)
 	_update_gun(player)
 	_health_bar.value = float(player.health) / Balance.config.player_max_health
+	_health_value.text = str(player.health)
 	_stamina_bar.value = player.stamina
 	_stamina_bar.modulate.a = 0.0 if player.stamina >= 0.999 else 1.0
 	_lamp_bar.value = player.lamp_share()
@@ -397,13 +407,10 @@ func _update_prompt(player: Player) -> void:
 
 func _update_slots(player: Player) -> void:
 	var inventory: Inventory = player.inventory
-	for i: int in _slot_labels.size():
-		var item: WorldItem = inventory.slots[i] as WorldItem if i < inventory.slots.size() else null
-		_slot_labels[i].text = "%d  %s" % [i + 1, item.display_name() if item != null else "–"]
-		_slot_panels[i].modulate = Color(1, 1, 1, 1) if i == inventory.selected else Color(1, 1, 1, 0.55)
+	_hotbar.refresh(player, get_process_delta_time())
 	var hands: WorldItem = inventory.hands as WorldItem
 	var pocket: WorldItem = inventory.slots[inventory.selected] as WorldItem
-	_hands_label.visible = hands != null or (pocket != null and pocket.data.use != ItemData.Use.NONE)
+	_hands_label.visible = hands != null or (pocket != null and pocket.data.use != ItemData.Use.NONE and pocket.data.weapon == null)
 	if hands == null and _hands_label.visible:
 		_hands_label.text = "[%s] %s" % [Settings.key_label(&"use"), tr("USE_" + ItemData.Use.keys()[pocket.data.use])]
 	if hands != null:
@@ -456,37 +463,60 @@ func _build_center() -> void:
 	_root.add_child(_watch)
 
 
-## The gun in hand: magazine and spare rounds, bottom right.
+## The gun in hand, bottom right: a big magazine count, the spare rounds and their icon.
 func _build_ammo() -> void:
-	_ammo_label = _label("", 26)
-	_ammo_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_ammo_label.position = Vector2(-320, -80)
-	_ammo_label.size = Vector2(296, 60)
-	_ammo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_ammo_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.62))
-	_root.add_child(_ammo_label)
-	_alive_nodes.append(_ammo_label)
+	_ammo_box = VBoxContainer.new()
+	_ammo_box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_ammo_box.position = Vector2(-260, -118)
+	_ammo_box.size = Vector2(236, 100)
+	_ammo_box.alignment = BoxContainer.ALIGNMENT_END
+	_ammo_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_ammo_box)
+	_alive_nodes.append(_ammo_box)
+	_ammo_name = _label("", 16)
+	_ammo_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_ammo_name.add_theme_color_override("font_color", DIM_COLOR)
+	_ammo_box.add_child(_ammo_name)
+	var row: HBoxContainer = HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ammo_box.add_child(row)
+	_ammo_icon = HudIcon.new(HudIcon.Kind.BULLET, Color.WHITE, 30.0)
+	_ammo_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_ammo_icon)
+	_ammo_magazine = _label("", 46)
+	_ammo_magazine.add_theme_color_override("font_color", Color(1.0, 0.92, 0.72))
+	row.add_child(_ammo_magazine)
+	_ammo_spare = _label("", 22)
+	_ammo_spare.size_flags_vertical = Control.SIZE_SHRINK_END
+	_ammo_spare.add_theme_color_override("font_color", DIM_COLOR)
+	row.add_child(_ammo_spare)
 
 
-## Ammo text, crosshair (wider with the spread, red for a hit) and the reload bar.
+## Ammo, crosshair (wider with the spread, lit for a hit, gone while aiming) and the reload bar.
 func _update_gun(player: Player) -> void:
 	var gunner: Gunner = player.gunner
 	var item: WorldItem = gunner.weapon_item() if gunner != null else null
-	_ammo_label.visible = item != null
+	_ammo_box.visible = item != null
 	var size: float = 4.0
 	if item != null:
 		var weapon: WeaponData = item.data.weapon
-		_ammo_label.text = "%s\n%d / %d" % [item.display_name(), item.rounds, player.ammo_count(weapon.ammo_type)]
-		if gunner.reloading:
-			_ammo_label.text = "%s\n%s" % [item.display_name(), tr("HUD_RELOADING")]
-		elif item.rounds == 0 and player.ammo_count(weapon.ammo_type) == 0:
-			_ammo_label.text = "%s\n%s" % [item.display_name(), tr("HUD_NO_AMMO")]
+		var spare: int = player.ammo_count(weapon.ammo_type)
+		_ammo_name.text = tr("HUD_RELOADING") if gunner.reloading else (tr("HUD_NO_AMMO") if item.rounds == 0 and spare == 0 else item.display_name())
+		_ammo_magazine.text = str(item.rounds)
+		_ammo_magazine.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3) if item.rounds == 0 else Color(1.0, 0.92, 0.72))
+		_ammo_spare.text = "/ %d" % spare
+		_ammo_icon.kind = HudIcon.Kind.SHELL if weapon.ammo_type == &"schrot" else HudIcon.Kind.BULLET
+		_ammo_icon.queue_redraw()
 		var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
 		size = clampf(WeaponMath.spread(weapon, gunner.aiming, moving, player.crouching) * 3.0, 3.0, 26.0)
 	var marker: bool = gunner != null and gunner.hit_marker_left > 0.0
 	if marker:
 		size = 10.0
 	_crosshair.color = (Color(1.0, 0.25, 0.2, 0.9) if gunner.marker_kill else Color(1.0, 1.0, 1.0, 0.95)) if marker else Color(1, 1, 1, 0.55)
+	# Aiming down the sights, the notch and bead are the crosshair (a hit still flashes).
+	_crosshair.visible = not (gunner != null and gunner.aiming and item != null) or marker
 	_crosshair.size = Vector2(size, size)
 	_crosshair.position = Vector2(-size / 2.0, -size / 2.0)
 	if gunner != null and gunner.reloading:
@@ -495,41 +525,55 @@ func _update_gun(player: Player) -> void:
 
 
 func _build_bottom() -> void:
+	# Bottom left: health (with its number), lamp and breath, each with an icon.
 	var bars: VBoxContainer = VBoxContainer.new()
 	bars.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	bars.position = Vector2(24, -110)
-	bars.size = Vector2(220, 90)
-	bars.add_theme_constant_override("separation", 4)
+	bars.position = Vector2(24, -104)
+	bars.size = Vector2(260, 84)
+	bars.alignment = BoxContainer.ALIGNMENT_END
+	bars.add_theme_constant_override("separation", 6)
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(bars)
 	_alive_nodes.append(bars)
-	_health_bar = _labelled_bar(bars, tr("HUD_HEALTH"), Color(0.75, 0.2, 0.15))
-	_lamp_bar = _labelled_bar(bars, tr("HUD_LAMP"), Color(0.95, 0.75, 0.35))
-	_stamina_bar = _labelled_bar(bars, tr("HUD_STAMINA"), Color(0.85, 0.85, 0.8))
+	_health_bar = _status_row(bars, HudIcon.Kind.HEALTH, Color(0.85, 0.22, 0.17), 14.0, 26.0)
+	_health_value = _label("", 20)
+	(_health_bar.get_parent() as HBoxContainer).add_child(_health_value)
+	_lamp_bar = _status_row(bars, HudIcon.Kind.LAMP, Color(0.98, 0.76, 0.35), 8.0, 20.0)
+	_stamina_bar = _status_row(bars, HudIcon.Kind.STAMINA, Color(0.85, 0.85, 0.8), 6.0, 18.0)
+	# Bottom centre: the hint for what is in hand, and the hotbar.
 	var bottom: VBoxContainer = VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	bottom.position = Vector2(-330, -96)
-	bottom.size = Vector2(660, 80)
+	bottom.position = Vector2(-380, -140)
+	bottom.size = Vector2(760, 128)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
+	bottom.add_theme_constant_override("separation", 2)
+	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(bottom)
 	_alive_nodes.append(bottom)
-	_hands_label = _label("", 17)
+	_hands_label = _label("", 15)
 	_hands_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hands_label.add_theme_color_override("font_color", DIM_COLOR)
 	bottom.add_child(_hands_label)
-	var slots: HBoxContainer = HBoxContainer.new()
-	slots.alignment = BoxContainer.ALIGNMENT_CENTER
-	slots.add_theme_constant_override("separation", 6)
-	bottom.add_child(slots)
-	for i: int in Balance.config.inventory_slots:
-		var panel: PanelContainer = PanelContainer.new()
-		panel.add_theme_stylebox_override("panel", _stylebox(Color(0.08, 0.06, 0.04, 0.7)))
-		panel.custom_minimum_size = Vector2(150, 34)
-		var label: Label = _label("", 15)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.clip_text = true
-		panel.add_child(label)
-		slots.add_child(panel)
-		_slot_panels.append(panel)
-		_slot_labels.append(label)
+	_hotbar = Hotbar.new()
+	_hotbar.icons = _icons
+	_hotbar.build(Inventory.layout(Balance.config))
+	bottom.add_child(_hotbar)
+
+
+## One status line: an icon and a bar after it.
+func _status_row(parent: Container, kind: HudIcon.Kind, color: Color, height: float, icon_size: float) -> ProgressBar:
+	var row: HBoxContainer = HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var icon: HudIcon = HudIcon.new(kind, color, icon_size)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var bar: ProgressBar = _bar(color)
+	bar.custom_minimum_size = Vector2(170, height)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(bar)
+	parent.add_child(row)
+	return bar
 
 
 func _build_top() -> void:
@@ -568,27 +612,13 @@ func _build_panel() -> void:
 	_panel.add_child(_panel_box)
 
 
-func _labelled_bar(parent: Container, title: String, color: Color) -> ProgressBar:
-	var row: HBoxContainer = HBoxContainer.new()
-	var label: Label = _label(title, 14)
-	label.custom_minimum_size = Vector2(70, 0)
-	label.add_theme_color_override("font_color", DIM_COLOR)
-	row.add_child(label)
-	var bar: ProgressBar = _bar(color)
-	bar.custom_minimum_size = Vector2(140, 8)
-	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(bar)
-	parent.add_child(row)
-	return bar
-
-
 func _bar(color: Color) -> ProgressBar:
 	var bar: ProgressBar = ProgressBar.new()
 	bar.min_value = 0.0
 	bar.max_value = 1.0
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_stylebox_override("background", _stylebox(Color(0, 0, 0, 0.5), 0))
+	bar.add_theme_stylebox_override("background", _stylebox(Color(0, 0, 0, 0.55), 0))
 	bar.add_theme_stylebox_override("fill", _stylebox(color, 0))
 	return bar
 
