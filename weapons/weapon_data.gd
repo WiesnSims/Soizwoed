@@ -41,6 +41,12 @@ extends Resource
 @export var reload_sound: String = "mag_out"
 @export var reload_sound_late: String = ""
 @export var reload_late_share: float = 0.6
+## A break-action gun: opened once before the first shell (`reload_sound` is then each shell)
+## and snapped shut when the reload ends or is cut short.
+@export var reload_open_sound: String = ""
+@export var reload_close_sound: String = ""
+## Pulling the trigger on an empty gun.
+@export var dry_sound: String = "dry_click"
 ## Can be fired while downed (the pistol).
 @export var usable_downed: bool = false
 ## The gun in hand (GunView): kick back (m) and muzzle climb (degrees) per shot, and how long

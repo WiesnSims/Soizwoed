@@ -20,7 +20,7 @@ static func play(muzzle: Vector3, ends: PackedVector3Array, flesh: PackedByteArr
 	var root: Node = Engine.get_main_loop().current_scene if Engine.get_main_loop() is SceneTree else null
 	if root == null:
 		return
-	Audio.play_at(sound, muzzle, &"SFX", 2.0, 90.0, randf_range(0.97, 1.03))
+	Audio.play_at(sound, muzzle, &"SFX", -1.0, 90.0, randf_range(0.97, 1.03))
 	# The mine throws it back: a long, dark rolling echo, heard far.
 	Audio.play_at("shot_echo", muzzle, &"SFX", -6.0, 120.0, randf_range(0.9, 1.05))
 	var light: OmniLight3D = OmniLight3D.new()

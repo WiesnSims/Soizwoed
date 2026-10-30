@@ -85,7 +85,7 @@ func fire() -> bool:
 			return false
 	if item.rounds <= 0:
 		_cooldown = 0.3
-		Audio.play_at("dry_click", player.camera.global_position, &"SFX", -4.0, 8.0)
+		Audio.play_at(weapon.dry_sound, player.camera.global_position, &"SFX", -4.0, 8.0)
 		start_reload()
 		return false
 	item.rounds -= 1
@@ -151,7 +151,11 @@ func start_reload() -> void:
 	_reload_left = weapon.reload_seconds
 	reload_progress = 0.0
 	_late_sound_played = false
-	Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
+	if weapon.reload_open_sound != "":
+		Audio.play_at(weapon.reload_open_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
+		_play_later(weapon.reload_sound, weapon.reload_seconds * 0.5)
+	else:
+		Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
 
 
 func _tick_reload(delta: float, item: WorldItem) -> void:
@@ -181,9 +185,18 @@ func _tick_reload(delta: float, item: WorldItem) -> void:
 
 
 func _stop_reload() -> void:
+	if reloading and player.alive and _reload_item != null and _reload_item.data.weapon.reload_close_sound != "":
+		Audio.play_at(_reload_item.data.weapon.reload_close_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
 	reloading = false
 	_reload_item = null
 	reload_progress = 0.0
+
+
+## A reload sound a moment into the step (the shell after the gun is open), only if still reloading.
+func _play_later(sound: String, seconds: float) -> void:
+	get_tree().create_timer(seconds).timeout.connect(func() -> void:
+		if reloading and is_instance_valid(player):
+			Audio.play_at(sound, player.camera.global_position, &"SFX", -4.0, 12.0))
 
 
 ## The muzzle kicks the view up; most of it comes back down by itself.

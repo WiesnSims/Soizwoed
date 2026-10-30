@@ -472,3 +472,20 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - a crosshair of four ticks that open with the spread around a small dot (hidden while aiming);
   - framed bars, larger numbers.
 - **Docs:** DESIGN.md now describes the slots, the no-hit-marker rule, the voice pipeline, gun feel and the HUD; CLAUDE.md tells every session to read this file first.
+
+## 2026-10-30 – M6 approved; the copied gun sounds checked
+
+- **M6 approved by the owner** and merged into `main`; M7 starts on branch `m7`.
+- **Copying from Berghittn (owner):** allowed, but every copied asset must be checked to fit Soizwöd and improved where it can be.
+- **What the check found:**
+  - the shot recordings are outdoor shooting-range takes: bright (centre ~4 kHz) with almost no low end (3–7 % below 200 Hz), nothing of the boom a shot has in a tunnel;
+  - the shotgun hardly sounded heavier than the pistol;
+  - the three pistol cuts are practically one take;
+  - the double-barrel had a synthesised shell sound and no break-open or snap-shut.
+- **What Claude changed:**
+  - the recordings stay untouched in `tools/audio/recordings/`, and `tools/audio/guns.py` builds the game's versions from them;
+  - every shot gets a falling sub boom, the take layered darker underneath, ten to fourteen slaps off rock 4–45 ms later and a short room. Result: 13–17 % low end for the pistol, 25–34 % for the Flinte;
+  - each pistol variant gets its own speed, boom and slap pattern;
+  - the Flinte now reloads like a break-action: open (lever, hinge, empty hulls falling on the rock), a shell slid in per round, snapped shut when done or cut short. Its dry click is deeper;
+  - the shot is played 3 dB quieter in the game, because the files are denser;
+  - the old synthesised shots and reloads are deleted.
