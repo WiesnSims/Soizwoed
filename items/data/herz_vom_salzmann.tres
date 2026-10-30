@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/herzvomsalzmann.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"herz_vom_salzmann"
+name_key = "ITEM_HERZ_SALZMANN"
+kind = 0
+weight_class = 2
+spawn_weight = 0.0
+scene = ExtResource("2_scene")
+biomes = Array[StringName]([&"die_tiefe"])
+fundstueck = true
+pulse_mult = 1.6

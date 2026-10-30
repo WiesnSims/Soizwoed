@@ -9,7 +9,10 @@
 #   every use arrive and the client must see the results.
 # -Section <n>: the default shift in mine section n (0 Oberer Stollen, 1 Salzsee, 2 Die Tiefe),
 #   with the section's creatures forced in, so clients see e.g. the Percht.
-param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop, [switch]$Tools, [int]$Section = 0)
+# -Boss: the default shift with the Fundstück guarded by the section's boss; clients must see it
+#   locked, then free when the boss falls, and the alarm.
+# Every default shift ends with the Fundstück delivered, and every client must hear the alarm.
+param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop, [switch]$Tools, [int]$Section = 0, [switch]$Boss)
 . "$PSScriptRoot/godot_run.ps1"
 
 if ($Coop -or $Tools) { $Clients = 1 }
@@ -39,8 +42,13 @@ if ($HostLeavesFirst) {
     $hostSeconds = 26
     $clientSeconds = 19
     $hostArgs += @("--auto-shift=6", "--wait-peers=$Clients", "--section=$Section")
-    $hostExpect = @("\[game\] shift ended")
-    $clientExpect = @("\[game\] shift started", "\[game\] shift ended")
+    $hostExpect = @("lift up: DELIVERED", "\[game\] shift ended")
+    $clientExpect = @("\[game\] shift started", "\[game\] alarm on", "\[game\] shift ended")
+    if ($Boss) {
+        $hostArgs += @("--boss")
+        $hostExpect += @("boss bergkini", "boss dead, Fundst")
+        $clientExpect += @("\[fundstueck\] [a-z_]+ locked true", "\[fundstueck\] [a-z_]+ locked false")
+    }
     if ($Section -eq 2) { $hostExpect += @("(dev: percht spawned|spawned [0-9]+ percht)", "(dev: salzweibl spawned|spawned [0-9]+ salzweibl)") }
 }
 
@@ -112,6 +120,6 @@ if ($Coop) {
         }
     }
 }
-$mode = if ($Section -gt 0) { ", shift played in section $Section" } elseif ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } elseif ($Tools) { ", tools scenario" } else { ", shift played" }
+$mode = if ($Boss) { ", shift with the boss" } elseif ($Section -gt 0) { ", shift played in section $Section" } elseif ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } elseif ($Tools) { ", tools scenario" } else { ", shift played" }
 if (-not ($allOk -and $hostOk)) { Write-Host "MP TEST FAILED (logs: build/logs/)" -ForegroundColor Red; exit 1 }
 Write-Host "MP TEST OK ($Clients client(s)$mode)" -ForegroundColor Green

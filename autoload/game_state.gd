@@ -21,10 +21,10 @@ func start_run(player_count: int) -> void:
 	run_changed.emit()
 
 
-func finish_shift(loot_value: int) -> void:
-	var cycle_ended: bool = run.finish_shift(loot_value)
+func finish_shift(loot_value: int, delivered: bool, bonus: int = 0, honours: int = 0) -> void:
+	run.finish_shift(loot_value, delivered, bonus, honours)
 	run_changed.emit()
-	if cycle_ended and run.fired:
+	if run.fired:
 		run_ended.emit(run.score())
 
 

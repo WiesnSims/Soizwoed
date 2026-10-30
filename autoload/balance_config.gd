@@ -4,11 +4,53 @@ extends Resource
 ## Per-player-count arrays are indexed by player_count - 1; counts above the array
 ## length use the last entry (keeps the design open for up to 6 players).
 
-@export_group("Quota")
-@export var quota_base: int = 1500
-@export var quota_growth: float = 1.4
-@export var shifts_per_cycle: int = 3
-@export var quota_mult_by_players: Array[float] = [0.45, 0.65, 0.85, 1.0]
+@export_group("Fundstück")
+## The company's cash bonus for a delivered Fundstück: base + per shift, times the section's
+## loot multiplier (DESIGN.md §5).
+@export var fundstueck_bonus_base: int = 150
+@export var fundstueck_bonus_per_shift: int = 40
+## Ehrenzeichen per delivered Fundstück (DESIGN.md §7): base, one more every this many shifts,
+## the section's bonus (BiomeRule) and one more for a boss.
+@export var ehrenzeichen_base: int = 1
+@export var ehrenzeichen_every_shifts: int = 3
+@export var ehrenzeichen_boss: int = 1
+## Rückweg-timer (DESIGN.md §2): a base plus seconds per metre of the way from the Fundort to
+## the lift, shrinking per shift down to a share; the extra share for small crews.
+@export var rueckweg_base_seconds: float = 90.0
+@export var rueckweg_seconds_per_metre: float = 1.25
+@export var rueckweg_shrink_per_shift: float = 0.04
+@export var rueckweg_min_share: float = 0.65
+@export var rueckweg_bonus_by_players: Array[float] = [0.4, 0.15, 0.0, 0.0]
+## After the alarm: a wave every this many seconds, spending this much enemy budget (before the
+## crew factor), as long as fewer than the crew's limit are alive.
+@export var wave_seconds: float = 30.0
+@export var wave_budget_base: float = 3.0
+@export var wave_budget_per_shift: float = 0.5
+@export var wave_max_alive_by_players: Array[float] = [5.0, 7.0, 9.0, 10.0]
+## Waves come out of the rock at least this far from every miner, out of their sight.
+@export var wave_min_distance: float = 14.0
+## Every creature within this reach senses the carrier, every this many seconds.
+@export var alarm_pulse_seconds: float = 3.0
+@export var alarm_pulse_reach: float = 45.0
+## The Schichtmeister comes when this many seconds of the Rückweg are left.
+@export var schichtmeister_rueckweg_left: float = 30.0
+## Pulling the mine lever without the Fundstück: a second pull within this long gives up.
+@export var give_up_confirm_seconds: float = 6.0
+
+@export_group("Difficulty per shift")
+## Boss chance per shift (0-based); shifts after the list always have one (DESIGN.md §8).
+@export var boss_chance_by_shift: Array[float] = [0.0, 0.35, 0.7]
+@export var boss_health_by_players: Array[float] = [0.5, 0.7, 0.85, 1.0]
+@export var boss_health_per_shift: float = 0.12
+## Creature health and damage grow by these shares per shift, up to these factors.
+@export var enemy_health_per_shift: float = 0.05
+@export var enemy_health_max: float = 2.0
+@export var enemy_damage_per_shift: float = 0.04
+@export var enemy_damage_max: float = 1.6
+## Ammo boxes in the mine: per crew size (per miner) and scarcer every shift down to a share.
+@export var ammo_found_by_players: Array[float] = [1.2, 1.0, 0.9, 0.8]
+@export var ammo_scarcity_per_shift: float = 0.05
+@export var ammo_scarcity_min: float = 0.5
 
 @export_group("Shift")
 @export var shift_base_seconds: float = 780.0
@@ -21,10 +63,12 @@ extends Resource
 @export var lift_lever_hold_seconds: float = 1.5
 
 @export_group("Mine generation")
+## The main path (lift to Fundort) and the branches grow by these per shift (rounded down).
 @export var mine_main_length_base: int = 7
-@export var mine_main_length_per_cycle: int = 1
+@export var mine_main_length_per_shift: float = 0.5
 @export var mine_main_length_max: int = 14
 @export var mine_branches_base: int = 3
+@export var mine_branches_per_shift: float = 0.5
 @export var mine_branches_max: int = 7
 @export var mine_branch_max_length: int = 3
 @export var mine_loop_chance: float = 0.4
@@ -35,16 +79,16 @@ extends Resource
 @export var salt_wall_dead_end_chance: float = 0.25
 
 @export_group("Spawning")
-@export var enemy_budget_by_players: Array[float] = [0.5, 0.7, 0.85, 1.0]
+@export var enemy_budget_by_players: Array[float] = [0.45, 0.7, 0.85, 1.0]
 @export var loot_density_by_players: Array[float] = [0.6, 0.75, 0.9, 1.0]
-## Loot pieces in a shift before the player-count factor: base + per_cycle * cycle.
+## Loot pieces in a shift before the player-count factor: base + per_shift * shift.
 @export var loot_count_base: float = 16.0
-@export var loot_count_per_cycle: float = 2.0
+@export var loot_count_per_shift: float = 0.7
 ## Each step of depth from the lift adds this share to a piece's value.
 @export var loot_value_per_depth: float = 0.05
-## Enemy budget before the player-count factor: base + per_cycle * cycle.
-@export var enemy_budget_base: float = 6.0
-@export var enemy_budget_per_cycle: float = 2.0
+## Enemy budget before the player-count factor: base + per_shift * shift.
+@export var enemy_budget_base: float = 9.0
+@export var enemy_budget_per_shift: float = 1.5
 ## Creatures only spawn this many steps from the lift or deeper.
 @export var enemy_min_depth: int = 2
 ## Share of the budget spawned when the shift starts; the rest trickles in.
@@ -133,6 +177,39 @@ extends Resource
 @export var second_wind_seconds: float = 3.0
 ## Creature health for 1–4 miners (solo is easier, DESIGN.md §8).
 @export var enemy_health_by_players: Array[float] = [0.7, 0.85, 0.95, 1.0]
+## Armour (Lederschurz, Grubenhelm): this share of every hit goes into the armour's points
+## instead of health, until they are used up. Refilled before every shift.
+@export var armour_absorb: float = 0.5
+## The carrier of the Fundstück can still shove with an elbow (hands full): this much damage.
+@export var shove_damage: int = 6
+
+@export_group("Run upgrades")
+## Everything the Waffenkammer sells besides items (DESIGN.md §7), for the whole crew and the
+## rest of the run.
+@export var run_upgrades: Array[RunUpgrade] = []
+
+@export_group("Da Bergkini")
+@export var bergkini_health: int = 420
+@export var bergkini_speed: float = 3.0
+## It wakes when a miner comes this close in sight, or anyone hits it.
+@export var bergkini_wake_distance: float = 16.0
+## Dynamite: thrown every few seconds (random around this) at miners up to this far.
+@export var bergkini_throw_seconds: float = 3.6
+@export var bergkini_throw_range: float = 18.0
+@export var dynamite_fuse_seconds: float = 2.2
+@export var dynamite_radius: float = 4.0
+@export var dynamite_damage: int = 45
+## Calls this many Bergmandl every this many seconds while fewer than the limit are around.
+@export var bergkini_summon_seconds: float = 16.0
+@export var bergkini_summon_count: int = 2
+@export var bergkini_summon_max: int = 4
+## A slap for whoever gets too close.
+@export var bergkini_slap_damage: int = 20
+@export var bergkini_slap_distance: float = 1.9
+@export var bergkini_slap_cooldown: float = 1.6
+## Changes cover after this many seconds, or when hit this much.
+@export var bergkini_cover_seconds: float = 7.0
+@export var bergkini_cover_after_damage: int = 60
 
 @export_group("Shout (Plärren)")
 @export var shout_radius: float = 14.0
@@ -166,9 +243,9 @@ extends Resource
 @export var stone_speed: float = 13.0
 
 @export_group("Creature spawning")
-## How the enemy budget is spent per creature type (group sizes, limits, first cycle).
+## How the enemy budget is spent per creature type (group sizes, limits, first shift).
 @export var creature_spawn_rules: Array[CreatureSpawnRule] = []
-## Mine sections: unlock cycle, loot and enemy multipliers.
+## Mine sections: unlock shift, loot and enemy multipliers.
 @export var biome_rules: Array[BiomeRule] = []
 
 @export_group("Noise")
@@ -250,9 +327,9 @@ extends Resource
 @export var revive_health: int = 40
 
 @export_group("Hazards")
-## Share of hazard spots that hold a firedamp pocket, plus this much per cycle.
+## Share of hazard spots that hold a firedamp pocket, plus this much per shift.
 @export var gas_share: float = 0.3
-@export var gas_share_per_cycle: float = 0.05
+@export var gas_share_per_shift: float = 0.02
 @export var gas_radius: float = 3.0
 ## Seconds between an open flame entering the gas and the bang (time to put the lamp out).
 @export var gas_fuse_seconds: float = 1.0
@@ -374,26 +451,106 @@ extends Resource
 @export var voice_idle_chance: float = 0.04
 
 
-func quota_for_cycle(cycle: int, player_count: int) -> int:
-	var raw: float = quota_base * pow(quota_growth, cycle) * by_players(quota_mult_by_players, player_count)
-	return int(round(raw))
-
-
 func shift_seconds(player_count: int) -> float:
 	return shift_base_seconds + by_players(shift_bonus_seconds_by_players, player_count)
 
 
-func enemy_health_mult(player_count: int) -> float:
-	return by_players(enemy_health_by_players, player_count)
+## Creature health for the crew size, growing with the shift (DESIGN.md §8).
+func enemy_health_mult(player_count: int, shift: int = 0) -> float:
+	return by_players(enemy_health_by_players, player_count) * minf(enemy_health_max, 1.0 + enemy_health_per_shift * shift)
 
 
-func ammo_cap(ammo_type: StringName) -> int:
+## Creature damage grows with the shift.
+func enemy_damage_mult(shift: int) -> float:
+	return minf(enemy_damage_max, 1.0 + enemy_damage_per_shift * shift)
+
+
+## Chance that the Fundstück of shift `shift` (0-based) is guarded by a boss.
+func boss_chance(shift: int) -> float:
+	return boss_chance_by_shift[shift] if shift >= 0 and shift < boss_chance_by_shift.size() else 1.0
+
+
+## A boss's health factor: the crew size (solo bosses are half as tough) and the shift.
+func boss_health_mult(shift: int, player_count: int) -> float:
+	return by_players(boss_health_by_players, player_count) * (1.0 + boss_health_per_shift * shift)
+
+
+## Seconds for the way back with the Fundstück over `metres` of mine (DESIGN.md §2): scales with
+## the way so it is always possible, shrinks with the shift, more for small crews.
+func rueckweg_seconds(shift: int, player_count: int, metres: float) -> float:
+	var shrink: float = maxf(rueckweg_min_share, 1.0 - rueckweg_shrink_per_shift * shift)
+	return (rueckweg_base_seconds + metres * rueckweg_seconds_per_metre) * shrink * (1.0 + by_players(rueckweg_bonus_by_players, player_count))
+
+
+## Enemy budget of one wave after the alarm (always at least one creature's worth).
+func wave_budget(shift: int, player_count: int) -> float:
+	return maxf(1.0, (wave_budget_base + wave_budget_per_shift * shift) * enemy_budget_mult(player_count))
+
+
+## No new wave while this many creatures are alive.
+func wave_max_alive(player_count: int) -> int:
+	return roundi(by_players(wave_max_alive_by_players, player_count))
+
+
+## Ammo boxes lying in the mine: per miner, scaled per crew size, scarcer every shift (§8).
+func ammo_box_count(shift: int, player_count: int) -> int:
+	var scarcity: float = maxf(ammo_scarcity_min, 1.0 - ammo_scarcity_per_shift * shift)
+	return maxi(1, roundi(ammo_boxes_per_player * player_count * by_players(ammo_found_by_players, player_count) * scarcity))
+
+
+## The company's cash bonus for the Fundstück of shift `shift`.
+func fundstueck_bonus(shift: int, loot_mult: float) -> int:
+	return roundi((fundstueck_bonus_base + fundstueck_bonus_per_shift * shift) * loot_mult)
+
+
+## Ehrenzeichen for delivering the Fundstück of shift `shift`.
+func ehrenzeichen(shift: int, section_bonus: int, boss: bool) -> int:
+	return ehrenzeichen_base + shift / maxi(1, ehrenzeichen_every_shifts) + section_bonus + (ehrenzeichen_boss if boss else 0)
+
+
+## A hit of `amount` on a miner wearing `armour` points: [health lost, armour points lost].
+func armour_split(amount: int, armour: int) -> Vector2i:
+	var absorbed: int = mini(armour, roundi(amount * armour_absorb))
+	return Vector2i(amount - absorbed, absorbed)
+
+
+func run_upgrade(id: StringName) -> RunUpgrade:
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.id == id:
+			return upgrade
+	return null
+
+
+## The ammo cap of `ammo_type` plus what the crew's upgrades add (`levels`: upgrade id -> level).
+func ammo_cap(ammo_type: StringName, levels: Dictionary = {}) -> int:
+	var cap: int = 99
 	match ammo_type:
 		&"pistole":
-			return ammo_cap_pistole
+			cap = ammo_cap_pistole
 		&"schrot":
-			return ammo_cap_schrot
-	return 99
+			cap = ammo_cap_schrot
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.effect == RunUpgrade.Effect.AMMO_CAP and upgrade.target == ammo_type:
+			cap += roundi(upgrade.total(int(levels.get(upgrade.id, 0))))
+	return cap
+
+
+## Armour points a miner starts the shift with, from the crew's upgrades.
+func armour_points(levels: Dictionary) -> int:
+	var points: float = 0.0
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.effect == RunUpgrade.Effect.ARMOUR:
+			points += upgrade.total(int(levels.get(upgrade.id, 0)))
+	return roundi(points)
+
+
+## The lamp's reach factor from the crew's upgrades.
+func lamp_range_mult(levels: Dictionary) -> float:
+	var mult: float = 1.0
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.effect == RunUpgrade.Effect.LAMP_RANGE:
+			mult += upgrade.total(int(levels.get(upgrade.id, 0)))
+	return mult
 
 
 ## Rounds of `ammo_type` left at which a miner counts as nearly out (Notration).
@@ -417,8 +574,8 @@ func notration_due(rounds_left: Dictionary) -> bool:
 
 ## How many rounds go over when handing ammo: the share of what the giver has (rounded up),
 ## no more than the receiver can still carry.
-func ammo_to_hand_over(giver_has: int, receiver_has: int, ammo_type: StringName) -> int:
-	return clampi(ceili(giver_has * hand_ammo_share), 0, maxi(0, ammo_cap(ammo_type) - receiver_has))
+func ammo_to_hand_over(giver_has: int, receiver_has: int, ammo_type: StringName, levels: Dictionary = {}) -> int:
+	return clampi(ceili(giver_has * hand_ammo_share), 0, maxi(0, ammo_cap(ammo_type, levels) - receiver_has))
 
 
 func enemy_budget_mult(player_count: int) -> float:
@@ -429,12 +586,12 @@ func loot_density_mult(player_count: int) -> float:
 	return by_players(loot_density_by_players, player_count)
 
 
-func loot_count(cycle: int, player_count: int) -> int:
-	return roundi((loot_count_base + loot_count_per_cycle * cycle) * loot_density_mult(player_count))
+func loot_count(shift: int, player_count: int) -> int:
+	return roundi((loot_count_base + loot_count_per_shift * shift) * loot_density_mult(player_count))
 
 
-func enemy_budget(cycle: int, player_count: int) -> float:
-	return (enemy_budget_base + enemy_budget_per_cycle * cycle) * enemy_budget_mult(player_count)
+func enemy_budget(shift: int, player_count: int) -> float:
+	return (enemy_budget_base + enemy_budget_per_shift * shift) * enemy_budget_mult(player_count)
 
 
 func spawn_rule(id: StringName) -> CreatureSpawnRule:
@@ -451,9 +608,9 @@ func biome_rule(id: StringName) -> BiomeRule:
 	return null
 
 
-## Share of hazard spots with a firedamp pocket in this cycle.
-func gas_share_for_cycle(cycle: int) -> float:
-	return clampf(gas_share + gas_share_per_cycle * cycle, 0.0, 0.8)
+## Share of hazard spots with a firedamp pocket in this shift.
+func gas_share_for_shift(shift: int) -> float:
+	return clampf(gas_share + gas_share_per_shift * shift, 0.0, 0.8)
 
 
 ## Damage of an explosion at `distance` m: full at the centre, none at the edge.

@@ -45,6 +45,8 @@ var gunner: Gunner
 var voice_lure_ok: bool = true
 var inventory: Inventory
 var health: int = 100
+## Points of armour left (Lederschurz, Grubenhelm), refilled before every shift (host decides).
+var armour: int = 0
 var stamina: float = 1.0
 var lamp_fuel: float = 0.0
 var lamp_on: bool = true:
@@ -580,6 +582,13 @@ func set_health(value: int) -> void:
 	health = value
 
 
+@rpc("any_peer", "call_local", "reliable")
+func set_armour(value: int) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return  # only the host
+	armour = maxi(0, value)
+
+
 ## Died (the host decided; Game turns the body into a corpse item). The player watches the
 ## others until the next ride.
 @rpc("any_peer", "call_local", "reliable")
@@ -761,14 +770,14 @@ func _update_lamp() -> void:
 	var color: Color
 	if lamp_electric:
 		# A steady, colder, narrower beam that dims as the battery dies.
-		reach = _config.stirnlampe_range * strength
+		reach = _config.stirnlampe_range * strength * _lamp_mult()
 		energy = _config.stirnlampe_energy * (0.5 if low else 1.0)
 		_lamp_flame.flicker = 0.12 if low else 0.0
 		color = Color(0.86, 0.9, 1.0)
 		beam.spot_angle = _config.stirnlampe_beam_degrees
 	else:
 		# Near firedamp the flame flares up tall and bluish.
-		reach = _config.lamp_range * strength * (1.0 + gas_flare * 0.25)
+		reach = _config.lamp_range * strength * (1.0 + gas_flare * 0.25) * _lamp_mult()
 		energy = _config.lamp_energy * (0.55 if low else 1.0) * (1.0 + gas_flare * 1.4)
 		_lamp_flame.flicker = maxf(0.35 if low else 0.07, gas_flare * 0.45)
 		color = _carbide_color.lerp(Color(0.62, 0.78, 1.0), gas_flare * 0.7)
@@ -786,6 +795,11 @@ func _update_lamp() -> void:
 		lamp_sound.play()
 	elif not hiss and lamp_sound.playing:
 		lamp_sound.stop()
+
+
+## The Reflektor upgrade's reach factor (1 without).
+func _lamp_mult() -> float:
+	return game().lamp_mult if game() != null else 1.0
 
 
 ## An open flame that can set off firedamp: a burning carbide lamp.
@@ -809,6 +823,13 @@ func refill_lamp(share: float) -> void:
 ## How far this player's lamp beam reaches right now (0 when it is off), on every peer.
 func light_range() -> float:
 	return beam.spot_range if lamp_on and beam.visible and alive else 0.0
+
+
+## Whether others see this miner as lit: a lamp on, or a glowing Fundstück in the hands
+## (the Seekristall, DESIGN.md §5).
+func is_lit() -> bool:
+	var held: WorldItem = inventory.hands as WorldItem
+	return light_range() > 0.0 or (held != null and held.find_child("Glow", false, false) is Light3D)
 
 
 ## Whether this player's lamp lights `point`: inside the beam up to `share` of its reach, or
@@ -937,6 +958,10 @@ func _use_active() -> void:
 		if held != null and held.data.melee_damage > 0 and not inventory.shared_carry:
 			_use_cooldown = 0.8
 			_melee(held.data.melee_damage, false, held.data.breaks_rock)
+		elif held != null and not held is Schubkarre:
+			# Hands full (the Fundstück): an elbow for whatever comes too close (DESIGN.md §2).
+			_use_cooldown = 0.9
+			_melee(_config.shove_damage, true, false)
 		return
 	var item: WorldItem = inventory.slots[inventory.selected] as WorldItem
 	var use: ItemData.Use = item.data.use if item != null else ItemData.Use.NONE
@@ -1302,7 +1327,7 @@ func give_ammo(ammo_type: StringName, amount: int, at_least: bool = false) -> vo
 		return  # only the host hands out ammo
 	var have: int = ammo_count(ammo_type)
 	var total: int = maxi(have, amount) if at_least else have + amount
-	ammo[ammo_type] = mini(total, _config.ammo_cap(ammo_type))
+	ammo[ammo_type] = mini(total, game().ammo_cap(ammo_type) if game() != null else _config.ammo_cap(ammo_type))
 	if is_local():
 		_share_ammo.rpc(ammo)
 

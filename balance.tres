@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://autoload/balance_config.gd" id="1_balance"]
 [ext_resource type="Script" path="res://enemies/creature_spawn_rule.gd" id="2_spawn"]
 [ext_resource type="Script" path="res://world/chunks/biome_rule.gd" id="3_biome"]
+[ext_resource type="Script" path="res://progression/run_upgrade.gd" id="4_upgrade"]
 
 [sub_resource type="Resource" id="spawn_bergmandl"]
 script = ExtResource("2_spawn")
@@ -17,6 +18,7 @@ script = ExtResource("2_spawn")
 id = &"tatzelwurm"
 budget_cost = 3.0
 weight = 1.0
+min_shift = 1
 max_alive = 1
 
 [sub_resource type="Resource" id="spawn_kasermandl"]
@@ -24,6 +26,7 @@ script = ExtResource("2_spawn")
 id = &"kasermandl"
 budget_cost = 2.5
 weight = 1.0
+min_shift = 1
 max_alive = 1
 
 [sub_resource type="Resource" id="spawn_schichtmeister"]
@@ -46,6 +49,7 @@ script = ExtResource("2_spawn")
 id = &"salzweibl"
 budget_cost = 2.5
 weight = 1.0
+min_shift = 2
 max_alive = 1
 
 [sub_resource type="Resource" id="spawn_percht"]
@@ -53,6 +57,7 @@ script = ExtResource("2_spawn")
 id = &"percht"
 budget_cost = 4.0
 weight = 1.2
+min_shift = 5
 max_alive = 1
 
 [sub_resource type="Resource" id="biome_oberer_stollen"]
@@ -62,7 +67,8 @@ id = &"oberer_stollen"
 [sub_resource type="Resource" id="biome_salzsee"]
 script = ExtResource("3_biome")
 id = &"salzsee"
-unlock_cycle = 1
+unlock_shift = 3
+ehrenzeichen_bonus = 1
 loot_value_mult = 1.35
 enemy_budget_mult = 1.2
 brine_share = 0.3
@@ -70,18 +76,130 @@ brine_share = 0.3
 [sub_resource type="Resource" id="biome_die_tiefe"]
 script = ExtResource("3_biome")
 id = &"die_tiefe"
-unlock_cycle = 2
+unlock_shift = 6
+ehrenzeichen_bonus = 2
 loot_value_mult = 1.45
 enemy_budget_mult = 1.4
 brine_share = 0.06
 gas_mult = 1.8
 
+[sub_resource type="Resource" id="upgrade_pistole_damage"]
+script = ExtResource("4_upgrade")
+id = &"pistole_damage"
+name_key = "UPG_PISTOLE_DAMAGE"
+effect = 0
+target = &"dienstpistole"
+per_level = 0.2
+prices = Array[int]([120, 220])
+icon_item = &"dienstpistole"
+
+[sub_resource type="Resource" id="upgrade_pistole_magazine"]
+script = ExtResource("4_upgrade")
+id = &"pistole_magazine"
+name_key = "UPG_PISTOLE_MAGAZINE"
+effect = 1
+target = &"dienstpistole"
+per_level = 4.0
+prices = Array[int]([150])
+icon_item = &"dienstpistole"
+
+[sub_resource type="Resource" id="upgrade_pistole_reload"]
+script = ExtResource("4_upgrade")
+id = &"pistole_reload"
+name_key = "UPG_PISTOLE_RELOAD"
+effect = 2
+target = &"dienstpistole"
+per_level = 0.2
+prices = Array[int]([100, 180])
+icon_item = &"dienstpistole"
+
+[sub_resource type="Resource" id="upgrade_pistole_spread"]
+script = ExtResource("4_upgrade")
+id = &"pistole_spread"
+name_key = "UPG_PISTOLE_SPREAD"
+effect = 3
+target = &"dienstpistole"
+per_level = 0.3
+prices = Array[int]([110])
+icon_item = &"dienstpistole"
+
+[sub_resource type="Resource" id="upgrade_flinte_damage"]
+script = ExtResource("4_upgrade")
+id = &"flinte_damage"
+name_key = "UPG_FLINTE_DAMAGE"
+effect = 0
+target = &"salzschrot_flinte"
+per_level = 0.2
+prices = Array[int]([180, 300])
+icon_item = &"salzschrot_flinte"
+
+[sub_resource type="Resource" id="upgrade_flinte_reload"]
+script = ExtResource("4_upgrade")
+id = &"flinte_reload"
+name_key = "UPG_FLINTE_RELOAD"
+effect = 2
+target = &"salzschrot_flinte"
+per_level = 0.2
+prices = Array[int]([150, 250])
+icon_item = &"salzschrot_flinte"
+
+[sub_resource type="Resource" id="upgrade_flinte_spread"]
+script = ExtResource("4_upgrade")
+id = &"flinte_spread"
+name_key = "UPG_FLINTE_SPREAD"
+effect = 3
+target = &"salzschrot_flinte"
+per_level = 0.25
+prices = Array[int]([160])
+icon_item = &"salzschrot_flinte"
+
+[sub_resource type="Resource" id="upgrade_cap_pistole"]
+script = ExtResource("4_upgrade")
+id = &"cap_pistole"
+name_key = "UPG_CAP_PISTOLE"
+effect = 4
+target = &"pistole"
+per_level = 16.0
+prices = Array[int]([80, 140])
+icon_item = &"pistolenpatronen"
+
+[sub_resource type="Resource" id="upgrade_cap_schrot"]
+script = ExtResource("4_upgrade")
+id = &"cap_schrot"
+name_key = "UPG_CAP_SCHROT"
+effect = 4
+target = &"schrot"
+per_level = 8.0
+prices = Array[int]([100, 160])
+icon_item = &"salzschrot"
+
+[sub_resource type="Resource" id="upgrade_lederschurz"]
+script = ExtResource("4_upgrade")
+id = &"lederschurz"
+name_key = "UPG_LEDERSCHURZ"
+effect = 5
+per_level = 40.0
+prices = Array[int]([180])
+
+[sub_resource type="Resource" id="upgrade_grubenhelm"]
+script = ExtResource("4_upgrade")
+id = &"grubenhelm"
+name_key = "UPG_GRUBENHELM"
+effect = 5
+per_level = 30.0
+prices = Array[int]([140])
+
+[sub_resource type="Resource" id="upgrade_reflektor"]
+script = ExtResource("4_upgrade")
+id = &"reflektor"
+name_key = "UPG_REFLEKTOR"
+effect = 6
+per_level = 0.2
+prices = Array[int]([90, 160])
+icon_item = &"stirnlampe"
+
 [resource]
 script = ExtResource("1_balance")
-quota_base = 1500
-quota_growth = 1.4
-shifts_per_cycle = 3
-quota_mult_by_players = Array[float]([0.45, 0.65, 0.85, 1.0])
 shift_base_seconds = 780.0
 shift_bonus_seconds_by_players = Array[float]([120.0, 60.0, 0.0, 0.0])
 whistle_grace_seconds = 60.0
@@ -89,20 +207,20 @@ shift_start_hour = 6.0
 shift_end_hour = 14.0
 lift_lever_hold_seconds = 1.5
 mine_main_length_base = 7
-mine_main_length_per_cycle = 1
+mine_main_length_per_shift = 0.5
 mine_main_length_max = 14
 mine_branches_base = 3
 mine_branches_max = 7
 mine_branch_max_length = 3
 mine_loop_chance = 0.4
 mine_max_loops = 3
-enemy_budget_by_players = Array[float]([0.5, 0.7, 0.85, 1.0])
+enemy_budget_by_players = Array[float]([0.45, 0.7, 0.85, 1.0])
 loot_density_by_players = Array[float]([0.6, 0.75, 0.9, 1.0])
 loot_count_base = 16.0
-loot_count_per_cycle = 2.0
+loot_count_per_shift = 0.7
 loot_value_per_depth = 0.05
 enemy_budget_base = 9.0
-enemy_budget_per_cycle = 3.0
+enemy_budget_per_shift = 1.5
 enemy_min_depth = 2
 enemy_start_share = 0.5
 enemy_trickle_seconds = 90.0
@@ -150,3 +268,4 @@ voice_max_distance = 25.0
 voice_idle_chance = 0.04
 creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht"), SubResource("spawn_grubenhund")])
 biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee"), SubResource("biome_die_tiefe")])
+run_upgrades = Array[ExtResource("4_upgrade")]([SubResource("upgrade_pistole_damage"), SubResource("upgrade_pistole_magazine"), SubResource("upgrade_pistole_reload"), SubResource("upgrade_pistole_spread"), SubResource("upgrade_flinte_damage"), SubResource("upgrade_flinte_reload"), SubResource("upgrade_flinte_spread"), SubResource("upgrade_cap_pistole"), SubResource("upgrade_cap_schrot"), SubResource("upgrade_lederschurz"), SubResource("upgrade_grubenhelm"), SubResource("upgrade_reflektor")])

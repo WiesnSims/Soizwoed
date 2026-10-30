@@ -1,7 +1,7 @@
 class_name ChunkSet
 extends Resource
 ## All chunks of one biome (mine section), and which creatures live there. Its balance numbers
-## (unlock cycle, loot and enemy multipliers) are a BiomeRule in balance.tres with the same id.
+## (unlock shift, loot and enemy multipliers) are a BiomeRule in balance.tres with the same id.
 
 @export var id: StringName = &""
 @export var biome_name_key: String = ""
@@ -21,3 +21,5 @@ extends Resource
 @export var ambience: PackedStringArray = []
 ## What boots sound like on the floor here (Player footsteps).
 @export var footsteps: String = "footstep_gravel"
+## The boss that may guard the Fundstück here (creature id; empty = never a boss).
+@export var boss: StringName = &""

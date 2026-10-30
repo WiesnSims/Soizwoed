@@ -44,12 +44,12 @@ func build(new_seed: int, params: MineParams, new_chunk_set: ChunkSet) -> void:
 		_build_rails()
 
 
-## Places the hazards for this cycle and section (after build).
-func add_hazards(cycle: int, rule: BiomeRule) -> void:
+## Places the hazards for this shift and section (after build).
+func add_hazards(shift: int, rule: BiomeRule) -> void:
 	hazards = Hazards.new()
 	hazards.name = "Hazards"
 	add_child(hazards)
-	hazards.build(self, cycle, rule)
+	hazards.build(self, shift, rule)
 
 
 func cell_centre(cell: Vector2i) -> Vector3:

@@ -7,8 +7,8 @@ extends Resource
 @export var budget_cost: float = 1.0
 ## How likely the spawner picks this creature against the others of the biome.
 @export var weight: float = 1.0
-## Only spawns from this quota cycle on (0 = the first).
-@export var min_cycle: int = 0
+## Only spawns from this shift on (0-based: 0 = the first).
+@export var min_shift: int = 0
 @export var group_min: int = 1
 @export var group_max: int = 1
 ## At most this many alive at once (0 = no limit).
@@ -16,8 +16,8 @@ extends Resource
 
 
 ## Whether one more group may spawn now.
-func allowed(cycle: int, alive: int, budget_left: float) -> bool:
-	if cycle < min_cycle or weight <= 0.0 or budget_left < budget_cost:
+func allowed(shift: int, alive: int, budget_left: float) -> bool:
+	if shift < min_shift or weight <= 0.0 or budget_left < budget_cost:
 		return false
 	return max_alive <= 0 or alive < max_alive
 

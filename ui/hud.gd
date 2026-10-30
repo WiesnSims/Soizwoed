@@ -14,8 +14,9 @@ const ACCENT: Color = Color(0.86, 0.62, 0.3)
 const PANEL_SIZE: Vector2 = Vector2(520, 0)
 const SHOP_SIZE: Vector2 = Vector2(1000, 620)
 const SHOP_CARD_WIDTH: float = 236.0
-const SHOP_CATEGORY_KEYS: Array[String] = ["SHOP_CAT_WEAPONS", "SHOP_CAT_AMMO", "SHOP_CAT_THROWABLES", "SHOP_CAT_PROVISIONS", "SHOP_CAT_GEAR"]
-const SHOP_CATEGORY_ICONS: Array[HudIcon.Kind] = [HudIcon.Kind.GUN, HudIcon.Kind.BULLET, HudIcon.Kind.BOMB, HudIcon.Kind.BOTTLE, HudIcon.Kind.PICK]
+const SHOP_CATEGORY_KEYS: Array[String] = ["SHOP_CAT_WEAPONS", "SHOP_CAT_AMMO", "SHOP_CAT_THROWABLES", "SHOP_CAT_PROVISIONS", "SHOP_CAT_GEAR", "SHOP_CAT_UPGRADES"]
+const SHOP_CATEGORY_ICONS: Array[HudIcon.Kind] = [HudIcon.Kind.GUN, HudIcon.Kind.BULLET, HudIcon.Kind.BOMB, HudIcon.Kind.BOTTLE, HudIcon.Kind.PICK, HudIcon.Kind.ARMOUR]
+const ALARM_COLOR: Color = Color(1.0, 0.42, 0.3)
 
 var _root: Control
 var _crosshair: Crosshair
@@ -28,6 +29,9 @@ var _ammo_magazine: Label
 var _ammo_spare: Label
 var _ammo_icon: HudIcon
 var _health_value: Label
+var _armour_bar: ProgressBar
+## Top centre while the alarm is on: the Rückweg-timer.
+var _alarm_label: Label
 var _prompt: Label
 var _hold_bar: ProgressBar
 var _message: Label
@@ -51,7 +55,8 @@ var _panel_box: VBoxContainer
 var _panel_kind: String = ""
 var _run_info: Dictionary = {}
 var _settings: SettingsPanel
-## The shelf open in the shop, and the item pictures shown there (filled in when rendered).
+## The shelf open in the shop, and the item pictures shown there (filled in when rendered):
+## item id -> the TextureRects showing it.
 var _shop_category: int = ItemData.ShopCategory.WEAPONS
 var _shop_pictures: Dictionary = {}
 
@@ -108,6 +113,13 @@ func _process(_delta: float) -> void:
 	_update_gun(player)
 	_health_bar.value = float(player.health) / Balance.config.player_max_health
 	_health_value.text = str(player.health)
+	_armour_bar.get_parent().visible = game.armour_max > 0
+	_armour_bar.value = float(player.armour) / maxf(1.0, game.armour_max)
+	_alarm_label.visible = game.alarm_on and game.phase == Game.Phase.SHIFT
+	if _alarm_label.visible:
+		_alarm_label.text = tr("HUD_ALARM") % Game._clock(game.alarm_left)
+		# Blinks in the last half minute.
+		_alarm_label.modulate.a = 1.0 if game.alarm_left > 30.0 or fmod(game.alarm_left, 1.0) > 0.35 else 0.35
 	_stamina_bar.value = player.stamina
 	_stamina_bar.modulate.a = 0.0 if player.stamina >= 0.999 else 1.0
 	_lamp_bar.value = player.lamp_share()
@@ -153,7 +165,7 @@ func fade_in(seconds: float) -> void:
 
 func update_run(info: Dictionary) -> void:
 	_run_info = info
-	_run_label.text = "%s\n%s" % [tr("HUD_MONEY") % int(info.money), tr("HUD_QUOTA") % [int(info.quota), int(info.shifts_left)]]
+	_run_label.text = "%s\n%s" % [tr("HUD_MONEY") % int(info.money), tr("HUD_SHIFT") % (int(info.shift) + 1)]
 	if int(info.get("players", 1)) > 1:
 		_run_label.text += "\n" + tr("HUD_CREW") % int(info.players)
 	if _panel_kind == "shop":
@@ -199,11 +211,13 @@ func open_shop() -> void:
 	shelves.custom_minimum_size = Vector2(200, 0)
 	shelves.add_theme_constant_override("separation", 6)
 	body.add_child(shelves)
-	var stock: Dictionary = {}  # ShopCategory -> Array[ItemData]
+	var stock: Dictionary = {}  # ShopCategory -> Array[ItemData], or Array[RunUpgrade] for UPGRADES
 	for data: ItemData in Game.instance.catalog.shop():
 		if not stock.has(data.shop_category()):
 			stock[data.shop_category()] = []
 		(stock[data.shop_category()] as Array).append(data)
+	if not Balance.config.run_upgrades.is_empty():
+		stock[ItemData.ShopCategory.UPGRADES] = Balance.config.run_upgrades
 	if not stock.has(_shop_category) and not stock.is_empty():
 		_shop_category = stock.keys().min()
 	for category: int in ItemData.ShopCategory.values():
@@ -239,8 +253,8 @@ func open_shop() -> void:
 	grid.add_theme_constant_override("v_separation", 14)
 	scroll.add_child(grid)
 	_shop_pictures.clear()
-	for data: ItemData in stock.get(_shop_category, []):
-		grid.add_child(_shop_card(data, money))
+	for entry: Resource in stock.get(_shop_category, []):
+		grid.add_child(_upgrade_card(entry as RunUpgrade, money) if entry is RunUpgrade else _shop_card(entry as ItemData, money))
 	_panel_box.add_child(_rule())
 	var close: Button = Button.new()
 	close.text = tr("PANEL_CLOSE")
@@ -271,7 +285,7 @@ func _shop_card(data: ItemData, money: int) -> Control:
 	picture.texture = _icons.icon(data)
 	picture_back.add_child(picture)
 	box.add_child(picture_back)
-	_shop_pictures[data.id] = picture
+	_remember_picture(data.id, picture)
 	var name_label: Label = _label(tr(data.name_key), 21)
 	name_label.add_theme_color_override("font_color", TEXT_COLOR if affordable else DIM_COLOR)
 	box.add_child(name_label)
@@ -296,6 +310,76 @@ func _shop_card(data: ItemData, money: int) -> Control:
 	return card
 
 
+## A card of the upgrades shelf: the picture of what it improves, its name and level, what it
+## does and the price of the next level (DESIGN.md §7 "Run upgrades").
+func _upgrade_card(upgrade: RunUpgrade, money: int) -> Control:
+	var levels: Dictionary = _run_info.get("upgrades", {})
+	var level: int = int(levels.get(upgrade.id, 0))
+	var maxed: bool = level >= upgrade.max_level()
+	var price: int = upgrade.price_after(level)
+	var affordable: bool = not maxed and price <= money
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(SHOP_CARD_WIDTH, 0)
+	var frame: StyleBoxFlat = _stylebox(Color(1, 1, 1, 0.05), 12)
+	frame.border_color = Color(ACCENT, 0.5) if level > 0 else Color(1, 1, 1, 0.12)
+	frame.set_border_width_all(1)
+	card.add_theme_stylebox_override("panel", frame)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	card.add_child(box)
+	var picture_back: PanelContainer = PanelContainer.new()
+	picture_back.add_theme_stylebox_override("panel", _stylebox(Color(0, 0, 0, 0.35), 4))
+	picture_back.custom_minimum_size = Vector2(0, 104)
+	var item: ItemData = Game.instance.catalog.by_id(upgrade.icon_item) if upgrade.icon_item != &"" else null
+	if item != null:
+		var picture: TextureRect = TextureRect.new()
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.texture = _icons.icon(item)
+		picture_back.add_child(picture)
+		_remember_picture(item.id, picture)
+	else:
+		var shield: HudIcon = HudIcon.new(HudIcon.Kind.ARMOUR, Color(0.62, 0.66, 0.72), 72)
+		shield.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		shield.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		picture_back.add_child(shield)
+	box.add_child(picture_back)
+	var name_label: Label = _label("%s  %s" % [tr(upgrade.name_key), tr("SHOP_LEVEL") % [level, upgrade.max_level()]], 21)
+	name_label.add_theme_color_override("font_color", TEXT_COLOR if affordable or maxed else DIM_COLOR)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(name_label)
+	var description: Label = _label(tr(upgrade.name_key + "_DESC"), 15)
+	description.add_theme_color_override("font_color", DIM_COLOR)
+	description.add_theme_constant_override("outline_size", 0)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.custom_minimum_size = Vector2(SHOP_CARD_WIDTH - 24, 64)
+	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(description)
+	var buy: Button = Button.new()
+	buy.text = tr("SHOP_MAXED") if maxed else tr("SHOP_BUY") % price
+	buy.custom_minimum_size = Vector2(0, 38)
+	buy.add_theme_font_size_override("font_size", 18)
+	buy.disabled = not affordable
+	if affordable:
+		buy.add_theme_color_override("font_color", ACCENT)
+	buy.pressed.connect(_on_upgrade_pressed.bind(upgrade.id))
+	box.add_child(buy)
+	if not affordable and not maxed:
+		card.modulate = Color(1, 1, 1, 0.65)
+	return card
+
+
+func _remember_picture(id: StringName, picture: TextureRect) -> void:
+	if not _shop_pictures.has(id):
+		_shop_pictures[id] = []
+	(_shop_pictures[id] as Array).append(picture)
+
+
+func _on_upgrade_pressed(id: StringName) -> void:
+	Audio.play_ui("ui_click")
+	Game.instance.request_buy_upgrade.rpc_id(1, id)
+
+
 func _on_shop_category(category: int) -> void:
 	Audio.play_ui("ui_click")
 	_shop_category = category
@@ -304,9 +388,9 @@ func _on_shop_category(category: int) -> void:
 
 ## An item picture finished rendering: put it into the open shop.
 func _on_icon_ready(id: StringName) -> void:
-	var picture: TextureRect = _shop_pictures.get(id) as TextureRect
-	if picture != null and is_instance_valid(picture):
-		picture.texture = _icons.icon(Game.instance.catalog.by_id(id))
+	for picture: Variant in _shop_pictures.get(id, []):
+		if is_instance_valid(picture):
+			(picture as TextureRect).texture = _icons.icon(Game.instance.catalog.by_id(id))
 
 
 func _tab_box(chosen: bool, strength: float = 1.0) -> StyleBoxFlat:
@@ -324,11 +408,11 @@ func _rule() -> ColorRect:
 	return line
 
 
-## The Grubnplan: pick the mine section for the next shift (later ones unlock with the cycles).
+## The Grubnplan: pick the mine section for the next shift (deeper ones open as the run goes on).
 func open_sections() -> void:
 	_start_panel("sections", tr("PLAN_TITLE"))
 	var game: Game = Game.instance
-	var cycle: int = int(_run_info.get("cycle", 0))
+	var shift: int = int(_run_info.get("shift", 0))
 	for index: int in Game.instance.biomes.size():
 		var section: ChunkSet = Game.instance.biomes[index]
 		var row: HBoxContainer = HBoxContainer.new()
@@ -345,8 +429,8 @@ func open_sections() -> void:
 		if index == game.biome_index:
 			pick.text = tr("PLAN_PICKED")
 			pick.disabled = true
-		elif not game.section_unlocked(index, cycle):
-			pick.text = tr("PLAN_LOCKED") % (rule.unlock_cycle + 1)
+		elif not game.section_unlocked(index, shift):
+			pick.text = tr("PLAN_LOCKED") % (rule.unlock_shift + 1)
 			pick.disabled = true
 		else:
 			pick.text = tr("PLAN_PICK")
@@ -372,14 +456,18 @@ func show_results(results: Dictionary, left_behind: bool, dead: bool = false) ->
 	for entry: Array in sold:
 		_add_text(tr("RESULTS_ITEM") % [tr(entry[0]), int(entry[1])], DIM_COLOR)
 	_add_text(tr("RESULTS_TOTAL") % int(results.total), ACCENT)
+	var fundstueck: String = tr(str(results.get("fundstueck", "")))
 	if fired:
-		_add_text(tr("RESULTS_FIRED") % int(results.quota), Color(0.95, 0.4, 0.3))
+		# Why the crew lost its job (DESIGN.md §2).
+		var reasons: Dictionary = {Game.Ascent.TIMEOUT: "RESULTS_FIRED_TIMEOUT", Game.Ascent.ALL_DEAD: "RESULTS_FIRED_DEAD", Game.Ascent.GAVE_UP: "RESULTS_FIRED_GAVE_UP"}
+		_add_text(tr(reasons.get(int(results.get("reason", 0)), "RESULTS_FIRED_GAVE_UP")) % fundstueck, ALARM_COLOR)
 		var score: Dictionary = results.score
-		_add_text(tr("RESULTS_SCORE") % [int(score.cycles), int(score.money)], TEXT_COLOR)
+		_add_text(tr("RESULTS_SCORE") % [int(score.shifts), int(score.money), int(score.ehrenzeichen)], TEXT_COLOR)
 		_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
 	else:
-		if results.cycle_ended:
-			_add_text(tr("RESULTS_QUOTA_MET") % int(results.quota), Color(0.6, 0.9, 0.5))
+		_add_text(tr("RESULTS_DELIVERED") % [fundstueck, int(results.bonus)], Color(0.6, 0.9, 0.5))
+		_add_text(tr("RESULTS_EHRENZEICHEN") % int(results.ehrenzeichen), Color(0.95, 0.82, 0.45))
+		_add_text(tr("RESULTS_NEXT_SHIFT") % (int(results.shift) + 1), DIM_COLOR)
 		_add_text(tr("HUD_MONEY") % int(results.money), TEXT_COLOR)
 		_add_button(tr("PANEL_CONTINUE"), close_panels)
 	_apply_modal()
@@ -668,6 +756,7 @@ func _build_bottom() -> void:
 	_health_bar = _status_row(bars, HudIcon.Kind.HEALTH, Color(0.85, 0.22, 0.17), 14.0, 26.0)
 	_health_value = _label("", 26)
 	(_health_bar.get_parent() as HBoxContainer).add_child(_health_value)
+	_armour_bar = _status_row(bars, HudIcon.Kind.ARMOUR, Color(0.62, 0.66, 0.72), 8.0, 20.0)
 	_lamp_bar = _status_row(bars, HudIcon.Kind.LAMP, Color(0.98, 0.76, 0.35), 8.0, 20.0)
 	_stamina_bar = _status_row(bars, HudIcon.Kind.STAMINA, Color(0.85, 0.85, 0.8), 6.0, 18.0)
 	# Bottom centre: the hint for what is in hand, and the hotbar.
@@ -714,6 +803,15 @@ func _build_top() -> void:
 	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_root.add_child(_message)
+	_alarm_label = _label("", 34)
+	_alarm_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_alarm_label.position = Vector2(-200, 18)
+	_alarm_label.size = Vector2(400, 44)
+	_alarm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_alarm_label.add_theme_color_override("font_color", ALARM_COLOR)
+	_alarm_label.hide()
+	_root.add_child(_alarm_label)
+	_alive_nodes.append(_alarm_label)
 	_run_label = _label("", 18)
 	_run_label.position = Vector2(24, 20)
 	_run_label.add_theme_color_override("font_color", ACCENT)

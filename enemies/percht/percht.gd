@@ -133,7 +133,7 @@ func _hunt(delta: float) -> void:
 		_strike_left = _config.percht_strike_cooldown
 		say(VoiceLine.Moment.ACTION, true)
 		play_sound.rpc("percht_roar", 4.0)
-		game.host_damage_player(_target, _config.percht_damage)
+		game.host_damage_player(_target, scaled_damage(_config.percht_damage))
 		print("[percht] struck P%d" % _target.peer_id)
 
 
@@ -148,7 +148,7 @@ func _spot() -> Player:
 			continue
 		var chest: Vector3 = player.global_position + Vector3.UP * (0.8 if player.crouching else 1.3)
 		var distance: float = eyes.distance_to(chest)
-		if distance > sight_distance(player.light_range() > 0.0, player.crouching) or distance >= best_distance:
+		if distance > sight_distance(player.is_lit(), player.crouching) or distance >= best_distance:
 			continue
 		var flat: Vector3 = chest - eyes
 		flat.y = 0.0

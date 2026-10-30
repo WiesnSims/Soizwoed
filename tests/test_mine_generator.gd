@@ -70,9 +70,9 @@ func test_every_chunk_covers_its_cell() -> void:
 			assert_true(int(layout.depth[cell]) >= entry.min_depth)
 
 
-func test_later_cycles_make_bigger_mines() -> void:
+func test_later_shifts_make_bigger_mines() -> void:
 	var small: MineLayout = MineGenerator.generate(9, MineParams.from_balance(BalanceConfig.new(), 0), CHUNKS)
-	var big: MineLayout = MineGenerator.generate(9, MineParams.from_balance(BalanceConfig.new(), 5), CHUNKS)
+	var big: MineLayout = MineGenerator.generate(9, MineParams.from_balance(BalanceConfig.new(), 10), CHUNKS)
 	assert_gt(big.cells.size(), small.cells.size())
 
 
@@ -138,3 +138,25 @@ func test_every_section_has_rules_and_creatures() -> void:
 		assert_false(chunk_set.creatures.is_empty())
 		for id: StringName in chunk_set.creatures:
 			assert_not_null(config.spawn_rule(id), "%s: no spawn rule for %s" % [chunk_set.id, id])
+
+
+## DESIGN.md §4: the end of the main path is the Fundort – a dead end with its own chunk, once per
+## mine, in every section, and nothing else (branches, loops, salt walls) touches it.
+func test_fundort_is_the_dead_end_of_the_main_path() -> void:
+	for path: String in ["res://world/chunks/oberer_stollen/oberer_stollen.tres", "res://world/chunks/salzsee/salzsee.tres",
+			"res://world/chunks/die_tiefe/die_tiefe.tres"]:
+		var chunk_set: ChunkSet = load(path)
+		for seed_value: int in range(30):
+			var layout: MineLayout = MineGenerator.generate(seed_value, params, chunk_set)
+			var label: String = "%s seed %d" % [chunk_set.id, seed_value]
+			assert_eq(layout.fundort, layout.main_path[-1], label)
+			assert_eq(layout.neighbors(layout.fundort).size(), 1, "%s: the Fundort is a dead end" % label)
+			var fundorte: int = 0
+			for cell: Vector2i in layout.cells:
+				var entry: ChunkEntry = chunk_set.entries[layout.chunk_index[cell]]
+				fundorte += 1 if entry.is_fundort else 0
+				assert_eq(entry.is_fundort, cell == layout.fundort, "%s cell %s" % [label, cell])
+			assert_eq(fundorte, 1, label)
+			for wall: Vector3i in layout.walls:
+				var walled: Vector2i = Vector2i(wall.x, wall.y)
+				assert_false(walled == layout.fundort or walled + GridDir.offset(wall.z) == layout.fundort, "%s: a salt wall at the Fundort" % label)

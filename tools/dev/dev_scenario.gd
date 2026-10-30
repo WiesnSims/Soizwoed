@@ -14,6 +14,13 @@ extends Node
 ##   notration – nearly out of ammo, a kill drops a few rounds; with ammo it does not.
 ##   shoplook – the shop, every shelf (screenshots).
 ##   cheat  – in the Gasthaus: types the money cheat word, logs the money before and after.
+##   fundstueck – the M7 loop: the lever refuses without the Fundstück, taking it sounds the
+##            alarm, waves come, delivered it pays; the next shift runs out of time (fired).
+##   giveup – two pulls of the mine lever without the Fundstück: fired.
+##   boss   – the Fundstück guarded by Da Bergkini: locked, he wakes, throws dynamite, calls
+##            Bergmandl; dead, the Fundstück is free.
+##   upgrades – buys run upgrades in the Gasthaus, checks guns, caps, armour and lamp, and the
+##            armour taking its share down in the mine.
 
 var _game: Game
 var _log_left: float = 0.0
@@ -75,6 +82,10 @@ func run(game: Game, scenario: String) -> void:
 		_game.biome_index = 1  # unlocked or not: this is a check of the section itself
 	if scenario in ["tiefe", "percht", "tiefelook"]:
 		_game.biome_index = 2
+	if scenario in ["boss", "bosslook"]:
+		_game._force_boss = true
+	if scenario == "upgrades":
+		await _upgrades_hub()
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
 		await get_tree().process_frame
@@ -149,6 +160,16 @@ func run(game: Game, scenario: String) -> void:
 			Input.action_press(&"aim")  # then down the sights
 		"gunlook":
 			await _gun_look()
+		"fundstueck":
+			await _fundstueck()
+		"giveup":
+			await _give_up()
+		"boss":
+			await _boss()
+		"bosslook":
+			await _boss_look()
+		"upgrades":
+			await _upgrades_mine()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -223,6 +244,7 @@ func _loot() -> void:
 	player.teleport(cage.player_spot(2))
 	await get_tree().create_timer(0.5).timeout
 	print("[scenario] inventory: %s" % [player.inventory.all_items().map(func(i: Object) -> String: return (i as WorldItem).data.id)])
+	await _game.dev_deliver()
 	_game.request_lift()
 	while _game.phase != Game.Phase.HUB:
 		await get_tree().process_frame
@@ -481,7 +503,7 @@ func _coop() -> void:
 	await get_tree().create_timer(1.0).timeout
 	print("[scenario] host: client alive after the salve %s, health %d" % [client.alive, client.health])
 	host.teleport(cage.player_spot(0))
-	await get_tree().create_timer(0.5).timeout
+	await _game.dev_deliver()
 	_game.request_lift()
 
 
@@ -521,8 +543,14 @@ func _kaser() -> void:
 	for light: OmniLight3D in _game.mine.lights:
 		light.visible = false  # only the lamp counts in this check
 	await get_tree().create_timer(0.5).timeout
-	_game.spawn_creature(&"kasermandl", Transform3D(Basis.IDENTITY, _out_of_station(24.0) + Vector3.UP * 0.3))
-	await get_tree().create_timer(7.0).timeout
+	var kaser: Creature = _game.spawn_creature(&"kasermandl", Transform3D(Basis.IDENTITY, _out_of_station(24.0) + Vector3.UP * 0.3))
+	# The beam only lights what the miner looks at, and the tunnel may bend: keep facing it.
+	var until: float = Time.get_ticks_msec() / 1000.0 + 7.0
+	while Time.get_ticks_msec() / 1000.0 < until:
+		await get_tree().process_frame
+		if is_instance_valid(kaser):
+			player.look_at(Vector3(kaser.global_position.x, player.global_position.y, kaser.global_position.z))
+			player.head.rotation.x = 0.0
 	print("[scenario] lamp off")
 	player.lamp_on = false
 
@@ -1157,8 +1185,151 @@ func _mp_tools() -> void:
 	await get_tree().create_timer(6.0).timeout
 	print("[scenario] host: dog shot dead by the client %s" % (not is_instance_valid(dog)))
 	host.teleport(_game.mine_cage.player_spot(0))
-	await get_tree().create_timer(0.5).timeout
+	await _game.dev_deliver()
 	_game.request_lift()
+
+
+## M7: the Fundstück loop, start to finish, and then a shift that runs out of time.
+func _fundstueck() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var cage: Foerderkorb = _game.mine_cage
+	var item: FundstueckItem = _game.fundstueck
+	var fundort: Vector2i = _game.mine.layout.fundort
+	var in_fundort: bool = Vector2(item.global_position.x, item.global_position.z).distance_to(Vector2(fundort.x, fundort.y) * _game.mine.chunk_set.cell_size) < _game.mine.chunk_set.cell_size * 0.5
+	print("[scenario] fundstueck %s in the Fundort %s, %.0f m from the cage, board %s" % [item.data.id, in_fundort, item.global_position.distance_to(cage.global_position), _game.run_info.get("auftrag", "")])
+	player.teleport(cage.player_spot(0))
+	await get_tree().create_timer(0.3).timeout
+	_game.request_lift()
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] lever without it: phase %s, alarm %s" % [Game.Phase.keys()[_game.phase], _game.alarm_on])
+	player.teleport(Transform3D(Basis.IDENTITY, item.global_position + Vector3(0.0, -1.0, 1.2)))
+	await get_tree().create_timer(0.5).timeout
+	_game.request_take(item.get_path(), player.peer_id)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] taken: %s, alarm %s, %.0f s left, carrier P%d" % [WorldItem.State.keys()[item.state], _game.alarm_on, _game.alarm_left, _game.fundstueck_carrier().peer_id if _game.fundstueck_carrier() != null else 0])
+	player.set_meta(&"invulnerable_until", INF)  # the waves are for the count, not the fight
+	await get_tree().create_timer(9.0).timeout
+	print("[scenario] after the first wave: %d creatures" % _game.creatures().size())
+	player.teleport(cage.player_spot(0))
+	await get_tree().create_timer(0.5).timeout
+	var money_before: int = GameState.run.money
+	print("[scenario] on board %s" % _game.fundstueck_on_board())
+	_game.request_lift()
+	while _game.phase != Game.Phase.HUB:
+		await get_tree().process_frame
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] delivered: shift %d, money +%d, ehrenzeichen %d, fired %s" % [GameState.run.shift_index + 1, GameState.run.money - money_before, GameState.run.ehrenzeichen, GameState.run.fired])
+	player.remove_meta(&"invulnerable_until")
+	_game.hud.close_panels()
+	# The second shift: the timer runs out.
+	_game.request_lift()
+	while _game.phase != Game.Phase.SHIFT:
+		await get_tree().process_frame
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	await _game.dev_deliver()  # moved off its place: the alarm
+	await get_tree().create_timer(0.3).timeout
+	_game.fundstueck.host_move(Transform3D(Basis.IDENTITY, _game._fundstueck_home))
+	_game.alarm_left = 1.0
+	while _game.phase == Game.Phase.SHIFT:
+		await get_tree().process_frame
+	while _game.phase == Game.Phase.ASCENDING:
+		await get_tree().process_frame
+	print("[scenario] timed out: phase %s, fired %s, score %s" % [Game.Phase.keys()[_game.phase], GameState.run.fired, GameState.run.score()])
+
+
+## Two pulls of the mine lever without the Fundstück: given up, fired.
+func _give_up() -> void:
+	_game.local_player().teleport(_game.mine_cage.player_spot(0))
+	await get_tree().create_timer(0.3).timeout
+	_game.request_lift()
+	await get_tree().create_timer(1.0).timeout
+	_game.request_lift()
+	while _game.phase != Game.Phase.OVER:
+		await get_tree().process_frame
+	print("[scenario] gave up: fired %s" % GameState.run.fired)
+
+
+## Da Bergkini at the Fundort: the Fundstück locked, the fight, and free once he is dead.
+func _boss() -> void:
+	var player: Player = _game.local_player()
+	var item: FundstueckItem = _game.fundstueck
+	var boss: Creature = _game._boss
+	for creature: Creature in _game.creatures():
+		if creature != boss:
+			creature.queue_free()
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] boss %s, health %d, fundstueck locked %s" % [boss.data.id if boss != null else "none", boss.health if boss != null else 0, item.locked])
+	_game.request_take(item.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] taking it while he lives: %s, alarm %s" % [WorldItem.State.keys()[item.state], _game.alarm_on])
+	# In sight of him at the mouth of his hall.
+	var mouth: Vector3 = boss.global_position - (boss.global_position - _game.mine_cage.global_position).normalized() * 0.0
+	var best: Vector3 = boss.global_position
+	for id: int in _game.mine.nav.get_point_ids():
+		var point: Vector3 = _game.mine.nav.get_point_position(id)
+		var gap: float = point.distance_to(mouth)
+		if gap > 6.0 and gap < 9.0 and _game.clear_line(point + Vector3.UP * 1.5, boss.global_position + Vector3.UP * 1.0):
+			best = point
+	player.teleport(Transform3D(Basis.IDENTITY, best + Vector3.UP * 0.1))
+	player.set_meta(&"invulnerable_until", INF)
+	var bergmandl_before: int = _game.alive_count(&"bergmandl")
+	await get_tree().create_timer(9.0).timeout
+	print("[scenario] boss state %s, bergmandl %d -> %d" % [Bergkini.State.keys()[(boss as Bergkini).state], bergmandl_before, _game.alive_count(&"bergmandl")])
+	_game.request_hit(boss.get_path(), 5000, player.global_position)
+	await get_tree().create_timer(0.8).timeout
+	print("[scenario] boss dead %s, fundstueck locked %s" % [not is_instance_valid(boss), item.locked])
+	player.teleport(Transform3D(Basis.IDENTITY, item.global_position + Vector3(0.0, -1.0, 1.2)))
+	await get_tree().create_timer(0.5).timeout
+	_game.request_take(item.get_path(), player.peer_id)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] taken after the boss: %s, alarm %s" % [WorldItem.State.keys()[item.state], _game.alarm_on])
+
+
+## For screenshots: Da Bergkini awake in his hall, seen from its mouth.
+func _boss_look() -> void:
+	var player: Player = _game.local_player()
+	var boss: Creature = _game._boss
+	for creature: Creature in _game.creatures():
+		if creature != boss:
+			creature.queue_free()
+	var fundort: Chunk = _game.mine.chunks[_game.mine.layout.fundort]
+	var mouth: Marker3D = fundort.find_child("Nav_Mouth", true, false) as Marker3D
+	player.teleport(Transform3D(Basis.IDENTITY, mouth.global_position + Vector3.UP * 0.1))
+	player.set_meta(&"invulnerable_until", INF)
+	await get_tree().create_timer(0.5).timeout
+	player.look_at(Vector3(boss.global_position.x, player.global_position.y, boss.global_position.z))
+	boss.host_stun(4.0)
+
+
+## Upgrades bought in the Gasthaus: guns, caps, lamp and armour change on this peer.
+func _upgrades_hub() -> void:
+	var player: Player = _game.local_player()
+	GameState.run.add_cheat_money(2000)
+	var pistol: ItemData = _game.catalog.by_id(&"dienstpistole")
+	var magazine_before: int = pistol.weapon.magazine
+	for id: StringName in [&"pistole_magazine", &"pistole_damage", &"lederschurz", &"grubenhelm", &"cap_pistole", &"reflektor"]:
+		_game.request_buy_upgrade(id)
+	_game.request_buy_upgrade(&"pistole_magazine")  # only one level: refused
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] upgrades: pistol magazine %d -> %d, damage %d, pistol cap %d, armour %d, lamp x%.2f, money %d" % [magazine_before, pistol.weapon.magazine,
+			pistol.weapon.damage, _game.ammo_cap(&"pistole"), player.armour, _game.lamp_mult, GameState.run.money])
+
+
+func _upgrades_mine() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	await get_tree().create_timer(1.0).timeout
+	var kit: WorldItem = null
+	for item: Object in player.inventory.slots:
+		if item != null and (item as WorldItem).data.id == &"dienstpistole":
+			kit = item as WorldItem
+	var armour: int = player.armour
+	_game.host_damage_player(player, 20)
+	print("[scenario] in the mine: kit pistol rounds %d, armour %d -> %d, health %d" % [kit.rounds if kit != null else -1, armour, player.armour, player.health])
 
 
 ## Client side: uses every tool that lands in a pocket, the way a player would (click).

@@ -33,13 +33,13 @@ class GasPocket:
 	var gone: bool = false
 
 
-func build(mine: Mine, cycle: int, rule: BiomeRule) -> void:
+func build(mine: Mine, shift: int, rule: BiomeRule) -> void:
 	_config = Balance.config
 	_mine = mine
 	_rockfall_left = _config.rockfall_interval
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = mine.seed_value ^ 0x6a5
-	var gas_share: float = minf(0.85, _config.gas_share_for_cycle(cycle) * rule.gas_mult)
+	var gas_share: float = minf(0.85, _config.gas_share_for_shift(shift) * rule.gas_mult)
 	var index: int = 0
 	for cell: Vector2i in mine.layout.cells:
 		var chunk: Chunk = mine.chunks[cell]

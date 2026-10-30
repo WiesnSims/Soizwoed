@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/sideroom.tscn" id="9_sideroom"]
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/hall.tscn" id="10_hall"]
 [ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/gesenk.tscn" id="11_gesenk"]
+[ext_resource type="PackedScene" path="res://world/chunks/oberer_stollen/fundort.tscn" id="12_fundort"]
 
 [sub_resource type="Resource" id="Resource_station"]
 script = ExtResource("2_entry")
@@ -71,13 +72,22 @@ min_depth = 2
 rails = false
 hazards = false
 
+[sub_resource type="Resource" id="Resource_fundort"]
+script = ExtResource("2_entry")
+scene = ExtResource("12_fundort")
+openings = 1
+is_fundort = true
+rails = false
+hazards = false
+
 [resource]
 script = ExtResource("1_set")
 id = &"oberer_stollen"
 biome_name_key = "BIOME_OBERER_STOLLEN"
 cell_size = 12.0
-entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall"), SubResource("Resource_gesenk")])
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall"), SubResource("Resource_gesenk"), SubResource("Resource_fundort")])
 superset_weight = 0.25
 creatures = Array[StringName]([&"grubenhund", &"bergmandl", &"tatzelwurm", &"kasermandl"])
 echo = 0.2
 has_rails = true
+boss = &"bergkini"

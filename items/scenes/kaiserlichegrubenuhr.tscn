@@ -1,0 +1,114 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/fundstueck_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_brass"]
+albedo_color = Color(0.72, 0.55, 0.28, 1)
+metallic = 0.9
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="mat_dark"]
+albedo_color = Color(0.04, 0.03, 0.03, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_enamel"]
+albedo_color = Color(0.92, 0.88, 0.78, 1)
+roughness = 0.3
+
+[sub_resource type="StandardMaterial3D" id="mat_gold"]
+albedo_color = Color(0.93, 0.72, 0.3, 1)
+metallic = 1.0
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="mat_wood"]
+albedo_color = Color(0.25, 0.13, 0.07, 1)
+roughness = 0.55
+clearcoat_enabled = true
+clearcoat_roughness = 0.4
+
+[sub_resource type="BoxMesh" id="mesh_0"]
+size = Vector3(0.34, 0.44, 0.16)
+
+[sub_resource type="BoxMesh" id="mesh_1"]
+size = Vector3(0.38, 0.05, 0.19)
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.13
+bottom_radius = 0.13
+height = 0.02
+radial_segments = 24
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_3"]
+top_radius = 0.115
+bottom_radius = 0.115
+height = 0.01
+radial_segments = 24
+rings = 1
+
+[sub_resource type="BoxMesh" id="mesh_4"]
+size = Vector3(0.012, 0.07, 0.004)
+
+[sub_resource type="BoxMesh" id="mesh_5"]
+size = Vector3(0.008, 0.1, 0.004)
+
+[sub_resource type="BoxMesh" id="mesh_6"]
+size = Vector3(0.12, 0.05, 0.01)
+
+[sub_resource type="CylinderMesh" id="mesh_7"]
+top_radius = 0.03
+bottom_radius = 0.03
+height = 0.01
+radial_segments = 24
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.38, 0.5, 0.2)
+
+[node name="KaiserlicheGrubenuhr" type="RigidBody3D"]
+mass = 6.0
+script = ExtResource("1_item")
+
+[node name="Cabinet" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.22, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_wood")
+
+[node name="Crown" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.465, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_wood")
+
+[node name="Bezel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.26, -0.085)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Dial" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.26, -0.095)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_enamel")
+
+[node name="HandH" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.866, -0.5, 0, 0.5, 0.866, 0, 0, 0, 1, 0.015, 0.285, -0.102)
+mesh = SubResource("mesh_4")
+surface_material_override/0 = SubResource("mat_dark")
+
+[node name="HandM" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0.34, 0, -0.34, 0.94, 0, 0, 0, 1, -0.02, 0.29, -0.104)
+mesh = SubResource("mesh_5")
+surface_material_override/0 = SubResource("mat_dark")
+
+[node name="Eagle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -0.1)
+mesh = SubResource("mesh_6")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Pendulum" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.08, -0.085)
+mesh = SubResource("mesh_7")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("shape")

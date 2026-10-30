@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/knochenkammer.tscn" id="s_knochenkammer"]
 [ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/heidenhalle.tscn" id="s_heidenhalle"]
 [ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/salzmann.tscn" id="s_salzmann"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/fundort.tscn" id="s_fundort"]
 
 [sub_resource type="Resource" id="Resource_station"]
 script = ExtResource("2_entry")
@@ -78,12 +79,21 @@ rails = false
 hazards = false
 max_count = 1
 
+[sub_resource type="Resource" id="Resource_fundort"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_fundort")
+openings = 1
+is_fundort = true
+rails = false
+hazards = false
+
 [resource]
 script = ExtResource("1_set")
 id = &"die_tiefe"
 biome_name_key = "BIOME_DIE_TIEFE"
 cell_size = 14.0
-entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_knochenkammer"), SubResource("Resource_heidenhalle"), SubResource("Resource_salzmann")])
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_knochenkammer"), SubResource("Resource_heidenhalle"), SubResource("Resource_salzmann"), SubResource("Resource_fundort")])
+boss = &"bergkini"
 superset_weight = 0.25
 creatures = Array[StringName]([&"grubenhund", &"bergmandl", &"tatzelwurm", &"kasermandl", &"salzweibl", &"percht"])
 echo = 0.4

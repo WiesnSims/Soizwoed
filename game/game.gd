@@ -5,11 +5,15 @@ extends Node3D
 ## the host with `request_*` RPCs, the host changes the world and tells every peer. Solo is a
 ## host with zero clients, so the very same code runs.
 ##
-## Shift flow (host): lever in the Gasthaus -> ride down (mine built from a seed on every peer)
-## -> shift timer -> Grubenpfeife + grace -> ride up (early with the mine lever) -> loot in the
-## Gasthaus is sold -> results / quota check.
+## Shift flow (host, DESIGN.md §2): lever in the Gasthaus -> ride down (mine built from a seed on
+## every peer) -> explore; the soft clock runs out into the Grubenpfeife and the Schichtmeister
+## -> the Fundstück is taken: alarm, Rückweg-timer, waves -> back in the cage with it, the lever
+## sends the lift up -> loot sold, Fundstück delivered -> next shift, harder. Without it (timer
+## out, everyone dead, given up) the crew is fired and the run is over.
 
 enum Phase { MENU, HUB, DESCENDING, SHIFT, ASCENDING, OVER }
+## Why the lift went up.
+enum Ascent { DELIVERED, TIMEOUT, ALL_DEAD, GAVE_UP }
 
 ## Everything above this height is the Gasthaus; the mine is built around y = 0.
 const HUB_FLOOR_ABOVE: float = 200.0
@@ -35,6 +39,7 @@ const CREATURE_PATHS: PackedStringArray = [
 	"res://enemies/salzweibl/salzweibl.tres",
 	"res://enemies/percht/percht.tres",
 	"res://enemies/grubenhund/grubenhund.tres",
+	"res://enemies/bosses/bergkini/bergkini.tres",
 ]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
@@ -44,6 +49,8 @@ const WAIT_PEERS_ARG: String = "--wait-peers="
 ## With --auto-shift: ride into mine section n (unlocked or not) and spawn one of each of its
 ## creatures right away (multiplayer checks of new creatures).
 const SECTION_ARG: String = "--section="
+## With --auto-shift: the Fundstück is always guarded by the section's boss.
+const BOSS_ARG: String = "--boss"
 ## How often the host sends the transforms of moving free items to the clients.
 const ITEM_SYNC_SECONDS: float = 0.05
 ## Floats per item in an item transform batch: position (3) + rotation quaternion (4).
@@ -98,6 +105,29 @@ var _item_sync_left: float = 0.0
 var _all_dead_time: float = 0.0
 ## Dev (--section): one of each creature of the section at the start of the shift.
 var _force_creatures: bool = false
+## The alarm (DESIGN.md §2): on from the moment the Fundstück is taken; seconds of the Rückweg
+## left (every peer counts locally, the host decides) and how long it was at the start.
+var alarm_on: bool = false
+var alarm_left: float = 0.0
+var alarm_length: float = 0.0
+## The crew's run upgrades (upgrade id -> level), as last sent by the host, and what they make of
+## the armour and the lamp (every peer).
+var upgrade_levels: Dictionary = {}
+var armour_max: int = 0
+var lamp_mult: float = 1.0
+## Host: the Fundstück lying in the mine this shift, where it was put, and its guard.
+var fundstueck: FundstueckItem
+var _fundstueck_home: Vector3
+var _boss: Creature
+var _had_boss: bool = false
+## Host: the Fundstück the next shift's Auftrag asks for (rolled in the Gasthaus).
+var _auftrag: StringName = &""
+var _wave_left: float = 0.0
+var _pulse_left: float = 0.0
+## Host: a first pull of the mine lever without the Fundstück; a second one before then gives up.
+var _give_up_until: Dictionary = {}
+## Dev (--boss): the Fundstück is always guarded.
+var _force_boss: bool = false
 ## Host: food poisoning (Speckbrot), peer -> [seconds left, damage per second, fraction carried over].
 var _poisoned: Dictionary = {}
 ## Host: seconds until each special loot item (Kuckucksuhr, Mann im Salz) acts next, and how
@@ -179,6 +209,8 @@ func _process(delta: float) -> void:
 		_host_check_carry_together()
 	if phase == Phase.SHIFT:
 		shift_time_left -= delta
+		if alarm_on:
+			alarm_left -= delta
 		_update_clocks()
 		_tick_ambience(delta)
 		if multiplayer.is_server():
@@ -198,6 +230,7 @@ func _on_session_started() -> void:
 		if GameState.run == null:
 			GameState.start_run(NetworkManager.player_count())
 			biome_index = 0
+			_roll_auftrag()
 			# Solo extra (DESIGN.md §8). A host waiting for friends does not get it.
 			if NetworkManager.mode == NetworkManager.Mode.SOLO and _config.solo_free_schubkarre:
 				_spawn_item_at(&"schubkarre", 0, hub.free_cart_spot())
@@ -333,7 +366,7 @@ func _spawn_loot(seed_value: int) -> void:
 		spots[i] = spots[j]
 		spots[j] = swap
 	var run: RunState = GameState.run
-	var count: int = _config.loot_count(run.cycle, run.player_count)
+	var count: int = _config.loot_count(run.shift_index, run.player_count)
 	var loot: Array[ItemData] = catalog.loot()
 	for i: int in count:
 		var spot: Array = spots[i % spots.size()]
@@ -357,7 +390,7 @@ func _spawn_loot(seed_value: int) -> void:
 		if data.kind == ItemData.Kind.AMMO and data.spawn_weight > 0.0:
 			boxes.append(data)
 			box_weights.append(data.spawn_weight)
-	var box_count: int = maxi(1, roundi(_config.ammo_boxes_per_player * run.player_count))
+	var box_count: int = _config.ammo_box_count(run.shift_index, run.player_count)
 	for i: int in box_count if not boxes.is_empty() else 0:
 		var box_spot: Array = spots[(count + i) % spots.size()]
 		var box: ItemData = boxes[rng.rand_weighted(box_weights)]
@@ -372,6 +405,60 @@ func _spawn_loot(seed_value: int) -> void:
 		_spawn_item_at(relic.id, relic_value, marker.global_transform)
 		print("[game] relic %s worth %d" % [relic.id, relic_value])
 	print("[game] spawned %d loot items" % count)
+	_spawn_fundstueck()
+
+
+## The shift's Fundstück at the Fundort (DESIGN.md §2): the one the Auftrag on the board named,
+## maybe guarded by the section's boss – then it sits in a salt shell until the boss is dead.
+func _spawn_fundstueck() -> void:
+	var spots: Array[Array] = mine.markers_with_depth(&"fundstueck_spawn")
+	var at: Transform3D
+	if not spots.is_empty():
+		at = (spots[0][0] as Marker3D).global_transform
+	else:
+		# A section without a Fundort chunk: the deepest loot spot will do.
+		var deepest: Array = mine.markers_with_depth(&"loot_spawn").reduce(func(best: Array, spot: Array) -> Array: return spot if int(spot[1]) > int(best[1]) else best)
+		at = (deepest[0] as Marker3D).global_transform
+	var data: ItemData = catalog.by_id(_auftrag)
+	if data == null or not data.spawns_in(mine.chunk_set.id):
+		_roll_auftrag()
+		data = catalog.by_id(_auftrag)
+	fundstueck = _spawn_item_at(data.id, 0, at) as FundstueckItem
+	_fundstueck_home = at.origin
+	var run: RunState = GameState.run
+	_had_boss = false
+	_boss = null
+	var boss_id: StringName = mine.chunk_set.boss
+	var boss_spots: Array[Array] = mine.markers_with_depth(&"boss_spawn")
+	if boss_id != &"" and creature_data(boss_id) != null and not boss_spots.is_empty() and (_force_boss or randf() < _config.boss_chance(run.shift_index)):
+		_had_boss = true
+		_boss = spawn_creature(boss_id, (boss_spots[0][0] as Marker3D).global_transform)
+		# Locked once every peer has the item.
+		get_tree().create_timer(0.3).timeout.connect(func() -> void:
+			if is_instance_valid(fundstueck) and is_instance_valid(_boss):
+				fundstueck.host_set_locked(true))
+	print("[game] Fundstück %s at depth %d, boss %s" % [data.id, int(spots[0][1]) if not spots.is_empty() else -1, boss_id if _had_boss else "none"])
+
+
+## Host: the Auftrag for the next shift – one of the section's Fundstücke, picked at random.
+func _roll_auftrag() -> void:
+	var options: Array[StringName] = []
+	for entry: Resource in catalog.items:
+		var data: ItemData = entry as ItemData
+		if data.fundstueck and data.spawns_in(biomes[biome_index].id):
+			options.append(data.id)
+	_auftrag = options.pick_random() if not options.is_empty() else &""
+
+
+## Host: the boss guarding the Fundstück is dead – the salt shell bursts.
+func host_boss_died(boss: Creature) -> void:
+	if boss != _boss:
+		return
+	_boss = null
+	if is_instance_valid(fundstueck):
+		fundstueck.host_set_locked(false)
+	_show_message_key.rpc("MSG_BOSS_DEAD")
+	print("[game] boss dead, Fundstück free")
 
 
 func _spawn_creature_group(rule: CreatureSpawnRule) -> int:
@@ -415,7 +502,7 @@ func _spawn_creatures_up_to(share_spent: float) -> void:
 		var weights: PackedFloat32Array = []
 		for id: StringName in mine.chunk_set.creatures:
 			var rule: CreatureSpawnRule = _config.spawn_rule(id)
-			if rule != null and creature_data(id) != null and rule.allowed(GameState.run.cycle, alive_count(id), _enemy_budget_left):
+			if rule != null and creature_data(id) != null and rule.allowed(GameState.run.shift_index, alive_count(id), _enemy_budget_left):
 				options.append(rule)
 				weights.append(rule.weight)
 		if options.is_empty():
@@ -437,7 +524,8 @@ func _rng_weighted(weights: PackedFloat32Array) -> int:
 
 # --- shift flow (host) ----------------------------------------------------------------------------
 
-## Pulled a lift lever: down from the Gasthaus, or up (early) from the mine.
+## Pulled a lift lever: down from the Gasthaus, or up from the mine – only with the Fundstück on
+## board (DESIGN.md §2). Without it the first pull warns, a second one soon after gives up.
 @rpc("any_peer", "call_local", "reliable")
 func request_lift() -> void:
 	if not multiplayer.is_server():
@@ -445,7 +533,63 @@ func request_lift() -> void:
 	if phase == Phase.HUB:
 		_descend()
 	elif phase == Phase.SHIFT:
-		_ascend()
+		if fundstueck_on_board():
+			_ascend(Ascent.DELIVERED)
+			return
+		var sender: int = _sender()
+		var now: float = Time.get_ticks_msec() / 1000.0
+		if now < float(_give_up_until.get(sender, 0.0)):
+			_ascend(Ascent.GAVE_UP)
+			return
+		_give_up_until[sender] = now + _config.give_up_confirm_seconds
+		message_to(sender, "MSG_LIFT_NEEDS_FUNDSTUECK")
+
+
+## Whether the Fundstück would ride up now: lying in the mine's cage, held by someone in it, or
+## in a cart that is in it (or pushed by someone in it).
+func fundstueck_on_board() -> bool:
+	if not is_instance_valid(fundstueck) or fundstueck.is_queued_for_deletion() or mine_cage == null:
+		return false
+	return fundstueck in _items_going_up(_riders())
+
+
+## Living players standing in the mine's cage.
+func _riders() -> Array[Player]:
+	var riders: Array[Player] = []
+	for player: Player in players():
+		if player.alive and mine_cage.contains(player.global_position):
+			riders.append(player)
+	return riders
+
+
+## What rides up with `riders`: decided by who holds it, not only by where it is (a client's
+## position update may still be on its way).
+func _items_going_up(riders: Array[Player]) -> Array[WorldItem]:
+	var rider_peers: Array[int] = []
+	for player: Player in riders:
+		rider_peers.append(player.peer_id)
+	var going_up: Array[WorldItem] = []
+	for item: WorldItem in _items():
+		if item.global_position.y > HUB_FLOOR_ABOVE and item.state == WorldItem.State.FREE:
+			continue
+		var held_by_rider: bool = item.holder_peer in rider_peers or item.helper_peer in rider_peers
+		var free_in_cage: bool = item.state == WorldItem.State.FREE and mine_cage.contains(item.global_position)
+		var carted_up: bool = item.state == WorldItem.State.CARTED and item.cart != null and (item.cart.holder_peer in rider_peers or mine_cage.contains(item.cart.global_position))
+		if held_by_rider or free_in_cage or carted_up:
+			going_up.append(item)
+	return going_up
+
+
+## Who carries the Fundstück now (holding it or pushing the cart it is in), else null.
+func fundstueck_carrier() -> Player:
+	if not is_instance_valid(fundstueck):
+		return null
+	if fundstueck.state == WorldItem.State.HELD:
+		return player_by_peer(fundstueck.holder_peer)
+	if fundstueck.state == WorldItem.State.CARTED and fundstueck.cart != null:
+		var cart: RailCart = fundstueck.cart as RailCart
+		return player_by_peer(cart.pusher_peer if cart != null else fundstueck.cart.holder_peer)
+	return null
 
 
 func _descend() -> void:
@@ -456,7 +600,7 @@ func _descend() -> void:
 	_all_dead_time = 0.0
 	for player: Player in players():
 		_hand_out_kit(player)
-	_begin_ride.rpc(true, seed_value, run.cycle, biome_index)
+	_begin_ride.rpc(true, seed_value, run.shift_index, biome_index)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	if phase != Phase.DESCENDING:
 		return
@@ -469,12 +613,15 @@ func _descend() -> void:
 		for key: StringName in [&"was_downed", &"second_wind_used", &"bleeds_out_at", &"invulnerable_until"]:
 			player.remove_meta(key)
 		player.teleport.rpc(mine_cage.player_spot(index))
+		player.set_armour.rpc(armour_max)
 		index += 1
+	alarm_on = false
+	_give_up_until.clear()
 	_spawn_loot(seed_value)
 	if mine.rails != null:
 		var cart: RailCart = _spawn_item_at(&"hunt", 0, mine.rails.transform_at(0.0)) as RailCart
 		cart.host_place(0.0)
-	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
+	_enemy_budget = _config.enemy_budget(run.shift_index, run.player_count) * _biome_rule().enemy_budget_mult
 	_enemy_budget_left = _enemy_budget
 	_smokes.clear()
 	_special_left.clear()
@@ -496,23 +643,151 @@ func _descend() -> void:
 func _host_tick_shift(delta: float) -> void:
 	if not whistle_blown and shift_time_left <= 0.0:
 		_blow_whistle.rpc()
-	elif whistle_blown and shift_time_left <= -_config.whistle_grace_seconds:
-		_ascend()
-		return
-	if whistle_blown and shift_time_left <= -_config.schichtmeister_delay and alive_count(&"schichtmeister") == 0 and not _meister_came:
+	# The Schichtmeister: a while after the whistle, or when the Rückweg is nearly up (§2, §6).
+	var meister_due: bool = (whistle_blown and shift_time_left <= -_config.schichtmeister_delay) \
+			or (alarm_on and alarm_left <= _config.schichtmeister_rueckweg_left)
+	if meister_due and alive_count(&"schichtmeister") == 0 and not _meister_came:
 		_send_schichtmeister()
-	if not whistle_blown and _enemy_budget_left > 0.0:
+	if not alarm_on and not whistle_blown and _enemy_budget_left > 0.0:
 		_trickle_left -= delta
 		if _trickle_left <= 0.0:
 			_trickle_left = _config.enemy_trickle_seconds
 			_spawn_creatures_up_to(1.0)
+	if not alarm_on and _fundstueck_taken():
+		_start_alarm()
+	if alarm_on:
+		_host_tick_alarm(delta)
+		if alarm_left <= 0.0:
+			_ascend(Ascent.TIMEOUT)
+			return
 	var anyone_alive: bool = false
 	for player: Player in players():
 		anyone_alive = anyone_alive or player.alive
 	# Everybody dead: a few seconds to take it in, then the lift goes up without them.
 	_all_dead_time = 0.0 if anyone_alive else _all_dead_time + delta
 	if _all_dead_time >= _config.all_dead_delay:
-		_ascend()
+		_ascend(Ascent.ALL_DEAD)
+
+
+## The Fundstück left its place: picked up, loaded, or knocked off it.
+func _fundstueck_taken() -> bool:
+	if not is_instance_valid(fundstueck):
+		return false
+	return fundstueck.state != WorldItem.State.FREE or fundstueck.global_position.distance_to(_fundstueck_home) > 1.5
+
+
+## The alarm (DESIGN.md §2): the Rückweg-timer starts, scaled to the way back to the lift; the
+## lift's bell rings through the mine, and from now on waves come and every creature knows where
+## the carrier is.
+func _start_alarm() -> void:
+	var way: float = _way_to_lift(_fundstueck_home)
+	var run: RunState = GameState.run
+	var seconds: float = _config.rueckweg_seconds(run.shift_index, run.player_count, way)
+	_wave_left = minf(8.0, _config.wave_seconds)
+	_pulse_left = 0.0
+	_alarm.rpc(seconds)
+	print("[game] alarm: %.0f s for %.0f m back to the lift" % [seconds, way])
+
+
+## Metres along the waypoints from `from` to the mine's cage.
+func _way_to_lift(from: Vector3) -> float:
+	var path: PackedVector3Array = mine.nav_path(from, mine_cage.global_position)
+	var metres: float = 0.0
+	for i: int in range(1, path.size()):
+		metres += path[i - 1].distance_to(path[i])
+	return maxf(metres, from.distance_to(mine_cage.global_position))
+
+
+@rpc("authority", "call_local", "reliable")
+func _alarm(seconds: float) -> void:
+	alarm_on = true
+	alarm_left = seconds
+	alarm_length = seconds
+	print("[game] alarm on, %.0f s" % seconds)
+	var player: Player = local_player()
+	var where: Vector3 = mine_cage.global_position + Vector3.UP * 3.0
+	if player != null:
+		# Rung at the lift, heard everywhere in the mine from that direction.
+		where = player.global_position + (where - player.global_position).limit_length(10.0)
+	Audio.play_at("ferry_bell", where, &"SFX", 6.0, 60.0, 0.8)
+	get_tree().create_timer(1.2).timeout.connect(func() -> void: Audio.play_at("ferry_bell", where, &"SFX", 4.0, 60.0, 0.8))
+	hud.show_message(tr("MSG_ALARM") % _clock(seconds), 6.0)
+
+
+## "3:05" for a number of seconds.
+static func _clock(seconds: float) -> String:
+	var whole: int = maxi(0, ceili(seconds))
+	return "%d:%02d" % [whole / 60, whole % 60]
+
+
+## While the alarm is on (host): the carrier's whereabouts pulse to every creature in reach, and
+## every `wave_seconds` a wave comes out of the rock between the crew and the lift, or behind them.
+func _host_tick_alarm(delta: float) -> void:
+	_pulse_left -= delta
+	if _pulse_left <= 0.0 and is_instance_valid(fundstueck):
+		_pulse_left = _config.alarm_pulse_seconds
+		host_noise(fundstueck.global_position, _config.alarm_pulse_reach * fundstueck.data.pulse_mult)
+	_wave_left -= delta
+	if _wave_left > 0.0:
+		return
+	_wave_left = _config.wave_seconds
+	var run: RunState = GameState.run
+	if creatures().size() >= _config.wave_max_alive(run.player_count):
+		return
+	_spawn_wave(_config.wave_budget(run.shift_index, run.player_count) * _biome_rule().enemy_budget_mult)
+
+
+## One wave: groups of the section's creatures (as far as the budget goes), out of sight of every
+## miner, half of them ahead towards the lift and half behind on the crew's tracks.
+func _spawn_wave(budget: float) -> void:
+	var target: Vector3 = fundstueck.global_position if is_instance_valid(fundstueck) else _fundstueck_home
+	var target_to_lift: float = target.distance_to(mine_cage.global_position)
+	var ahead: Array[Vector3] = []
+	var behind: Array[Vector3] = []
+	# Out of sight close by; else out of sight further off; else at least well away (a long
+	# straight tunnel shows every waypoint near it).
+	for tier: Vector3 in [Vector3(_config.wave_min_distance, 40.0, 1.0), Vector3(_config.wave_min_distance, 70.0, 1.0), Vector3(20.0, 70.0, 0.0)]:
+		for id: int in mine.nav.get_point_ids():
+			var point: Vector3 = mine.nav.get_point_position(id)
+			if mine.nav.is_point_disabled(id) or in_mine_cage(point) or _distance_to_nearest_player(point) < tier.x:
+				continue
+			if point.distance_to(target) > tier.y or (tier.z > 0.0 and _seen_by_a_miner(point)):
+				continue
+			(ahead if point.distance_to(mine_cage.global_position) < target_to_lift else behind).append(point)
+		if not ahead.is_empty() or not behind.is_empty():
+			break
+	var spawned: Dictionary = {}
+	var left: float = budget
+	for attempt: int in 8:
+		var options: Array[CreatureSpawnRule] = []
+		var weights: PackedFloat32Array = []
+		for id: StringName in mine.chunk_set.creatures:
+			var rule: CreatureSpawnRule = _config.spawn_rule(id)
+			if rule != null and creature_data(id) != null and rule.allowed(GameState.run.shift_index, alive_count(id), left):
+				options.append(rule)
+				weights.append(rule.weight)
+		var spots: Array[Vector3] = ahead if (attempt % 2 == 0 and not ahead.is_empty()) or behind.is_empty() else behind
+		if options.is_empty() or spots.is_empty():
+			break
+		var rule: CreatureSpawnRule = options[_rng_weighted(weights)]
+		var at: Vector3 = spots.pick_random()
+		var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), left)
+		for i: int in size:
+			spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + Vector3(randf_range(-0.8, 0.8), 0.3, randf_range(-0.8, 0.8))))
+			left -= rule.budget_cost
+		spawned[rule.id] = int(spawned.get(rule.id, 0)) + size
+		if size == 0 or left < 1.0:
+			break
+	print("[game] wave: %s" % (spawned if not spawned.is_empty() else "nobody (no spot or no budget)"))
+
+
+## Whether any living miner in the mine could see `point` (a creature's chest there).
+func _seen_by_a_miner(point: Vector3) -> bool:
+	for player: Player in players():
+		if player.alive and player.global_position.y < HUB_FLOOR_ABOVE and player.global_position.distance_to(point) < 35.0 \
+				and clear_line(player.global_position + Vector3.UP * 1.5, point + Vector3.UP * 0.8):
+			return true
+	return false
 
 
 ## Whoever is still down after the whistle gets a visit (DESIGN.md §6): he comes out of the dark
@@ -541,30 +816,24 @@ func _send_schichtmeister() -> void:
 	print("[game] Schichtmeister comes for P%d" % straggler.peer_id)
 
 
-func _ascend() -> void:
-	var riders: Array[Player] = []
-	for player: Player in players():
-		if player.alive and mine_cage.contains(player.global_position):
-			riders.append(player)
+## The lift goes up (host). Delivered: riders and what they bring come up, the Fundstück pays.
+## Timed out, everyone dead or given up: the crew is fired – on a timeout it goes up empty.
+func _ascend(reason: Ascent) -> void:
+	var delivered: bool = reason == Ascent.DELIVERED
+	var riders: Array[Player] = _riders()
+	if reason == Ascent.TIMEOUT:
+		riders.clear()  # the lift goes up empty
+	alarm_on = false
 	_begin_ride.rpc(false, 0, 0, 0)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
-	var results: Dictionary = {"sold": [], "total": 0, "left_behind": [], "dead": []}
-	var rider_peers: Array[int] = []
-	for player: Player in riders:
-		rider_peers.append(player.peer_id)
-	# What rides up is decided by who holds it, not by where it is: a client's position
-	# update may still be on its way.
-	var going_up: Array[WorldItem] = []
-	for item: WorldItem in _items():
-		if item.global_position.y > HUB_FLOOR_ABOVE and item.state == WorldItem.State.FREE:
-			continue
-		var held_by_rider: bool = item.holder_peer in rider_peers or item.helper_peer in rider_peers
-		var free_in_cage: bool = item.state == WorldItem.State.FREE and mine_cage.contains(item.global_position)
-		var carted_up: bool = item.state == WorldItem.State.CARTED and item.cart != null and (item.cart.holder_peer in rider_peers or mine_cage.contains(item.cart.global_position))
-		if held_by_rider or free_in_cage or carted_up:
-			going_up.append(item)
-			if free_in_cage:
-				item.host_move(mine_cage.carry_to(hub_cage, item.global_transform))
+	var run: RunState = GameState.run
+	var shift: int = run.shift_index
+	var results: Dictionary = {"sold": [], "total": 0, "left_behind": [], "dead": [], "reason": reason, "shift": shift + 1,
+			"fundstueck": catalog.by_id(_auftrag).name_key if catalog.by_id(_auftrag) != null else "", "bonus": 0, "ehrenzeichen": 0}
+	var going_up: Array[WorldItem] = _items_going_up(riders)
+	for item: WorldItem in going_up:
+		if item.state == WorldItem.State.FREE and mine_cage.contains(item.global_position):
+			item.host_move(mine_cage.carry_to(hub_cage, item.global_transform))
 	var index: int = 0
 	for player: Player in players():
 		if player in riders:
@@ -579,7 +848,9 @@ func _ascend() -> void:
 		index += 1
 	for item: WorldItem in _items():
 		if item in going_up:
-			if item.is_loot():
+			if item.data.fundstueck:
+				item.host_vanish()  # handed to the company
+			elif item.is_loot():
 				(results.sold as Array).append([item.data.name_key, item.value])
 				results.total = int(results.total) + item.value
 				item.host_vanish()
@@ -587,14 +858,19 @@ func _ascend() -> void:
 			item.host_vanish()
 	for creature: Node in creatures_root.get_children():
 		creature.queue_free()
-	var run: RunState = GameState.run
-	var quota: int = run.current_quota()
-	GameState.finish_shift(int(results.total))
-	results.cycle_ended = run.shifts_done_in_cycle == 0 or run.fired
+	fundstueck = null
+	_boss = null
+	if delivered:
+		var rule: BiomeRule = _biome_rule()
+		results.bonus = _config.fundstueck_bonus(shift, rule.loot_value_mult)
+		results.ehrenzeichen = _config.ehrenzeichen(shift, rule.ehrenzeichen_bonus, _had_boss)
+	GameState.finish_shift(int(results.total), delivered, int(results.bonus), int(results.ehrenzeichen))
 	results.fired = run.fired
-	results.quota = quota
 	results.money = run.money
 	results.score = run.score()
+	print("[game] lift up: %s, shift %d, loot %d, bonus %d, fired %s" % [Ascent.keys()[reason], shift + 1, int(results.total), int(results.bonus), run.fired])
+	if not run.fired:
+		_roll_auftrag()
 	_end_shift.rpc(results)
 	_broadcast_run()
 
@@ -630,14 +906,26 @@ func _auto_shift() -> void:
 	if _arg_value(SECTION_ARG) != "":
 		biome_index = clampi(_arg_value(SECTION_ARG).to_int(), 0, biomes.size() - 1)
 		_force_creatures = true
+		_roll_auftrag()
+	_force_boss = _has_arg(BOSS_ARG)
 	request_lift()
 	while phase != Phase.SHIFT:
 		await get_tree().process_frame
 	await get_tree().create_timer(seconds).timeout
 	var player: Player = local_player()
 	player.teleport(mine_cage.player_spot(0))
-	await get_tree().create_timer(0.5).timeout
+	await dev_deliver()
 	request_lift()
+
+
+## Dev and tests (host): the lift only goes up with the Fundstück, so the boss (if any) falls
+## over and the Fundstück is put into the cage.
+func dev_deliver() -> void:
+	if is_instance_valid(_boss):
+		_boss.host_damage(_boss.health, _boss.global_position)
+	if is_instance_valid(fundstueck):
+		fundstueck.host_move(Transform3D(Basis.IDENTITY, mine_cage.player_spot(1).origin + Vector3.UP * 0.4))
+	await get_tree().create_timer(1.0).timeout
 
 
 ## Everything the player carries falls to the floor. Something carried together stays with
@@ -739,7 +1027,7 @@ func _blow_whistle() -> void:
 		# Heard everywhere in the mine, from the direction of the lift.
 		where = player.global_position + (where - player.global_position).limit_length(12.0)
 	Audio.play_at("grubenpfeife", where, &"SFX", 6.0, 60.0)
-	hud.show_message(tr("MSG_WHISTLE") % roundi(_config.whistle_grace_seconds), 6.0)
+	hud.show_message(tr("MSG_WHISTLE"), 6.0)
 	print("[game] whistle")
 
 
@@ -795,12 +1083,14 @@ func _broadcast_run() -> void:
 		return
 	var info: Dictionary = {
 		"money": run.money,
-		"quota": run.current_quota(),
-		"cycle": run.cycle,
-		"shifts_left": run.shifts_left_in_cycle(),
+		"shift": run.shift_index,
+		"auftrag": _auftrag,
+		"boss_chance": _config.boss_chance(run.shift_index) if biomes[biome_index].boss != &"" else 0.0,
+		"ehrenzeichen": run.ehrenzeichen,
 		"fired": run.fired,
 		"players": run.player_count,
 		"section": biome_index,
+		"upgrades": run.upgrades.duplicate(),
 	}
 	for peer: int in _ready_peers:
 		if peer == multiplayer.get_unique_id():
@@ -813,8 +1103,29 @@ func _broadcast_run() -> void:
 func _apply_run_info(info: Dictionary) -> void:
 	run_info = info
 	biome_index = clampi(int(info.get("section", biome_index)), 0, biomes.size() - 1)
+	_apply_upgrades(info.get("upgrades", {}))
 	hub.update_board(info)
 	hud.update_run(info)
+
+
+## The crew's run upgrades on this peer: every gun's numbers (an upgraded copy of its own), the
+## ammo caps, the armour and the lamp (DESIGN.md §7).
+func _apply_upgrades(levels: Dictionary) -> void:
+	upgrade_levels = levels.duplicate()
+	armour_max = _config.armour_points(upgrade_levels)
+	lamp_mult = _config.lamp_range_mult(upgrade_levels)
+	for entry: Resource in catalog.items:
+		var data: ItemData = entry as ItemData
+		if data.weapon == null:
+			continue
+		if not data.has_meta(&"base_weapon"):
+			data.set_meta(&"base_weapon", data.weapon)
+		data.weapon = RunUpgrade.upgraded_weapon(data.get_meta(&"base_weapon") as WeaponData, data.id, _config.run_upgrades, upgrade_levels)
+
+
+## The ammo cap of `ammo_type` with the crew's upgrades.
+func ammo_cap(ammo_type: StringName) -> int:
+	return _config.ammo_cap(ammo_type, upgrade_levels)
 
 
 ## Bought in the Gasthaus shop: money from the run, the item appears on the counter.
@@ -830,6 +1141,29 @@ func request_buy(id: StringName) -> void:
 	_spawn_item_at(id, 0, hub.counter_spot())
 	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
 	_broadcast_run()
+
+
+## A run upgrade from the Waffenkammer: the next level, for the whole crew (DESIGN.md §7).
+@rpc("any_peer", "call_local", "reliable")
+func request_buy_upgrade(id: StringName) -> void:
+	if not multiplayer.is_server() or phase != Phase.HUB:
+		return
+	var upgrade: RunUpgrade = _config.run_upgrade(id)
+	if upgrade == null or not GameState.run.buy_upgrade(upgrade):
+		_show_message_key.rpc_id(_sender(), "MSG_TOO_POOR")
+		return
+	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
+	_upgrade_bought.rpc(upgrade.name_key, GameState.run.upgrade_level(id))
+	_broadcast_run()
+	# Armour is put on right away, so it shows in the Gasthaus too.
+	for player: Player in players():
+		player.set_armour.rpc(armour_max)
+	print("[game] upgrade %s now level %d" % [id, GameState.run.upgrade_level(id)])
+
+
+@rpc("authority", "call_local", "reliable")
+func _upgrade_bought(name_key: String, level: int) -> void:
+	show_message(tr("MSG_UPGRADE_BOUGHT") % [tr(name_key), level])
 
 
 ## The money cheat: any player can ask, the host adds it to the run and tells everyone.
@@ -855,6 +1189,8 @@ func request_take(item_path: NodePath, peer: int) -> void:
 		return
 	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED or item is RailCart:
 		return
+	if item is FundstueckItem and (item as FundstueckItem).locked:
+		return  # still in its salt shell
 	if item.data.kind == ItemData.Kind.AMMO:
 		_pick_up_ammo(item, player)
 		return
@@ -928,7 +1264,7 @@ func request_load_cart(cart_path: NodePath, item_path: NodePath) -> void:
 	var item: WorldItem = get_node_or_null(item_path) as WorldItem
 	if cart == null or item == null or item == cart or not item.is_loot() or item.state == WorldItem.State.CARTED:
 		return
-	if item.state == WorldItem.State.STOLEN:
+	if item.state == WorldItem.State.STOLEN or item is FundstueckItem and (item as FundstueckItem).locked:
 		return
 	if not cart.can_load(item):
 		_show_message_key.rpc_id(_sender(), "PROMPT_HUNT_FULL" if cart is RailCart else "PROMPT_CART_FULL")
@@ -1032,7 +1368,7 @@ func _give_kit_item(player: Player, id: StringName) -> void:
 ## E on an ammo box: into the counter (up to the cap), the box is gone.
 func _pick_up_ammo(item: WorldItem, player: Player) -> void:
 	var type: StringName = item.data.ammo_type
-	if player.ammo_count(type) >= _config.ammo_cap(type):
+	if player.ammo_count(type) >= ammo_cap(type):
 		message_to(player.peer_id, "MSG_AMMO_FULL")
 		return
 	# A Notration drop holds fewer rounds than a full box (its value says how many).
@@ -1078,6 +1414,44 @@ func _stone(from: Vector3, velocity: Vector3, damage: int, thrower_path: NodePat
 	stone.thrower = get_node_or_null(thrower_path) as Node3D
 	(mine if mine != null else mine_root).add_child(stone)
 	stone.global_position = from
+
+
+## Da Bergkini throws a lit stick of dynamite (host): every peer flies it, the host's copy goes off.
+func host_throw_dynamite(from: Vector3, target: Vector3, damage: int, thrower_path: NodePath) -> void:
+	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	_dynamite.rpc(from, Stone.lob(from, target, _config.stone_speed, gravity), _config.dynamite_fuse_seconds, damage, thrower_path)
+
+
+@rpc("authority", "call_local", "reliable")
+func _dynamite(from: Vector3, velocity: Vector3, fuse: float, damage: int, thrower_path: NodePath) -> void:
+	var stick: Dynamite = Dynamite.new()
+	stick.velocity = velocity
+	stick.fuse = fuse
+	stick.damage = damage
+	stick.thrower = get_node_or_null(thrower_path) as Node3D
+	(mine if mine != null else mine_root).add_child(stick)
+	stick.global_position = from
+
+
+## A big blast (dynamite, host): a flash and a bang on every peer, damage all around (rock
+## shields), the whole mine hears it, firedamp goes up, the view shakes close by.
+func host_explosion(where: Vector3, radius: float, damage: int) -> void:
+	_flash.rpc(where, "explosion", Color(1.0, 0.75, 0.45), 9.0)
+	_shake_near.rpc(where, 25.0)
+	host_noise(where, _config.noise_explosion)
+	host_blast(where, radius, damage)
+
+
+@rpc("authority", "call_local", "reliable")
+func _shake_near(where: Vector3, reach: float) -> void:
+	var me: Player = local_player()
+	if me != null and me.alive:
+		me.shake(clampf(1.0 - me.global_position.distance_to(where) / reach, 0.0, 1.0))
+
+
+## A message for everyone (host), by translation key.
+func message_everyone(key: String) -> void:
+	_show_message_key.rpc(key)
 
 
 ## A reload finished: the new magazine count for everyone.
@@ -1526,17 +1900,18 @@ func message_to(peer: int, key: String) -> void:
 func request_section(index: int) -> void:
 	if not multiplayer.is_server() or phase != Phase.HUB or index < 0 or index >= biomes.size():
 		return
-	if not section_unlocked(index, GameState.run.cycle):
+	if not section_unlocked(index, GameState.run.shift_index):
 		return
 	biome_index = index
+	_roll_auftrag()  # the company wants something from down there now
 	_broadcast_run()
 	print("[game] section %s picked" % biomes[index].id)
 
 
-## Whether mine section `index` can be picked in quota cycle `cycle` (BiomeRule.unlock_cycle).
-func section_unlocked(index: int, cycle: int) -> bool:
+## Whether mine section `index` can be picked for shift `shift` (BiomeRule.unlock_shift).
+func section_unlocked(index: int, shift: int) -> bool:
 	var rule: BiomeRule = _config.biome_rule(biomes[index].id)
-	return rule == null or cycle >= rule.unlock_cycle
+	return rule == null or shift >= rule.unlock_shift
 
 
 ## The Funkgerät's call button: a crackle on every other Funkgerät in the crew.
@@ -1580,6 +1955,13 @@ func host_damage_player(player: Player, amount: int) -> void:
 	if player.downed:
 		_kill_player(player)  # hurt again while down: that was it
 		return
+	if player.armour > 0:
+		# The Lederschurz and the Grubenhelm take their share until they are worn through.
+		var split: Vector2i = _config.armour_split(amount, player.armour)
+		player.set_armour.rpc(player.armour - split.y)
+		amount = split.x
+		if amount <= 0:
+			return
 	var health: int = maxi(0, player.health - amount)
 	if health == 0 and _crew_alive() == 1 and players().size() == 1 and not player.get_meta(&"second_wind_used", false):
 		# Solo: one second wind per shift (DESIGN.md §3).
@@ -1707,7 +2089,7 @@ func request_hand_ammo(to_peer: int, ammo_type: StringName) -> void:
 		return
 	if giver.global_position.distance_to(mate.global_position) > _config.hand_ammo_distance + 1.0:
 		return
-	var amount: int = _config.ammo_to_hand_over(giver.ammo_count(ammo_type), mate.ammo_count(ammo_type), ammo_type)
+	var amount: int = _config.ammo_to_hand_over(giver.ammo_count(ammo_type), mate.ammo_count(ammo_type), ammo_type, upgrade_levels)
 	if amount <= 0:
 		message_to(giver.peer_id, "MSG_MATE_AMMO_FULL" if giver.ammo_count(ammo_type) > 0 else "MSG_NO_AMMO_TO_GIVE")
 		return

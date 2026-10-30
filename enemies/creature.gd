@@ -245,6 +245,11 @@ func can_see(point: Vector3) -> bool:
 	return get_world_3d().direct_space_state.intersect_ray(query).is_empty()
 
 
+## Whether `player` carries the Fundstück: every creature's favourite target (DESIGN.md §2).
+func is_carrier(player: Player) -> bool:
+	return Game.instance != null and Game.instance.alarm_on and Game.instance.fundstueck_carrier() == player
+
+
 ## Players in the mine within `distance` that the creature can see.
 func visible_players(distance: float) -> Array[Player]:
 	var result: Array[Player] = []
@@ -301,10 +306,15 @@ func _farewell(line_index: int, sound: String) -> void:
 
 # --- combat ----------------------------------------------------------------------------------------
 
-## `base` health scaled for the crew size (solo creatures are weaker, DESIGN.md §8).
+## `base` health scaled for the crew size (solo creatures are weaker) and the shift (DESIGN.md §8).
 func scaled_health(base: int) -> int:
-	var players: int = GameState.run.player_count if GameState.run != null else 1
-	return maxi(1, roundi(base * _config.enemy_health_mult(players)))
+	var run: RunState = GameState.run
+	return maxi(1, roundi(base * _config.enemy_health_mult(run.player_count if run != null else 1, run.shift_index if run != null else 0)))
+
+
+## `base` damage of an attack, growing with the shift (DESIGN.md §8).
+func scaled_damage(base: int) -> int:
+	return maxi(1, roundi(base * _config.enemy_damage_mult(GameState.run.shift_index if GameState.run != null else 0)))
 
 
 ## Generic damage (host): health down, a flinch everyone sees, death at 0. True if it died.
@@ -325,6 +335,8 @@ func host_die(sound: String = "") -> void:
 	var index: int = -1 if lines.is_empty() else data.voice_lines.find(lines.pick_random())
 	_died.rpc(index, sound)
 	print("[creature] %s %s killed" % [data.id, name])
+	if Game.instance != null:
+		Game.instance.host_boss_died(self)
 	queue_free()
 
 

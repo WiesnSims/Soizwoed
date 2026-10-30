@@ -1,0 +1,23 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://enemies/bergmandl/bergmandl.tscn" id="1_base"]
+[ext_resource type="Script" path="res://enemies/bosses/bergkini/bergkini.gd" id="2_king"]
+
+[sub_resource type="CapsuleShape3D" id="king_shape"]
+radius = 0.38
+height = 1.45
+
+[node name="Bergkini" instance=ExtResource("1_base")]
+script = ExtResource("2_king")
+
+[node name="Shape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.73, 0)
+shape = SubResource("king_shape")
+
+[node name="Body" parent="." index="1"]
+transform = Transform3D(1.7, 0, 0, 0, 1.7, 0, 0, 0, 1.7, 0, 0, 0)
+
+[node name="Voice" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+volume_db = 6.0
+max_distance = 45.0

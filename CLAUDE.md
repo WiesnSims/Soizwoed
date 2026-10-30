@@ -23,7 +23,7 @@ The full game design is here and must be followed:
 - Every networked feature must work in both solo (host only) and multiplayer – solo is just a host with zero clients.
 
 ## Networking rules
-- Host is authoritative for world state (AI, loot, timer, quota, physics objects). Each player owns their own character movement.
+- Host is authoritative for world state (AI, loot, timers, the Fundstück and the run, physics objects). Each player owns their own character movement.
 - Never call Steam APIs outside `net/steam_backend.gd` and voice code; everything else talks to the `NetworkManager` autoload.
 - Keep the ENet backend working at all times – it is the main way to test multiplayer without Steam.
 - Steam lobbies must always set and filter `game=soizwoed` and `ver=<version>` metadata (App ID 480 is shared).
@@ -39,7 +39,8 @@ The full game design is here and must be followed:
   - `tools/mp_test.ps1 -Coop` – headless co-op scenario: item sync, carrying together, death and spectating
   - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, the host must see each use arrive
   - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl)
-  - `godot --headless -s tools/balance_report.gd` – loot value per shift and the share needed for the quota, per cycle, crew and section
+  - `tools/mp_test.ps1 -Boss` – headless: a shift with the Fundstück guarded by the boss; the client sees the salt shell, its end and the alarm
+  - `godot --headless -s tools/balance_report.gd` – per shift and crew: enemy budget, health, boss chance, ammo; per section loot, Fundstück bonus, Rückweg-timer against the carrying time
   - `godot --audio-driver Dummy -- --solo --scenario=smooth --shots=build/shots` – measures how evenly the camera moves while walking (stutter check; add `--no-interp` for the old behaviour)
   - `tools/steam_test.ps1` – needs the Steam client running: headless host creates a public lobby, a second instance must find it via the game/ver filter
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it

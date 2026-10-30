@@ -1,7 +1,7 @@
 class_name Gasthaus
 extends Node3D
 ## The hub: the wood-panelled Gasthaus "Zum Salzstock" with the shop counter, the notice board
-## with the quota, the stove, the Herrgottswinkel and the Förderkorb down into the mine
+## with the company's Auftrag, the stove, the Herrgottswinkel and the Förderkorb down into the mine
 ## (DESIGN.md §10). The room is built from boxes here; placed things live in gasthaus.tscn.
 ## The room's floor centre is the node's origin; the cage stands at the south wall.
 
@@ -53,20 +53,24 @@ func free_cart_spot() -> Transform3D:
 	return global_transform * Transform3D(Basis(Vector3.UP, PI * 0.5), Vector3(2.6, 0.3, 3.4))
 
 
-## The notice board shows the quota of the current cycle (DESIGN.md §10).
+## The notice board shows the company's Auftrag for the next shift: which Fundstück, from
+## where, and how likely a boss guards it (DESIGN.md §2, §5).
 func update_board(info: Dictionary) -> void:
 	if info.is_empty():
 		board_text.text = tr("BOARD_TITLE")
 		return
-	board_text.text = "%s\n\n%s\n%s\n%s\n%s" % [
+	var section: ChunkSet = Game.instance.biomes[clampi(int(info.get("section", 0)), 0, Game.instance.biomes.size() - 1)]
+	var wanted: ItemData = Game.instance.catalog.by_id(StringName(str(info.get("auftrag", ""))))
+	var guard: float = float(info.get("boss_chance", 0.0))
+	board_text.text = "%s\n\n%s\n%s\n%s\n%s\n\n%s" % [
 		tr("BOARD_TITLE"),
-		tr("BOARD_CYCLE") % (int(info.cycle) + 1),
-		tr("BOARD_QUOTA") % int(info.quota),
+		tr("BOARD_SHIFT") % (int(info.shift) + 1),
+		tr("BOARD_AUFTRAG") % [tr(wanted.name_key) if wanted != null else "?", tr(section.biome_name_key)],
+		tr("BOARD_GUARD_SURE") if guard >= 1.0 else (tr("BOARD_GUARD") % roundi(guard * 100.0) if guard > 0.0 else tr("BOARD_GUARD_NONE")),
 		tr("BOARD_MONEY") % int(info.money),
-		tr("BOARD_SHIFTS") % int(info.shifts_left),
+		tr("BOARD_RULE"),
 	]
 	if _plan != null:
-		var section: ChunkSet = Game.instance.biomes[clampi(int(info.get("section", 0)), 0, Game.instance.biomes.size() - 1)]
 		_plan.text = "%s\n\n%s" % [tr("PLAN_TITLE"), tr("PLAN_TODAY") % tr(section.biome_name_key)]
 
 

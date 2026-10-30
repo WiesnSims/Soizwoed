@@ -36,7 +36,7 @@ PROMPT_REFILL_LAMP,Lampn auffülln,Refill the lamp
 PROMPT_SHOP,Beim Wirt eikaufn,Shop at the landlord's
 MSG_HANDS_FULL,De Händ san voll.,Your hands are full.
 MSG_SHIFT_START,Glück auf! Bring a Zeug in Förderkorb.,Glück auf! Bring the goods to the lift cage.
-MSG_WHISTLE,Schicht aus! In %d Sekundn foahrt da Korb aufi!,Shift's over! The cage goes up in %d seconds!
+MSG_WHISTLE,"Grubenpfeife! Da Schichtmeister kummt – schaut's, dass weiterkummt's!",The mine whistle! The Schichtmeister is coming – get a move on!
 MSG_TOO_POOR,"Des kost mehr, ois du host.",That costs more than you have.
 HUD_HEALTH,Gsundheit,Health
 HUD_LAMP,Karbid,Carbide
@@ -45,12 +45,8 @@ HUD_HANDS,In de Händ: %s,In your hands: %s
 HUD_DROP,ablegn,put down
 HUD_WATCH,Taschnuhr,Pocket watch
 HUD_MONEY,Geld: %d S,Money: %d S
-HUD_QUOTA,Quote: %d S (no %d Schichtn),Quota: %d S (%d shifts left)
 BOARD_TITLE,Soizwöd GmbH – Schwarzes Brett,Soizwöd Ltd. – Notice board
-BOARD_CYCLE,Quotenrundn %d,Quota round %d
-BOARD_QUOTA,Quote: %d Schilling,Quota: %d Schilling
 BOARD_MONEY,Kassa: %d Schilling,Till: %d Schilling
-BOARD_SHIFTS,Schichtn übrig: %d,Shifts left: %d
 SHOP_TITLE,Beim Wirt,At the landlord's
 SHOP_MONEY,%d Schilling,%d Schilling
 SHOP_BUY,Kaufn (%d S),Buy (%d S)
@@ -62,9 +58,7 @@ RESULTS_LEFT_BEHIND,Du bist unten blieben!,You were left down there!
 RESULTS_NOTHING,Nix verkauft.,Nothing sold.
 RESULTS_ITEM,%s … %d S,%s … %d S
 RESULTS_TOTAL,Verkauft um %d Schilling,Sold for %d Schilling
-RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.,Quota (%d S) met! The next round gets dearer.
-RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!,Quota (%d S) missed – you're fired!
-RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S,Quota rounds survived: %d · Total earned: %d S
+RESULTS_SCORE,Schichtn überlebt: %d · Gsamt verdient: %d S · Ehrenzeichen: %d,Shifts survived: %d · Total earned: %d S · Ehrenzeichen: %d
 PROMPT_CART_DROP_IN,[%s] %s einilegn,[%s] Put %s in
 PLAYER_NAME,Kumpl %d,Miner %d
 ITEM_LEICHE,Hiniger Kumpl (Sterbegeld),Dead mate (death benefit)
@@ -191,7 +185,7 @@ PLAN_TITLE,Grubnplan,Mine plan
 PLAN_TODAY,Heit: %s,Today: %s
 PLAN_PICK,Do eini,Go in here
 PLAN_PICKED,Do geht's eini,We're going in here
-PLAN_LOCKED,Ab Quotenrundn %d,From quota round %d
+PLAN_LOCKED,Ab da %d. Schicht,From shift %d
 PROMPT_PLAN,Grubnplan – Abschnitt aussuachn,Mine plan – pick a section
 PROMPT_FERRY_BELL,"Glockn läutn – ""Hol über!""","Ring the bell – ""Ferry over!"""
 PROMPT_FERRY_BUSY,De Fähre is unterwegs.,The ferry is on its way.
@@ -288,7 +282,7 @@ SET_OUTPUT_DEVICE,Lautsprecher / Kopfhörer,Speakers / headphones
 SET_INPUT_DEVICE,Mikrofon,Microphone
 SET_DEVICE_DEFAULT,Standard vom System,System default
 SET_MIC_LEVEL,Mikro-Pegel (red amoi),Mic level (say something)
-MSG_CHEAT_MONEY,"Zaster! +1000 – da Chef schaut grad ned hin.","Cash! +1000 – the boss isn't looking."
+MSG_CHEAT_MONEY,Zaster! +1000 – da Chef schaut grad ned hin.,Cash! +1000 – the boss isn't looking.
 SHOP_CAT_WEAPONS,Waffn,Weapons
 SHOP_CAT_AMMO,Munition,Ammo
 SHOP_CAT_THROWABLES,Zum Schmeißn,Throwables
@@ -299,3 +293,59 @@ MSG_AMMO_HANDED,Munition übergebn.,Ammo handed over.
 MSG_AMMO_RECEIVED,Du host Munition kriagt.,You got some ammo.
 MSG_NO_AMMO_TO_GIVE,Du host nix zum Herschenkn.,You have nothing to give.
 MSG_MATE_AMMO_FULL,Der ko nix mehr tragn.,They can't carry any more.
+HUD_SHIFT,Schicht %d,Shift %d
+HUD_ALARM,ALARM  %s,ALARM  %s
+MSG_ALARM,"Alarm! Des Fundstück is gnumma – in %s zruck zum Korb, sonst seid's gfeuert!",Alarm! The Fundstück is taken – back to the cage in %s or you're fired!
+MSG_LIFT_NEEDS_FUNDSTUECK,Ohne Fundstück foahrt da Korb ned aufi. Nomoi ziagn hoaßt aufgebn – und des is de Kündigung.,Without the Fundstück the cage won't go up. Pull again to give up – and that means you're fired.
+PROMPT_LIFT_GIVE_UP,Aufgebn (ohne Fundstück),Give up (without the Fundstück)
+PROMPT_FUNDSTUECK_LOCKED,In Soiz eigschlossn – da Kini muass weg!,Locked in salt – the king has to go!
+MSG_BOSS_DEAD,Da Bergkini is hin! Des Fundstück is frei.,Da Bergkini is dead! The Fundstück is free.
+MSG_BOSS_AWAKE,Da Bergkini is aufgwacht!,Da Bergkini has woken up!
+MSG_UPGRADE_BOUGHT,%s – jetzt Stufe %d,%s – now level %d
+BOARD_SHIFT,Schicht %d,Shift %d
+BOARD_AUFTRAG,"Auftrag: %s
+aus'm %s","Order: %s
+from the %s"
+BOARD_GUARD,Bewacht? Vielleicht (%d %%),Guarded? Maybe (%d %%)
+BOARD_GUARD_SURE,Bewacht! Rechnt's mit'm Kini.,Guarded! Expect the king.
+BOARD_GUARD_NONE,"Unbewacht, hoaßt's.","Unguarded, they say."
+BOARD_RULE,Ohne Fundstück ka Arbeit mehr.,"No Fundstück, no job."
+RESULTS_FIRED_TIMEOUT,Da Korb is leer aufigfoahrn – %s ned bracht. Kündigung!,The cage went up empty – no %s. You're fired!
+RESULTS_FIRED_DEAD,Olle hin – %s ned bracht. Kündigung!,Everyone's dead – no %s. You're fired!
+RESULTS_FIRED_GAVE_UP,Aufgebn – %s ned bracht. Kündigung!,Gave up – no %s. You're fired!
+RESULTS_DELIVERED,%s obgliefert! Prämie: %d S,%s delivered! Bonus: %d S
+RESULTS_EHRENZEICHEN,+%d Ehrenzeichen,+%d Ehrenzeichen (company honours)
+RESULTS_NEXT_SHIFT,De %d. Schicht wird härter.,Shift %d will be harder.
+SHOP_CAT_UPGRADES,Aufrüstn,Upgrades
+SHOP_LEVEL,%d/%d,%d/%d
+SHOP_MAXED,Ausgreizt,Maxed out
+CREATURE_BERGKINI,Da Bergkini,Da Bergkini (the Bergmandl king)
+ITEM_GRUBENKOMPASS,Goldener Grubenkompass,Golden mine compass
+ITEM_GRUBENUHR,Kaiserliche Grubenuhr,Imperial mine clock
+ITEM_SEEKRISTALL,Seekristall,Seekristall (lake crystal)
+ITEM_GOLDMASKE,Keltische Goldmaske,Celtic gold mask
+ITEM_HERZ_SALZMANN,Herz vom Salzmann,Heart of the Salzmann
+UPG_PISTOLE_DAMAGE,Dienstpistole: Hartkern,Dienstpistole: hard-core rounds
+UPG_PISTOLE_DAMAGE_DESC,+20 % Schaden pro Stufe.,+20 % damage per level.
+UPG_PISTOLE_MAGAZINE,Dienstpistole: langes Magazin,Dienstpistole: long magazine
+UPG_PISTOLE_MAGAZINE_DESC,4 Schuss mehr im Magazin.,4 more rounds in the magazine.
+UPG_PISTOLE_RELOAD,Dienstpistole: gschmiert,Dienstpistole: well oiled
+UPG_PISTOLE_RELOAD_DESC,20 % schneller nochladn pro Stufe.,Reloads 20 % faster per level.
+UPG_PISTOLE_SPREAD,Dienstpistole: Kimme gfeilt,Dienstpistole: filed sights
+UPG_PISTOLE_SPREAD_DESC,30 % weniger Streuung.,30 % less spread.
+UPG_FLINTE_DAMAGE,Flinte: grobes Soiz,Flinte: coarse salt
+UPG_FLINTE_DAMAGE_DESC,+20 % Schaden pro Schrotkorn und Stufe.,+20 % damage per pellet per level.
+UPG_FLINTE_RELOAD,Flinte: Patronengurt,Flinte: shell bandolier
+UPG_FLINTE_RELOAD_DESC,20 % schneller nochladn pro Stufe.,Reloads 20 % faster per level.
+UPG_FLINTE_SPREAD,Flinte: Würger,Flinte: choke
+UPG_FLINTE_SPREAD_DESC,25 % engere Garbe – trifft a weiter weg.,25 % tighter spread – hits further off too.
+UPG_CAP_PISTOLE,Patronentaschn,Cartridge pouch
+UPG_CAP_PISTOLE_DESC,16 Pistolenpatronen mehr tragn pro Stufe.,Carry 16 more pistol rounds per level.
+UPG_CAP_SCHROT,Schrotgürtel,Shell belt
+UPG_CAP_SCHROT_DESC,8 Salzschrot mehr tragn pro Stufe.,Carry 8 more salt shells per level.
+UPG_LEDERSCHURZ,Lederschurz,Leather apron
+UPG_LEDERSCHURZ_DESC,"40 Panzer für jeden: fangt de Hälfte vom Schaden ab, bis er durch is. Vor jeder Schicht wie neu.",40 armour for everyone: takes half the damage until worn through. Like new before every shift.
+UPG_GRUBENHELM,Grubenhelm,Miner's helmet
+UPG_GRUBENHELM_DESC,"30 Panzer mehr für jeden, wie da Lederschurz.","30 more armour for everyone, like the apron."
+UPG_REFLEKTOR,Reflektor,Reflector
+UPG_REFLEKTOR_DESC,Lampn leuchtn 20 % weiter pro Stufe.,Lamps reach 20 % further per level.

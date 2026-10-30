@@ -1,0 +1,110 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://enemies/voice_line.gd" id="2_line"]
+[ext_resource type="PackedScene" path="res://enemies/bosses/bergkini/bergkini.tscn" id="3_scene"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/spot_schau.ogg" id="s0"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/spot_wos.ogg" id="s1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/idle_salz.ogg" id="s2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/idle_psst.ogg" id="s3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/idle_wer.ogg" id="s4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/steal_ghert.ogg" id="s5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/steal_meins.ogg" id="s6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/hit_grobian.ogg" id="s7"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/hit_aua.ogg" id="s8"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/die_kumm.ogg" id="s9"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/flee_langsam.ogg" id="s10"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/flee_fangts.ogg" id="s11"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/shouted_laut.ogg" id="s12"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/bergmandl/shouted_guat.ogg" id="s13"]
+
+[sub_resource type="Resource" id="line_spot_schau"]
+script = ExtResource("2_line")
+id = &"spot_schau"
+moment = 0
+stream = ExtResource("s0")
+
+[sub_resource type="Resource" id="line_spot_wos"]
+script = ExtResource("2_line")
+id = &"spot_wos"
+moment = 0
+stream = ExtResource("s1")
+
+[sub_resource type="Resource" id="line_idle_salz"]
+script = ExtResource("2_line")
+id = &"idle_salz"
+moment = 1
+stream = ExtResource("s2")
+
+[sub_resource type="Resource" id="line_idle_psst"]
+script = ExtResource("2_line")
+id = &"idle_psst"
+moment = 1
+stream = ExtResource("s3")
+
+[sub_resource type="Resource" id="line_idle_wer"]
+script = ExtResource("2_line")
+id = &"idle_wer"
+moment = 1
+stream = ExtResource("s4")
+
+[sub_resource type="Resource" id="line_steal_ghert"]
+script = ExtResource("2_line")
+id = &"steal_ghert"
+moment = 2
+stream = ExtResource("s5")
+
+[sub_resource type="Resource" id="line_steal_meins"]
+script = ExtResource("2_line")
+id = &"steal_meins"
+moment = 2
+stream = ExtResource("s6")
+
+[sub_resource type="Resource" id="line_hit_grobian"]
+script = ExtResource("2_line")
+id = &"hit_grobian"
+moment = 3
+stream = ExtResource("s7")
+
+[sub_resource type="Resource" id="line_hit_aua"]
+script = ExtResource("2_line")
+id = &"hit_aua"
+moment = 3
+stream = ExtResource("s8")
+
+[sub_resource type="Resource" id="line_die_kumm"]
+script = ExtResource("2_line")
+id = &"die_kumm"
+moment = 4
+stream = ExtResource("s9")
+
+[sub_resource type="Resource" id="line_flee_langsam"]
+script = ExtResource("2_line")
+id = &"flee_langsam"
+moment = 5
+stream = ExtResource("s10")
+
+[sub_resource type="Resource" id="line_flee_fangts"]
+script = ExtResource("2_line")
+id = &"flee_fangts"
+moment = 5
+stream = ExtResource("s11")
+
+[sub_resource type="Resource" id="line_shouted_laut"]
+script = ExtResource("2_line")
+id = &"shouted_laut"
+moment = 6
+stream = ExtResource("s12")
+
+[sub_resource type="Resource" id="line_shouted_guat"]
+script = ExtResource("2_line")
+id = &"shouted_guat"
+moment = 6
+stream = ExtResource("s13")
+
+[resource]
+script = ExtResource("1_data")
+id = &"bergkini"
+name_key = "CREATURE_BERGKINI"
+scene = ExtResource("3_scene")
+voice_lines = Array[ExtResource("2_line")]([SubResource("line_spot_schau"), SubResource("line_spot_wos"), SubResource("line_idle_salz"), SubResource("line_idle_psst"), SubResource("line_idle_wer"), SubResource("line_steal_ghert"), SubResource("line_steal_meins"), SubResource("line_hit_grobian"), SubResource("line_hit_aua"), SubResource("line_die_kumm"), SubResource("line_flee_langsam"), SubResource("line_flee_fangts"), SubResource("line_shouted_laut"), SubResource("line_shouted_guat")])
