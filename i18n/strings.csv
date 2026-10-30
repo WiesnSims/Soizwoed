@@ -288,3 +288,4 @@ SET_OUTPUT_DEVICE,Lautsprecher / Kopfhörer,Speakers / headphones
 SET_INPUT_DEVICE,Mikrofon,Microphone
 SET_DEVICE_DEFAULT,Standard vom System,System default
 SET_MIC_LEVEL,Mikro-Pegel (red amoi),Mic level (say something)
+MSG_CHEAT_MONEY,"Zaster! +1000 – da Chef schaut grad ned hin.","Cash! +1000 – the boss isn't looking."

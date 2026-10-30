@@ -489,3 +489,9 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - the Flinte now reloads like a break-action: open (lever, hinge, empty hulls falling on the rock), a shell slid in per round, snapped shut when done or cut short. Its dry click is deeper;
   - the shot is played 3 dB quieter in the game, because the files are denser;
   - the old synthesised shots and reloads are deleted.
+
+## 2026-10-30 – Money cheat for testing (owner request)
+
+- Typing **`zaster`** anywhere in the game (hub or mine, solo or co-op, any player) gives the run **+1000** money, so weapons and upgrades can be bought quickly while testing. The host adds it and everyone sees the new amount and a message.
+- Claude's choices: a typed word rather than a key chord (no clash with the bound keys, hard to hit by accident); the amount is a constant in `game.gd`, not in `balance.tres`, because it is not a balance value; cheat money does not count towards the score.
+- It is in every build for now; before a public release (M10) it should be limited to dev builds.

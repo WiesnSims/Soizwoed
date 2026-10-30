@@ -54,6 +54,9 @@ const SHOT_SECONDS: float = 1.5
 ## Dev flag: run a scripted situation from tools/dev/dev_scenario.gd.
 const SCENARIO_ARG: String = "--scenario="
 const SCENARIO_SCRIPT: String = "res://tools/dev/dev_scenario.gd"
+## Test cheat (owner request): typing this word anywhere in the game gives the crew money.
+const CHEAT_MONEY_WORD: String = "zaster"
+const CHEAT_MONEY_AMOUNT: int = 1000
 
 static var instance: Game
 ## Set for automated windowed runs (--shots): no focus, no mouse capture, no sound, so a test
@@ -103,6 +106,8 @@ var _special_left: Dictionary = {}
 var _cursed_for: Dictionary = {}
 ## Host: bodies of miners who died this shift, item name -> [peer id, time of death (s)].
 var _corpses: Dictionary = {}
+## The last letters typed, for the cheat word.
+var _typed: String = ""
 
 @onready var hub: Gasthaus = $Hub
 @onready var hub_cage: Foerderkorb = $Hub/Foerderkorb
@@ -154,6 +159,17 @@ func _ready() -> void:
 			var scenario: Node = (load(SCENARIO_SCRIPT) as GDScript).new()
 			add_child(scenario)
 			scenario.call(&"run", self, arg.trim_prefix(SCENARIO_ARG))
+
+
+## Watches the typed letters for the cheat word (before anything else uses the keys).
+func _input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.unicode == 0:
+		return
+	_typed = (_typed + char(key.unicode).to_lower()).right(CHEAT_MONEY_WORD.length())
+	if _typed == CHEAT_MONEY_WORD and NetworkManager.in_session():
+		_typed = ""
+		request_cheat_money.rpc_id(1)
 
 
 func _process(delta: float) -> void:
@@ -813,6 +829,17 @@ func request_buy(id: StringName) -> void:
 		return
 	_spawn_item_at(id, 0, hub.counter_spot())
 	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
+	_broadcast_run()
+
+
+## The money cheat: any player can ask, the host adds it to the run and tells everyone.
+@rpc("any_peer", "call_local", "reliable")
+func request_cheat_money() -> void:
+	if not multiplayer.is_server() or GameState.run == null or GameState.run.fired:
+		return
+	GameState.run.add_cheat_money(CHEAT_MONEY_AMOUNT)
+	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
+	_show_message_key.rpc("MSG_CHEAT_MONEY")
 	_broadcast_run()
 
 

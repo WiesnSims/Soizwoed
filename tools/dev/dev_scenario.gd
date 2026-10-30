@@ -11,6 +11,7 @@ extends Node
 ##   coop   – host with one ENet client (`--wait-peers=1`): drops a crystal from above, carries
 ##            a salt block together with the client, hands it over, then the client dies.
 ##   coopclient – the client side of coop: logs what it sees of all that.
+##   cheat  – in the Gasthaus: types the money cheat word, logs the money before and after.
 
 var _game: Game
 var _log_left: float = 0.0
@@ -23,6 +24,9 @@ func run(game: Game, scenario: String) -> void:
 		await get_tree().process_frame
 	if scenario == "cart":
 		await _cart()
+		return
+	if scenario == "cheat":
+		await _cheat()
 		return
 	if scenario == "settings":
 		_game.hud._open_settings()  # for screenshots of its layout
@@ -251,6 +255,19 @@ func _cart() -> void:
 	await get_tree().create_timer(0.5).timeout
 	for item: WorldItem in [lamp, crystal, dropped]:
 		print("[scenario] %s %s, %.2f m from its slot" % [item.data.id, WorldItem.State.keys()[item.state], item.global_position.distance_to(item.follow.global_position) if item.follow != null else -1.0])
+
+
+func _cheat() -> void:
+	var before: int = GameState.run.money
+	for letter: String in Game.CHEAT_MONEY_WORD:
+		var key: InputEventKey = InputEventKey.new()
+		key.pressed = true
+		key.unicode = letter.unicode_at(0)
+		Input.parse_input_event(key)
+		await get_tree().process_frame
+	for i: int in 10:
+		await get_tree().process_frame
+	print("[scenario] cheat: money %d -> %d, shown %d" % [before, GameState.run.money, int(_game.run_info.money)])
 
 
 func _look() -> void:

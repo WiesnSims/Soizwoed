@@ -48,6 +48,11 @@ func finish_shift(loot_value: int) -> bool:
 	return true
 
 
+## Test cheat: money that was not earned (not counted in the score).
+func add_cheat_money(amount: int) -> void:
+	money += amount
+
+
 func can_afford(price: int) -> bool:
 	return price <= money
 
