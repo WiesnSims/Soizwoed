@@ -175,6 +175,28 @@ extends Resource
 ## Teammates' voices over the Funkgerät never get quieter than this (dB), at any distance.
 @export var funk_volume_db: float = -6.0
 
+@export_group("Loot")
+## The Kuckucksuhr cuckoos every this many seconds (random between the two) and is heard this
+## far (m) by creatures that listen.
+@export var cuckoo_interval_min: float = 25.0
+@export var cuckoo_interval_max: float = 60.0
+@export var noise_cuckoo: float = 30.0
+## Stück vom Mann im Salz: while someone carries it (or wheels it), creatures sense it every
+## `curse_pulse_seconds`, from further away the longer it is carried.
+@export var curse_pulse_seconds: float = 3.0
+@export var curse_reach_start: float = 15.0
+@export var curse_reach_per_second: float = 0.4
+@export var curse_reach_max: float = 50.0
+## Alte Jausenbox: chance there is still a Speckbrot inside.
+@export var speckbrot_chance: float = 0.5
+@export var speckbrot_heal: int = 15
+@export var speckbrot_eat_seconds: float = 2.5
+## A hundred years old: the chance it makes you sick, and how much that costs over how long.
+## Food poisoning never kills (it stops at 1 health).
+@export var speckbrot_poison_chance: float = 0.35
+@export var speckbrot_poison_damage: int = 20
+@export var speckbrot_poison_seconds: float = 10.0
+
 @export_group("Hazards")
 ## Share of hazard spots that hold a firedamp pocket, plus this much per cycle.
 @export var gas_share: float = 0.3
@@ -231,6 +253,42 @@ extends Resource
 @export var schichtmeister_delay: float = 12.0
 @export var schichtmeister_speed: float = 6.4
 @export var schichtmeister_damage: int = 100
+
+@export_group("Percht")
+## Near-unkillable: this much health before it gives up and goes back into the dark.
+@export var percht_health: int = 800
+@export var percht_patrol_speed: float = 1.6
+@export var percht_investigate_speed: float = 2.4
+## Faster than walking (3.4), slower than sprinting (5.8).
+@export var percht_chase_speed: float = 4.0
+## How far it sees a miner with a burning lamp, and one in the dark; crouching multiplies it.
+@export var percht_sight_lit: float = 18.0
+@export var percht_sight_dark: float = 6.0
+@export var percht_crouch_factor: float = 0.4
+## Out of sight this long and it has lost you; then it searches this long.
+@export var percht_lose_seconds: float = 4.0
+@export var percht_search_seconds: float = 8.0
+@export var percht_damage: int = 60
+@export var percht_strike_cooldown: float = 2.5
+
+@export_group("Salzweibl")
+@export var salzweibl_damage: int = 50
+@export var salzweibl_strike_distance: float = 2.0
+## A miner with a teammate this close is not alone: it will not strike, it flees.
+@export var salzweibl_together_distance: float = 7.0
+## It calls every this many seconds (random between the two) while its miner is in range.
+@export var salzweibl_call_min: float = 8.0
+@export var salzweibl_call_max: float = 14.0
+@export var salzweibl_call_range: float = 35.0
+## Where it waits: this far from the miner it lures (m).
+@export var salzweibl_lure_min: float = 10.0
+@export var salzweibl_lure_max: float = 25.0
+## After striking or fleeing it is gone this long, then waits somewhere new.
+@export var salzweibl_hide_seconds: float = 25.0
+## Voice snippets it keeps of each miner (only miners who allow it, DECISIONS.md).
+@export var salzweibl_snippet_min_seconds: float = 0.6
+@export var salzweibl_snippet_max_seconds: float = 4.0
+@export var salzweibl_snippets_kept: int = 6
 
 @export_group("Creature voices")
 ## Minimum seconds between two lines of the same creature.

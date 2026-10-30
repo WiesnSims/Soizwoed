@@ -20,7 +20,13 @@
 [ext_resource type="Resource" path="res://items/data/seil.tres" id="18_seil"]
 [ext_resource type="Resource" path="res://items/data/pfeiferl.tres" id="19_pfeiferl"]
 [ext_resource type="Resource" path="res://items/data/hunt.tres" id="20_hunt"]
+[ext_resource type="Resource" path="res://items/data/keltisches_bronzeschwert.tres" id="21_bronzeschwert"]
+[ext_resource type="Resource" path="res://items/data/goldene_haube.tres" id="22_haube"]
+[ext_resource type="Resource" path="res://items/data/kuckucksuhr.tres" id="23_kuckucksuhr"]
+[ext_resource type="Resource" path="res://items/data/gamsbart_hut.tres" id="24_gamsbart"]
+[ext_resource type="Resource" path="res://items/data/mann_im_salz.tres" id="25_mann"]
+[ext_resource type="Resource" path="res://items/data/speckbrot.tres" id="26_speckbrot"]
 
 [resource]
 script = ExtResource("1_catalog")
-items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre"), ExtResource("10_leiche"), ExtResource("11_stirnlampe"), ExtResource("12_alphorn"), ExtResource("13_boeller"), ExtResource("14_rauchbombe"), ExtResource("15_funkgeraet"), ExtResource("16_obstler"), ExtResource("17_leberkaessemmel"), ExtResource("18_seil"), ExtResource("19_pfeiferl"), ExtResource("20_hunt")])
+items = Array[Resource]([ExtResource("2_salzkristall"), ExtResource("3_alte_jausenbox"), ExtResource("4_antike_grubenlampe"), ExtResource("5_steinsalz_block"), ExtResource("6_kaiserliches_abzeichen"), ExtResource("7_spitzhacke"), ExtResource("8_karbidpatrone"), ExtResource("9_schubkarre"), ExtResource("10_leiche"), ExtResource("11_stirnlampe"), ExtResource("12_alphorn"), ExtResource("13_boeller"), ExtResource("14_rauchbombe"), ExtResource("15_funkgeraet"), ExtResource("16_obstler"), ExtResource("17_leberkaessemmel"), ExtResource("18_seil"), ExtResource("19_pfeiferl"), ExtResource("20_hunt"), ExtResource("21_bronzeschwert"), ExtResource("22_haube"), ExtResource("23_kuckucksuhr"), ExtResource("24_gamsbart"), ExtResource("25_mann"), ExtResource("26_speckbrot")])

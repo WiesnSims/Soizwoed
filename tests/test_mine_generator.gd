@@ -110,9 +110,29 @@ func test_salzsee_chunks_cover_every_cell() -> void:
 	assert_gt(lakes, 10, "hardly any lake caverns in 40 Salzsee mines")
 
 
+func test_tiefe_has_at_most_one_shrine_and_covers_every_cell() -> void:
+	var deep_set: ChunkSet = load("res://world/chunks/die_tiefe/die_tiefe.tres")
+	var config: BalanceConfig = load("res://balance.tres")
+	var with_shrine: int = 0
+	for seed_value: int in range(40):
+		var layout: MineLayout = MineGenerator.generate(seed_value, MineParams.from_balance(config, 2), deep_set)
+		assert_eq(layout.depth.size(), layout.cells.size(), "seed %d has unreachable cells" % seed_value)
+		var shrines: int = 0
+		for cell: Vector2i in layout.cells:
+			var entry: ChunkEntry = deep_set.entries[layout.chunk_index[cell]]
+			var turned: int = GridDir.rotate_mask(entry.openings, layout.chunk_rotation[cell])
+			assert_eq(turned & layout.cells[cell], layout.cells[cell], "seed %d cell %s" % [seed_value, cell])
+			assert_false(entry.rails, "no rails in Die Tiefe")
+			shrines += 1 if entry.scene.resource_path.ends_with("salzmann.tscn") else 0
+		assert_lte(shrines, 1, "seed %d has %d shrines" % [seed_value, shrines])
+		with_shrine += shrines
+	assert_gt(with_shrine, 24, "the Mann im Salz should be in most Tiefe mines")
+
+
 func test_every_section_has_rules_and_creatures() -> void:
 	var config: BalanceConfig = load("res://balance.tres")
-	for path: String in ["res://world/chunks/oberer_stollen/oberer_stollen.tres", "res://world/chunks/salzsee/salzsee.tres"]:
+	for path: String in ["res://world/chunks/oberer_stollen/oberer_stollen.tres", "res://world/chunks/salzsee/salzsee.tres",
+			"res://world/chunks/die_tiefe/die_tiefe.tres"]:
 		var chunk_set: ChunkSet = load(path)
 		assert_not_null(config.biome_rule(chunk_set.id), "no BiomeRule for %s" % chunk_set.id)
 		assert_false(chunk_set.creatures.is_empty())

@@ -1,0 +1,54 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="box"]
+[ext_resource type="Script" path="res://world/props/bones.gd" id="bones"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="rubble"]
+
+[node name="Straight" type="Node3D"]
+script = ExtResource("chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Center" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 6)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_S" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Bones1" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 1.2, 0, 1.2)
+script = ExtResource("bones")
+seed_value = 21
+count = 5
+
+[node name="Rubble1" parent="Props" instance=ExtResource("rubble")]
+transform = Transform3D(0.0, 0, -1.0, 0, 1, 0, 1.0, 0, 0.0, -1.3, 0, -2.0)
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -7)
+
+[node name="Nav_S" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 7)
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -1.2, 0.4, 1.8)
+
+[node name="Enemy1" type="Marker3D" parent="Markers" groups=["enemy_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 1.0, 0.1, -2.5)

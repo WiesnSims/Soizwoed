@@ -1,0 +1,68 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://enemies/voice_line.gd" id="2_line"]
+[ext_resource type="PackedScene" path="res://enemies/salzweibl/salzweibl.tscn" id="3_scene"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/call_hilfe.ogg" id="s0"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/call_kumpl.ogg" id="s1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/call_gfundn.ogg" id="s2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/call_aussi.ogg" id="s3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/call_hallo.ogg" id="s4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/take_mei.ogg" id="s5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/flee_zwoa.ogg" id="s6"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/salzweibl/hit_au.ogg" id="s7"]
+
+[sub_resource type="Resource" id="line_call_hilfe"]
+script = ExtResource("2_line")
+id = &"call_hilfe"
+moment = 1
+stream = ExtResource("s0")
+
+[sub_resource type="Resource" id="line_call_kumpl"]
+script = ExtResource("2_line")
+id = &"call_kumpl"
+moment = 1
+stream = ExtResource("s1")
+
+[sub_resource type="Resource" id="line_call_gfundn"]
+script = ExtResource("2_line")
+id = &"call_gfundn"
+moment = 1
+stream = ExtResource("s2")
+
+[sub_resource type="Resource" id="line_call_aussi"]
+script = ExtResource("2_line")
+id = &"call_aussi"
+moment = 1
+stream = ExtResource("s3")
+
+[sub_resource type="Resource" id="line_call_hallo"]
+script = ExtResource("2_line")
+id = &"call_hallo"
+moment = 1
+stream = ExtResource("s4")
+
+[sub_resource type="Resource" id="line_take_mei"]
+script = ExtResource("2_line")
+id = &"take_mei"
+moment = 2
+stream = ExtResource("s5")
+
+[sub_resource type="Resource" id="line_flee_zwoa"]
+script = ExtResource("2_line")
+id = &"flee_zwoa"
+moment = 5
+stream = ExtResource("s6")
+
+[sub_resource type="Resource" id="line_hit_au"]
+script = ExtResource("2_line")
+id = &"hit_au"
+moment = 3
+stream = ExtResource("s7")
+
+[resource]
+script = ExtResource("1_data")
+id = &"salzweibl"
+name_key = "CREATURE_SALZWEIBL"
+scene = ExtResource("3_scene")
+voice_lines = Array[ExtResource("2_line")]([SubResource("line_call_hilfe"), SubResource("line_call_kumpl"), SubResource("line_call_gfundn"), SubResource("line_call_aussi"), SubResource("line_call_hallo"), SubResource("line_take_mei"), SubResource("line_flee_zwoa"), SubResource("line_hit_au")])

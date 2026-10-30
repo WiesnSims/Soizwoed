@@ -105,6 +105,7 @@ func _build_audio(grid: GridContainer) -> void:
 	_slider(grid, "SET_VOICE", data.voice_volume, 0.0, 1.0, 0.05, true, func(v: float) -> void: data.voice_volume = v)
 	_check(grid, "SET_CREATURE_LINES", data.creature_lines, func(on: bool) -> void: data.creature_lines = on)
 	_check(grid, "SET_OPEN_MIC", data.voice_open_mic, func(on: bool) -> void: data.voice_open_mic = on)
+	_check(grid, "SET_VOICE_LURE", data.voice_lure, func(on: bool) -> void: data.voice_lure = on)
 
 
 func _build_display(grid: GridContainer) -> void:

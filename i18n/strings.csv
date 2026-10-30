@@ -203,3 +203,20 @@ MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
 MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
 MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."
 SET_AUTO_RESOLUTION,"FSR 2: 3D-Auflösung automatisch (höchstens 1080p)"
+ITEM_KELTISCHES_BRONZESCHWERT,Keltisches Bronzeschwert
+ITEM_GOLDENE_HAUBE,Goldene Haube
+ITEM_KUCKUCKSUHR,Kuckucksuhr
+ITEM_GAMSBART_HUT,Gamsbart-Hut
+ITEM_MANN_IM_SALZ,"Stück vom ""Mann im Salz"""
+ITEM_SPECKBROT,Speckbrot (hundert Johr oid)
+USE_WEAR,Aufsetzn / obnehma
+USE_OPEN,Aufmacha
+USE_EAT_OLD,Trau di und iss
+USE_STRIKE,Zuaschlogn
+MSG_BOX_EMPTY,"De is laar, de host scho aufgmacht."
+MSG_BOX_NOTHING,"Nix drin außer Bröseln."
+MSG_BOX_SPECKBROT,"A Speckbrot! Hundert Johr oid… schaut no guat aus?"
+MSG_POISONED,"Uiii. Des Speckbrot wor nimma guat…"
+BIOME_DIE_TIEFE,Die Tiefe
+BIOME_DIE_TIEFE_DESC,"Keltische Stollen, Knochn und da Mann im Salz. Vü Gas, ka Gleis, des beste Zeig – und de Percht."
+SET_VOICE_LURE,"Salzweibl derf mei Stimm nochmochn"

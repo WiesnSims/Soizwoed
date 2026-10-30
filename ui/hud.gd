@@ -391,6 +391,8 @@ func _update_slots(player: Player) -> void:
 			text += "  (%d/%d)" % [cart.used_units(), Balance.config.schubkarre_capacity_medium]
 		elif inventory.shared_carry:
 			text += "  " + tr("HUD_TOGETHER")
+		elif hands.data.melee_damage > 0:
+			text += "   [%s] %s" % [tr("HUD_USE_KEY"), tr("USE_STRIKE")]
 		_hands_label.text = text + "   [G] " + tr("HUD_DROP")
 
 

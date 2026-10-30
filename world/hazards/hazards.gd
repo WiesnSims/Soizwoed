@@ -39,7 +39,7 @@ func build(mine: Mine, cycle: int, rule: BiomeRule) -> void:
 	_rockfall_left = _config.rockfall_interval
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = mine.seed_value ^ 0x6a5
-	var gas_share: float = _config.gas_share_for_cycle(cycle)
+	var gas_share: float = minf(0.85, _config.gas_share_for_cycle(cycle) * rule.gas_mult)
 	var index: int = 0
 	for cell: Vector2i in mine.layout.cells:
 		var chunk: Chunk = mine.chunks[cell]

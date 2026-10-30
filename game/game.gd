@@ -19,6 +19,7 @@ const FADE_SECONDS: float = 0.6
 const BIOME_PATHS: PackedStringArray = [
 	"res://world/chunks/oberer_stollen/oberer_stollen.tres",
 	"res://world/chunks/salzsee/salzsee.tres",
+	"res://world/chunks/die_tiefe/die_tiefe.tres",
 ]
 const PLAYER_SCENE: PackedScene = preload("res://player/player.tscn")
 const CAGE_SCENE: PackedScene = preload("res://world/lift/foerderkorb.tscn")
@@ -31,6 +32,8 @@ const CREATURE_PATHS: PackedStringArray = [
 	"res://enemies/tatzelwurm/tatzelwurm.tres",
 	"res://enemies/kasermandl/kasermandl.tres",
 	"res://enemies/schichtmeister/schichtmeister.tres",
+	"res://enemies/salzweibl/salzweibl.tres",
+	"res://enemies/percht/percht.tres",
 ]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
@@ -86,6 +89,12 @@ var _voice_quiet_until: float = 0.0
 var _item_sync_left: float = 0.0
 ## Seconds since the last living player died in this shift (host).
 var _all_dead_time: float = 0.0
+## Host: food poisoning (Speckbrot), peer -> [seconds left, damage per second, fraction carried over].
+var _poisoned: Dictionary = {}
+## Host: seconds until each special loot item (Kuckucksuhr, Mann im Salz) acts next, and how
+## long the cursed piece has been carried, by item name.
+var _special_left: Dictionary = {}
+var _cursed_for: Dictionary = {}
 
 @onready var hub: Gasthaus = $Hub
 @onready var hub_cage: Foerderkorb = $Hub/Foerderkorb
@@ -112,6 +121,7 @@ func _exit_tree() -> void:
 
 func _ready() -> void:
 	_config = Balance.config
+	VoiceChat.snippets.clear()  # nobody's voice outlives the session
 	catalog = load(CATALOG_PATH) as ItemCatalog
 	for path: String in BIOME_PATHS:
 		biomes.append(load(path) as ChunkSet)
@@ -150,6 +160,8 @@ func _process(delta: float) -> void:
 		if multiplayer.is_server():
 			_host_tick_shift(delta)
 			_host_tick_noise(delta)
+			_host_tick_specials(delta)
+			_host_tick_poison(delta)
 
 
 # --- session --------------------------------------------------------------------------------------
@@ -302,7 +314,7 @@ func _spawn_loot(seed_value: int) -> void:
 		var options: Array[ItemData] = []
 		var weights: PackedFloat32Array = []
 		for data: ItemData in loot:
-			if data.min_depth <= depth:
+			if data.min_depth <= depth and data.spawns_in(mine.chunk_set.id):
 				options.append(data)
 				weights.append(data.spawn_weight)
 		var picked: ItemData = options[rng.rand_weighted(weights)]
@@ -311,6 +323,13 @@ func _spawn_loot(seed_value: int) -> void:
 		if i >= spots.size():
 			xform.origin += Vector3(rng.randf_range(-0.6, 0.6), 0.2, rng.randf_range(-0.6, 0.6))
 		_spawn_item_at(picked.id, value, xform)
+	# Relics lie where their chunk puts them (the Mann im Salz in Die Tiefe).
+	for spot: Array in mine.markers_with_depth(&"relic_spawn"):
+		var marker: Marker3D = spot[0]
+		var relic: ItemData = catalog.by_id(StringName(str(marker.get_meta(&"item", "mann_im_salz"))))
+		var relic_value: int = roundi(rng.randi_range(relic.value_min, relic.value_max) * (1.0 + int(spot[1]) * _config.loot_value_per_depth) * _biome_rule().loot_value_mult)
+		_spawn_item_at(relic.id, relic_value, marker.global_transform)
+		print("[game] relic %s worth %d" % [relic.id, relic_value])
 	print("[game] spawned %d loot items" % count)
 
 
@@ -413,6 +432,9 @@ func _descend() -> void:
 	_enemy_budget = _config.enemy_budget(run.cycle, run.player_count) * _biome_rule().enemy_budget_mult
 	_enemy_budget_left = _enemy_budget
 	_smokes.clear()
+	_special_left.clear()
+	_cursed_for.clear()
+	_poisoned.clear()
 	_meister_came = false
 	_spawn_creatures_up_to(_config.enemy_start_share)
 	_trickle_left = _config.enemy_trickle_seconds
@@ -860,9 +882,125 @@ func request_consume(item_path: NodePath, peer: int) -> void:
 			play_sound_everywhere.rpc("drink", item.global_position)
 		ItemData.Use.EAT:
 			host_heal_player(player, _config.leberkaese_heal)  # the chewing was heard already
+		ItemData.Use.EAT_OLD:
+			host_heal_player(player, _config.speckbrot_heal)
+			if randf() < _config.speckbrot_poison_chance:
+				_poisoned[player.peer_id] = [_config.speckbrot_poison_seconds, _config.speckbrot_poison_damage / _config.speckbrot_poison_seconds, 0.0]
+				if player.peer_id == multiplayer.get_unique_id():
+					_poison_felt()
+				else:
+					_poison_felt.rpc_id(player.peer_id)
+				print("[game] P%d got food poisoning" % player.peer_id)
 		_:
 			play_sound_everywhere.rpc("karbid_open", item.global_position)
 	item.host_vanish()
+
+
+## The Alte Jausenbox opened (click with it in the pocket): sometimes a Speckbrot is still inside.
+@rpc("any_peer", "call_local", "reliable")
+func request_open(item_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var player: Player = player_by_peer(_sender())
+	if item == null or player == null or item.holder_peer != player.peer_id or item.data.use != ItemData.Use.OPEN:
+		return
+	play_sound_everywhere.rpc("karbid_open", item.global_position, -4.0, 12.0)
+	if item.opened:
+		message_to(player.peer_id, "MSG_BOX_EMPTY")
+		return
+	item.host_set_opened()
+	if randf() >= _config.speckbrot_chance:
+		message_to(player.peer_id, "MSG_BOX_NOTHING")
+		return
+	message_to(player.peer_id, "MSG_BOX_SPECKBROT")
+	var at: Vector3 = player.global_position + Vector3.UP * 1.2 - player.global_basis.z * 0.5
+	var bread: WorldItem = _spawn_item_at(&"speckbrot", 0, Transform3D(Basis.IDENTITY, at))
+	# Into a free pocket once every peer has it; otherwise it stays on the floor.
+	await get_tree().create_timer(0.3).timeout
+	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
+	if is_instance_valid(bread) and place != Inventory.NONE and bread.state == WorldItem.State.FREE:
+		bread.host_take(player.peer_id, place)
+
+
+## The Gamsbart-Hut on or off the head (it stays in its pocket slot).
+@rpc("any_peer", "call_local", "reliable")
+func request_wear(item_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	if item != null and item.holder_peer == _sender() and item.state == WorldItem.State.STORED and item.data.use == ItemData.Use.WEAR:
+		item.host_set_worn(not item.worn)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _poison_felt() -> void:
+	show_message(tr("MSG_POISONED"), 4.0)
+	var player: Player = local_player()
+	if player != null:
+		player.feel_sick(_config.speckbrot_poison_seconds)
+
+
+## Food poisoning costs health bit by bit, but never the last point (host).
+func _host_tick_poison(delta: float) -> void:
+	for peer: int in _poisoned.keys():
+		var player: Player = player_by_peer(peer)
+		var state: Array = _poisoned[peer]
+		state[0] = float(state[0]) - delta
+		state[2] = float(state[2]) + float(state[1]) * delta
+		var due: int = floori(float(state[2]))
+		state[2] = float(state[2]) - due
+		if player != null and player.alive and due > 0 and player.health > 1:
+			host_damage_player(player, mini(due, player.health - 1))
+		if player == null or not player.alive or float(state[0]) <= 0.0:
+			_poisoned.erase(peer)
+
+
+## Loot that does something by itself (host): the Kuckucksuhr cuckoos now and then, loud
+## enough to draw what listens; the Stück vom Mann im Salz calls the creatures while someone
+## carries it, from further away the longer they do (DESIGN.md §5).
+func _host_tick_specials(delta: float) -> void:
+	for item: WorldItem in _items():
+		if item.data.special == ItemData.Special.NONE or item.global_position.y > HUB_FLOOR_ABOVE:
+			continue
+		var key: String = item.name
+		if not _special_left.has(key):
+			_special_left[key] = randf_range(_config.cuckoo_interval_min, _config.cuckoo_interval_max) * 0.5
+		_special_left[key] = float(_special_left[key]) - delta
+		match item.data.special:
+			ItemData.Special.CUCKOO:
+				if float(_special_left[key]) <= 0.0:
+					_special_left[key] = randf_range(_config.cuckoo_interval_min, _config.cuckoo_interval_max)
+					_cuckoo.rpc(item.get_path())
+					host_noise(item.global_position, _config.noise_cuckoo)
+			ItemData.Special.CURSED:
+				var carried: bool = item.state == WorldItem.State.HELD or item.state == WorldItem.State.CARTED
+				_cursed_for[key] = float(_cursed_for.get(key, 0.0)) + delta if carried else 0.0
+				if carried and float(_special_left[key]) <= 0.0:
+					_special_left[key] = _config.curse_pulse_seconds
+					host_noise(item.global_position, curse_reach(float(_cursed_for[key])))
+					_curse_whisper.rpc(item.get_path())
+
+
+## How far creatures sense the Mann im Salz after it was carried `seconds`.
+func curse_reach(seconds: float) -> float:
+	return minf(_config.curse_reach_max, _config.curse_reach_start + seconds * _config.curse_reach_per_second)
+
+
+@rpc("authority", "call_local", "reliable")
+func _cuckoo(item_path: NodePath) -> void:
+	var item: Node3D = get_node_or_null(item_path) as Node3D
+	if item != null:
+		Audio.play_at("cuckoo", item.global_position + Vector3.UP * 0.3, &"SFX", 2.0, 45.0)
+		print("[game] %s cuckoos" % item.name)
+
+
+## A whisper only whoever carries the cursed piece (or stands right by) hears.
+@rpc("authority", "call_local", "reliable")
+func _curse_whisper(item_path: NodePath) -> void:
+	var item: Node3D = get_node_or_null(item_path) as Node3D
+	if item != null and randf() < 0.6:
+		Audio.play_at("curse_whisper", item.global_position, &"Creatures", -4.0, 6.0, randf_range(0.9, 1.05))
 
 
 func host_heal_player(player: Player, amount: int) -> void:
@@ -1512,7 +1650,8 @@ func _tick_ambience(delta: float) -> void:
 	var player: Player = local_player()
 	if player == null or player.global_position.y > HUB_FLOOR_ABOVE:
 		return
-	var sound: String = AMBIENCE[randi() % AMBIENCE.size()]
+	var sounds: PackedStringArray = mine.chunk_set.ambience if mine != null and not mine.chunk_set.ambience.is_empty() else AMBIENCE
+	var sound: String = sounds[randi() % sounds.size()]
 	var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), randf_range(0.5, 1.0), randf_range(-1.0, 1.0)).normalized() * randf_range(5.0, 18.0)
-	var volume: float = -4.0 if sound == "rumble" else -10.0
+	var volume: float = -4.0 if sound == "rumble" or sound == "deep_groan" else -10.0
 	Audio.play_at(sound, player.global_position + offset, &"Ambience", volume, 40.0, randf_range(0.85, 1.1))

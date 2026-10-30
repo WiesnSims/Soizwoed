@@ -7,7 +7,9 @@ enum Kind { LOOT, TOOL, CONSUMABLE }
 enum WeightClass { LIGHT, MEDIUM, HEAVY }
 ## What the use key (left click) does with it in the hand (Player._use_active). The numbers
 ## behind each use live in balance.tres.
-enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO }
+enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO, WEAR, OPEN, EAT_OLD }
+## Something the item does by itself in the mine (host, Game._host_tick_specials).
+enum Special { NONE, CUCKOO, CURSED }
 
 @export var id: StringName = &""
 ## Translation key of the shown name.
@@ -24,9 +26,17 @@ enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFE
 @export var price: int = 0
 @export var spawn_weight: float = 1.0
 @export var min_depth: int = 0
+## Only spawns in these mine sections (ChunkSet ids); empty = everywhere.
+@export var biomes: Array[StringName] = []
 @export var scene: PackedScene
 ## Melee damage when used as a weapon (0 = not a weapon).
 @export var melee_damage: int = 0
 ## Its hits also break salt walls and rubble (the Spitzhacke).
 @export var breaks_rock: bool = false
 @export var use: Use = Use.NONE
+@export var special: Special = Special.NONE
+
+
+## Whether this loot may spawn in the mine section `biome`.
+func spawns_in(biome: StringName) -> bool:
+	return biomes.is_empty() or biome in biomes

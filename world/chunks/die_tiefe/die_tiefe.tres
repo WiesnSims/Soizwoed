@@ -1,0 +1,92 @@
+[gd_resource type="Resource" script_class="ChunkSet" format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk_set.gd" id="1_set"]
+[ext_resource type="Script" path="res://world/chunks/chunk_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/station.tscn" id="s_station"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/straight.tscn" id="s_straight"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/corner.tscn" id="s_corner"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/t.tscn" id="s_t"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/cross.tscn" id="s_cross"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/knochenkammer.tscn" id="s_knochenkammer"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/heidenhalle.tscn" id="s_heidenhalle"]
+[ext_resource type="PackedScene" path="res://world/chunks/die_tiefe/salzmann.tscn" id="s_salzmann"]
+
+[sub_resource type="Resource" id="Resource_station"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_station")
+openings = 1
+weight = 1.0
+min_depth = 0
+rails = false
+is_station = true
+
+[sub_resource type="Resource" id="Resource_straight"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_straight")
+openings = 5
+weight = 1.0
+min_depth = 0
+rails = false
+
+[sub_resource type="Resource" id="Resource_corner"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_corner")
+openings = 3
+weight = 1.0
+min_depth = 0
+rails = false
+
+[sub_resource type="Resource" id="Resource_t"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_t")
+openings = 11
+weight = 0.9
+min_depth = 0
+rails = false
+
+[sub_resource type="Resource" id="Resource_cross"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_cross")
+openings = 15
+weight = 0.7
+min_depth = 0
+rails = false
+
+[sub_resource type="Resource" id="Resource_knochenkammer"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_knochenkammer")
+openings = 1
+weight = 1.0
+min_depth = 1
+rails = false
+
+[sub_resource type="Resource" id="Resource_heidenhalle"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_heidenhalle")
+openings = 15
+weight = 0.8
+min_depth = 1
+rails = false
+
+[sub_resource type="Resource" id="Resource_salzmann"]
+script = ExtResource("2_entry")
+scene = ExtResource("s_salzmann")
+openings = 1
+weight = 3.0
+min_depth = 3
+rails = false
+hazards = false
+max_count = 1
+
+[resource]
+script = ExtResource("1_set")
+id = &"die_tiefe"
+biome_name_key = "BIOME_DIE_TIEFE"
+cell_size = 14.0
+entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_knochenkammer"), SubResource("Resource_heidenhalle"), SubResource("Resource_salzmann")])
+superset_weight = 0.25
+creatures = Array[StringName]([&"bergmandl", &"tatzelwurm", &"kasermandl", &"salzweibl", &"percht"])
+echo = 0.4
+passage_size = Vector2(4, 3.5)
+ambience = PackedStringArray("drip", "drip", "rumble", "deep_groan", "stone_settle", "stone_settle")
+footsteps = "footstep_salt"

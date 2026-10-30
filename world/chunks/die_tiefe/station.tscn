@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="box"]
+[ext_resource type="PackedScene" path="res://world/props/hanging_lantern.tscn" id="lantern"]
+[ext_resource type="PackedScene" path="res://world/props/crate.tscn" id="crate"]
+[ext_resource type="Script" path="res://world/props/bones.gd" id="bones"]
+
+[node name="Station" type="Node3D"]
+script = ExtResource("chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Room" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 1.5)
+script = ExtResource("box")
+size = Vector3(8, 4.5, 8)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4.75)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4.5)
+
+[node name="Shaft" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 4.5, 3.75)
+script = ExtResource("box")
+size = Vector3(3.5, 6, 3.5)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="LanternL" parent="Props" instance=ExtResource("lantern")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -3.0, 4.2, 0.5)
+
+[node name="LanternR" parent="Props" instance=ExtResource("lantern")]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 3.0, 4.2, 0.5)
+
+[node name="Crate1" parent="Props" instance=ExtResource("crate")]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, -3.2, 0, -0.8)
+
+[node name="Bones1" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 3.0, 0, -1.2)
+script = ExtResource("bones")
+seed_value = 11
+count = 4
+skull = false
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0.5)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -7)
+
+[node name="LiftAnchor" type="Marker3D" parent="Markers"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 3.75)

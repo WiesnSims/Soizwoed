@@ -30,6 +30,8 @@ var voice_volume: float = 1.0
 var creature_lines: bool = true
 ## Voice chat: open mic instead of push-to-talk (V).
 var voice_open_mic: bool = false
+## The Salzweibl may play back things you said to lure your teammates (DESIGN.md §6).
+var voice_lure: bool = true
 # Display
 var window_mode: WindowMode = WindowMode.WINDOWED
 var vsync: bool = true
@@ -76,6 +78,7 @@ func save_to(file: ConfigFile) -> void:
 	file.set_value("audio", "voice", voice_volume)
 	file.set_value("audio", "creature_lines", creature_lines)
 	file.set_value("voice", "open_mic", voice_open_mic)
+	file.set_value("voice", "lure", voice_lure)
 	file.set_value("display", "window_mode", window_mode)
 	file.set_value("display", "vsync", vsync)
 	file.set_value("display", "fps_limit", fps_limit)
@@ -100,6 +103,7 @@ func load_from(file: ConfigFile) -> void:
 	voice_volume = float(file.get_value("audio", "voice", voice_volume))
 	creature_lines = bool(file.get_value("audio", "creature_lines", creature_lines))
 	voice_open_mic = bool(file.get_value("voice", "open_mic", voice_open_mic))
+	voice_lure = bool(file.get_value("voice", "lure", voice_lure))
 	window_mode = int(file.get_value("display", "window_mode", window_mode)) as WindowMode
 	vsync = bool(file.get_value("display", "vsync", vsync))
 	fps_limit = int(file.get_value("display", "fps_limit", fps_limit))

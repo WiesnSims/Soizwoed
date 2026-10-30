@@ -1,0 +1,74 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="gold"]
+albedo_color = Color(1, 0.78, 0.34, 1)
+metallic = 1.0
+roughness = 0.25
+
+[sub_resource type="StandardMaterial3D" id="lace"]
+albedo_color = Color(0.95, 0.83, 0.45, 1)
+metallic = 1.0
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="silk"]
+albedo_color = Color(0.04, 0.04, 0.05, 1)
+metallic = 0.0
+roughness = 0.35
+
+[sub_resource type="SphereMesh" id="shell"]
+radius = 0.12
+height = 0.12
+is_hemisphere = true
+radial_segments = 24
+rings = 8
+
+[sub_resource type="CylinderMesh" id="boden"]
+top_radius = 0.075
+bottom_radius = 0.075
+height = 0.02
+radial_segments = 20
+rings = 1
+
+[sub_resource type="TorusMesh" id="rim"]
+inner_radius = 0.112
+outer_radius = 0.126
+rings = 24
+ring_segments = 6
+
+[sub_resource type="BoxMesh" id="bow"]
+size = Vector3(0.14, 0.04, 0.012)
+
+[sub_resource type="CylinderShape3D" id="shape"]
+radius = 0.13
+height = 0.13
+
+
+[node name="GoldeneHaube" type="RigidBody3D"]
+mass = 0.7
+script = ExtResource("1_item")
+
+[node name="Shell" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0, 0)
+mesh = SubResource("shell")
+surface_material_override/0 = SubResource("gold")
+
+[node name="Rim" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.005, 0)
+mesh = SubResource("rim")
+surface_material_override/0 = SubResource("lace")
+
+[node name="Boden" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.0, 1.0, 0, -1.0, 0.0, 0, 0.06, 0.1)
+mesh = SubResource("boden")
+surface_material_override/0 = SubResource("lace")
+
+[node name="Bow" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0.125)
+mesh = SubResource("bow")
+surface_material_override/0 = SubResource("silk")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+shape = SubResource("shape")

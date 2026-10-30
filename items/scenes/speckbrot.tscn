@@ -1,0 +1,59 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="bread"]
+albedo_color = Color(0.28, 0.18, 0.1, 1)
+metallic = 0.0
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="speck"]
+albedo_color = Color(0.55, 0.28, 0.24, 1)
+metallic = 0.0
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="fat"]
+albedo_color = Color(0.85, 0.8, 0.7, 1)
+metallic = 0.0
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="slice"]
+size = Vector3(0.12, 0.018, 0.09)
+
+[sub_resource type="BoxMesh" id="speck"]
+size = Vector3(0.1, 0.008, 0.07)
+
+[sub_resource type="BoxMesh" id="fat"]
+size = Vector3(0.1, 0.009, 0.012)
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.12, 0.035, 0.09)
+
+
+[node name="Speckbrot" type="RigidBody3D"]
+mass = 0.15
+script = ExtResource("1_item")
+
+[node name="Slice" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.009, 0)
+mesh = SubResource("slice")
+surface_material_override/0 = SubResource("bread")
+
+[node name="Speck" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.022, 0)
+mesh = SubResource("speck")
+surface_material_override/0 = SubResource("speck")
+
+[node name="Fat1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.023, -0.02)
+mesh = SubResource("fat")
+surface_material_override/0 = SubResource("fat")
+
+[node name="Fat2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.023, 0.018)
+mesh = SubResource("fat")
+surface_material_override/0 = SubResource("fat")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.017, 0)
+shape = SubResource("shape")

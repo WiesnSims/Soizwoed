@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="BalanceConfig" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="BalanceConfig" format=3]
 
 [ext_resource type="Script" path="res://autoload/balance_config.gd" id="1_balance"]
 [ext_resource type="Script" path="res://enemies/creature_spawn_rule.gd" id="2_spawn"]
@@ -33,6 +33,20 @@ budget_cost = 0.0
 weight = 0.0
 max_alive = 1
 
+[sub_resource type="Resource" id="spawn_salzweibl"]
+script = ExtResource("2_spawn")
+id = &"salzweibl"
+budget_cost = 2.5
+weight = 1.0
+max_alive = 1
+
+[sub_resource type="Resource" id="spawn_percht"]
+script = ExtResource("2_spawn")
+id = &"percht"
+budget_cost = 4.0
+weight = 1.2
+max_alive = 1
+
 [sub_resource type="Resource" id="biome_oberer_stollen"]
 script = ExtResource("3_biome")
 id = &"oberer_stollen"
@@ -44,6 +58,15 @@ unlock_cycle = 1
 loot_value_mult = 1.35
 enemy_budget_mult = 1.2
 brine_share = 0.3
+
+[sub_resource type="Resource" id="biome_die_tiefe"]
+script = ExtResource("3_biome")
+id = &"die_tiefe"
+unlock_cycle = 2
+loot_value_mult = 1.7
+enemy_budget_mult = 1.4
+brine_share = 0.06
+gas_mult = 1.8
 
 [resource]
 script = ExtResource("1_balance")
@@ -118,5 +141,5 @@ voice_cooldown_per_creature = 10.0
 voice_global_gap = 2.0
 voice_max_distance = 25.0
 voice_idle_chance = 0.04
-creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister")])
-biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee")])
+creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht")])
+biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee"), SubResource("biome_die_tiefe")])

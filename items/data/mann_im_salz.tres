@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/manniminsalz.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"mann_im_salz"
+name_key = "ITEM_MANN_IM_SALZ"
+kind = 0
+weight_class = 2
+value_min = 380
+value_max = 520
+spawn_weight = 0.0
+min_depth = 0
+scene = ExtResource("2_scene")
+special = 2

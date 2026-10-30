@@ -1,0 +1,65 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="box"]
+[ext_resource type="Script" path="res://world/props/salt_man.gd" id="saltman"]
+[ext_resource type="Script" path="res://world/props/bones.gd" id="bones"]
+[ext_resource type="Script" path="res://world/props/celtic_stone.gd" id="stone"]
+
+[node name="Salzmann" type="Node3D"]
+script = ExtResource("chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -4.5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 5)
+
+[node name="Room" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 1.5)
+script = ExtResource("box")
+size = Vector3(7, 4.5, 7)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="SaltMan" type="StaticBody3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 4.4)
+script = ExtResource("saltman")
+
+[node name="Bones1" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.3, 0, 2.6)
+script = ExtResource("bones")
+seed_value = 81
+count = 5
+
+[node name="Bones2" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 2.4, 0, 3.0)
+script = ExtResource("bones")
+seed_value = 82
+count = 4
+skull = false
+
+[node name="Stone1" type="StaticBody3D" parent="Props"]
+transform = Transform3D(0.34202, 0, -0.939693, 0, 1, 0, 0.939693, 0, 0.34202, -2.6, 0, -0.6)
+script = ExtResource("stone")
+height = 1.6
+width = 0.7
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0.5)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -7)
+
+[node name="Relic" type="Marker3D" parent="Markers" groups=["relic_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -0.4, 0.4, 3.0)
+metadata/item = "mann_im_salz"
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 2.2, 0.4, 0.4)
+
+[node name="Enemy1" type="Marker3D" parent="Markers" groups=["enemy_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 1.5, 0.1, -1.0)

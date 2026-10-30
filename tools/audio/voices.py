@@ -188,9 +188,87 @@ SCHICHTMEISTER_LINES = {
     "hit_vorgsetzt": ("HIT", "An Vorgsetztn haun? Des werd vermerkt!"),
 }
 
+# --- Percht: growls under the bells, a word or two at most -------------------------------------------
+
+def percht_a(text):
+    """A: Untier – a word dragged up from a huge chest, an octave down, half growl."""
+    x, sr = speak(text, "de+m1", 95, 10, 6)
+    x = d.drive(d.normalize(rasp(at_pitch(x, sr, 0.62), 0.9)), 2.6)
+    growl = d.lowpass(d.glottal(55, len(x) / SR + 0.01, 0.12, 0.6)[: len(x)], 400) * envelope(x, 12.0) * 2.0
+    return finish(d.mix(d.bandpass(x, 60, 3800), growl), 0.4, 1.8)
+
+
+def percht_b(text):
+    """B: Maske – spoken from behind the carved wooden mask: boxy, hollow, resonant."""
+    x, sr = speak(text, "de+m3", 105, 18, 4)
+    x = d.drive(d.normalize(at_pitch(x, sr, 0.72)), 1.8)
+    x = d.bandpass(x, 90, 2600) + 0.6 * d.resonator(x, 420, 6) + 0.3 * d.resonator(x, 900, 8)
+    return finish(x, 0.42, 1.6)
+
+
+def percht_c(text):
+    """C: Raunacht – two voices at once, one growling low, one whispering on top."""
+    low, sr = speak(text, "de+m1", 100, 12, 5)
+    whisper, sr2 = speak(text, "de+whisper", 100, 30, 5)
+    x = layered(rasp(at_pitch(low, sr, 0.58), 1.0), at_pitch(whisper, sr2, 0.85), 1.0, 0.5)
+    return finish(d.lowpass(d.drive(x, 2.2), 4500), 0.45, 2.0)
+
+
+PERCHT_VARIANTS = {"A": percht_a, "B": percht_b, "C": percht_c}
+
+PERCHT_LINES = {
+    "spot_riach": ("SPOT", "I riach di."),
+    "spot_do": ("SPOT", "Do bist jo."),
+    "idle_raunacht": ("IDLE", "Raunacht."),
+    "idle_brumm": ("IDLE", "Mmmh. Pfui."),
+    "strike_hob": ("ACTION", "Hob di!"),
+    "hit_ha": ("HIT", "Ha!"),
+    "flee_wo": ("FLEE", "Wo bist?"),
+}
+
+
+# --- Salzweibl: generic calls when there is no teammate voice to copy ---------------------------------
+
+def weibl_a(text):
+    """A: Kumpl – a miner calling from further down the tunnel: a plain man's voice, a bit far."""
+    x, sr = speak(text, "de+m3", 150, 45)
+    x = d.bandpass(d.normalize(at_pitch(x, sr, 1.0)), 200, 4200)
+    return d.echo(finish(x, 0.35, 1.6), 0.28, 0.2, 2)
+
+
+def weibl_b(text):
+    """B: Weibl – a woman's voice, sweet, a little too close and slightly out of tune."""
+    x, sr = speak(text, "de+f2", 140, 62)
+    x = tremolo(d.normalize(at_pitch(x, sr, 1.04)), 5.0, 0.08)
+    detuned = at_pitch(x, SR, 1.012)
+    return finish(d.bandpass(layered(x, detuned, 1.0, 0.35), 220, 6000), 0.4, 1.8)
+
+
+def weibl_c(text):
+    """C: Echo – a voice that is not quite anyone's: half voice, half breath, under the salt."""
+    voiced, sr = speak(text, "de+m4", 140, 50)
+    whisper, sr2 = speak(text, "de+whisper", 140, 50)
+    x = layered(at_pitch(voiced, sr, 0.97), at_pitch(whisper, sr2, 0.97), 0.7, 0.6)
+    return d.echo(finish(d.bandpass(x, 250, 5000), 0.45, 2.0), 0.35, 0.3, 3)
+
+
+WEIBL_VARIANTS = {"A": weibl_a, "B": weibl_b, "C": weibl_c}
+
+SALZWEIBL_LINES = {
+    "call_hilfe": ("IDLE", "Hilfe! Do herüben!"),
+    "call_kumpl": ("IDLE", "Kumpl? Bist du des?"),
+    "call_gfundn": ("IDLE", "Kimm her, i hob wos gfundn!"),
+    "call_aussi": ("IDLE", "I find nimma aussi."),
+    "call_hallo": ("IDLE", "Hallo? Is do wer?"),
+    "take_mei": ("ACTION", "Jetzt bist mei."),
+    "flee_zwoa": ("FLEE", "Zu zweit? Na."),
+    "hit_au": ("HIT", "Lass mi!"),
+}
+
 # The voice the game uses until the user picks one in the sample check.
-# Bergmandl A was approved 2026-10-29; Kasermandl and Schichtmeister wait for the check.
-CHOICE = {"bergmandl": "A", "kasermandl": "A", "schichtmeister": "A"}
+# Bergmandl A (2026-10-29), Kasermandl A and Schichtmeister A (2026-10-30) are approved;
+# Percht and Salzweibl wait for the check.
+CHOICE = {"bergmandl": "A", "kasermandl": "A", "schichtmeister": "A", "percht": "A", "salzweibl": "A"}
 
 
 def giggle(fn):
@@ -225,6 +303,8 @@ CREATURES = {
     "bergmandl": (MANDL_VARIANTS, BERGMANDL_LINES),
     "kasermandl": (KASER_VARIANTS, KASERMANDL_LINES),
     "schichtmeister": (MEISTER_VARIANTS, SCHICHTMEISTER_LINES),
+    "percht": (PERCHT_VARIANTS, PERCHT_LINES),
+    "salzweibl": (WEIBL_VARIANTS, SALZWEIBL_LINES),
 }
 
 

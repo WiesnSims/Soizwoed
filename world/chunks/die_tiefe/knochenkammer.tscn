@@ -1,0 +1,91 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="box"]
+[ext_resource type="Script" path="res://world/props/bones.gd" id="bones"]
+[ext_resource type="PackedScene" path="res://world/props/rubble.tscn" id="rubble"]
+
+[node name="Knochenkammer" type="Node3D"]
+script = ExtResource("chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Room" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 1)
+script = ExtResource("box")
+size = Vector3(8, 3.5, 8)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Bones1" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.8, 0, 3.8)
+script = ExtResource("bones")
+seed_value = 60
+count = 7
+spread = 0.9
+
+[node name="Bones2" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 2.8, 0, 3.6)
+script = ExtResource("bones")
+seed_value = 61
+count = 7
+spread = 0.9
+
+[node name="Bones3" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -3.0, 0, 0.2)
+script = ExtResource("bones")
+seed_value = 62
+count = 7
+spread = 0.9
+
+[node name="Bones4" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 3.0, 0, -0.5)
+script = ExtResource("bones")
+seed_value = 63
+count = 7
+spread = 0.9
+
+[node name="Bones5" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0.0, 0, 4.2)
+script = ExtResource("bones")
+seed_value = 64
+count = 7
+spread = 0.9
+
+[node name="Bones6" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -1.0, 0, -2.0)
+script = ExtResource("bones")
+seed_value = 65
+count = 7
+spread = 0.9
+
+[node name="Rubble1" parent="Props" instance=ExtResource("rubble")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, 2.6, 0, 2.0)
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 1)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -7)
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.2, 0.4, 2.8)
+
+[node name="Loot2" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 2.2, 0.4, 2.6)
+
+[node name="Loot3" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.6, 0.4, -1.2)
+
+[node name="Loot4" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 1.0, 0.4, 4.0)
+
+[node name="Enemy1" type="Marker3D" parent="Markers" groups=["enemy_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0.5, 0.1, 2.0)

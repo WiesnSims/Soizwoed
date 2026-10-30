@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/kuckucksuhr.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"kuckucksuhr"
+name_key = "ITEM_KUCKUCKSUHR"
+kind = 0
+weight_class = 1
+value_min = 70
+value_max = 120
+spawn_weight = 0.7
+min_depth = 1
+scene = ExtResource("2_scene")
+fragile = true
+fragile_loss = 0.2
+special = 1

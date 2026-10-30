@@ -15,3 +15,5 @@ extends Resource
 @export var rails: bool = true
 ## Firedamp and brine may be put in it.
 @export var hazards: bool = true
+## At most this many in one mine (0 = no limit), e.g. the Salzmann shrine.
+@export var max_count: int = 0

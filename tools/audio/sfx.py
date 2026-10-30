@@ -439,7 +439,141 @@ def row(v):
     return d.loopable(d.mix(strokes * 0.5, creak_), 0.2)
 
 
+# --- M5: Percht, Salzweibl, loot, emotes, Die Tiefe ------------------------------------------------
+
+def cowbell(freq, seconds, level=1.0):
+    """One dented cowbell clonk: an inharmonic, quickly dying metal ring."""
+    ring = d.partials(seconds, [(freq, 1.0, 0.18), (freq * 1.48, 0.7, 0.12), (freq * 2.13, 0.45, 0.07), (freq * 3.4, 0.25, 0.04)])
+    return d.mix(ring, click(freq * 2.5, 0.004, 0.4)) * level
+
+
+def percht_bells(v):
+    """The Percht's belt of cowbells swinging as it walks (loop): uneven clonks, never in step."""
+    s = 4.0
+    hits = []
+    t = 0.0
+    while t < s - 0.3:
+        hits.append((t, cowbell(d.rng.choice([330, 392, 440, 523, 587]) * d.rng.uniform(0.98, 1.02), 0.6, d.rng.uniform(0.35, 1.0))))
+        t += d.rng.uniform(0.09, 0.28)
+    jangle = d.bandpass(d.noise(s), 2500, 8000) * (0.5 + 0.5 * d.smooth_noise(s, 3.0)) * 0.04
+    return d.loopable(cave(d.mix(*hits, jangle), 1.4, 0.3)[: d.n_of(s)], 0.3)
+
+
+def percht_steps(v):
+    """A heavy, fur-wrapped foot: a deep thud and a shake of bells."""
+    s = 0.6
+    return d.mix(thud(48 + 6 * v, 0.09, 1.0), d.lowpass(d.noise(s), 400) * d.env_exp(s, 0.06) * 0.4,
+                 (0.03, cowbell(440 + 60 * v, 0.4, 0.3)))
+
+
+def percht_roar(v):
+    """A bellow from behind the wooden mask: deep, rough and close."""
+    s = 1.8
+    voice = d.vowel_morph(d.glottal(d.glide(s, 70, 52), s, 0.08, 0.5), [(0.0, "o"), (0.6, "a"), (1.8, "u")], 0.75)
+    rasp = d.bandpass(d.noise(s), 300, 2500) * 0.4
+    env = d.env_points(s, [(0, 0), (0.08, 1.0), (1.2, 0.8), (1.8, 0)])
+    return cave(d.drive((voice + rasp) * env, 2.5), 2.0, 0.4)
+
+
+def salzweibl_shriek(v):
+    """The salt woman's shriek: a high, thin scream that cracks into hiss."""
+    s = 1.3
+    scream = d.vowel(d.glottal(d.glide(s, 900, 1300, 0.5) * (1 + 0.03 * d.sine(9, s)), s, 0.05, 0.3), "i", 1.6)
+    hiss = d.bandpass(d.noise(s), 3000, 9000) * d.env_points(s, [(0, 0), (0.6, 0.2), (1.3, 0.7)])
+    env = d.env_points(s, [(0, 0), (0.05, 1.0), (0.8, 0.7), (1.3, 0)])
+    return cave(d.mix(scream * env, hiss * 0.5), 2.2, 0.45)
+
+
+def salzweibl_hum(v):
+    """Her humming close by in the dark: a wavering lullaby with the mouth shut."""
+    notes = [(0.0, 392), (0.5, 440), (1.0, 392), (1.5, 349), (2.2, 330)]
+    s = 3.0
+    f = np.full(d.n_of(s), 392.0)
+    t = np.arange(len(f)) / d.SR
+    for start, freq in notes:
+        f[t >= start] = freq
+    f = d.lowpass(f, 8.0) * (1 + 0.012 * d.sine(5.0, s))
+    voice = d.vowel(d.glottal(f, s, 0.02, 0.2), "m", 1.3)
+    return cave(voice * d.env_points(s, [(0, 0), (0.3, 1.0), (2.5, 0.8), (3.0, 0)]), 2.4, 0.5)
+
+
+def cuckoo(v):
+    """A cuckoo clock in the dark: two wooden whistle notes, twice, and the click of its door."""
+    def note(freq, s=0.28):
+        return d.sine(freq * (1 + 0.004 * d.sine(6, s)), s) * d.env_points(s, [(0, 0), (0.02, 1), (0.2, 0.7), (s, 0)])
+    calls = []
+    for i in range(2):
+        calls += [(0.15 + i * 0.75, note(784)), (0.45 + i * 0.75, note(659, 0.36))]
+    door = [(0.02, click(1800, 0.01, 0.6)), (1.75, click(1600, 0.01, 0.5))]
+    return cave(d.mix(*calls, *door) * 0.8, 1.4, 0.3)
+
+
+def curse_whisper(v):
+    """Something old murmuring from the salt lump you carry: breathy, wordless, very close."""
+    s = 2.2
+    breath = d.bandpass(d.noise(s), 600, 4500)
+    words = np.maximum(0, d.smooth_noise(s, 9.0)) ** 2
+    shaped = d.vowel_morph(breath, [(0.0, "u"), (0.7, "a"), (1.4, "i"), (2.2, "o")], 0.9)
+    return cave(shaped * words * d.env_points(s, [(0, 0), (0.3, 1), (1.9, 1), (2.2, 0)]), 1.8, 0.45)
+
+
+def jodler(v):
+    """A miner's yodel: chest voice and falsetto flipping back and forth (heard far)."""
+    tune = [(0.0, 220, "o"), (0.35, 330, "a"), (0.6, 440, "i"), (0.85, 330, "o"), (1.1, 440, "i"), (1.35, 554, "i"), (1.7, 440, "o"), (2.1, 330, "u")]
+    s = 2.6
+    f = np.full(d.n_of(s), 220.0)
+    t = np.arange(len(f)) / d.SR
+    for start, freq, _ in tune:
+        f[t >= start] = freq * (0.98 + 0.04 * v)
+    f = d.lowpass(f, 25.0) * (1 + 0.01 * d.sine(5.5, s))
+    voice = d.vowel_morph(d.glottal(f, s, 0.02, 0.15), [(start, vow) for start, _, vow in tune], 1.0)
+    env = d.env_points(s, [(0, 0), (0.05, 1.0), (2.2, 0.9), (2.6, 0)])
+    return d.echo(cave(d.drive(voice * env, 1.3), 2.4, 0.35), 0.45, 0.35, 3)
+
+
+def footstep_salt(v):
+    """A boot on rock salt: a sharp, glassy crunch over a firm thump."""
+    s = 0.2
+    crunch = d.bandpass(d.noise(s), 2500 + 300 * (v % 3), 9000) * d.env_exp(s, 0.02 + 0.005 * (v % 2))
+    ticks = d.mix(*[(d.rng.uniform(0, 0.05), click(4500 + d.rng.uniform(-1000, 1500), 0.002, d.rng.uniform(0.2, 0.6))) for _ in range(8)])
+    return d.mix(thud(110 + 10 * v, 0.02, 0.8), crunch * 0.5, ticks * 0.5)
+
+
+def deep_groan(v):
+    """The deep rock groaning under its own weight, far below."""
+    s = 5.0
+    groan = d.lowpass(d.glottal(d.glide(s, 38 + 6 * v, 30), s, 0.15, 0.6), 220)
+    env = d.env_points(s, [(0, 0), (1.5, 0.8), (3.0, 1.0), (5.0, 0)])
+    return cave(d.mix(groan * env, d.lowpass(d.brown(s), 70) * env * 0.5), 3.0, 0.5)
+
+
+def stone_settle(v):
+    """A few pebbles trickling somewhere in the dark."""
+    s = 1.6
+    pebbles = d.mix(*[(0.1 + i * d.rng.uniform(0.08, 0.25), click(2200 + d.rng.uniform(-800, 800), 0.012, d.rng.uniform(0.2, 0.6))) for i in range(6)])
+    return cave(pebbles, 2.0, 0.5)
+
+
+def water_lap(v):
+    """Brine lapping against the rock of a lake shore."""
+    s = 2.5
+    laps = d.mix(*[(i * 0.8 + d.rng.uniform(0, 0.2), d.bandpass(d.noise(0.6), 250, 1500) * d.env_points(0.6, [(0, 0), (0.15, 1), (0.6, 0)])) for i in range(3)])
+    return cave(laps * 0.6, 1.8, 0.45)
+
+
 SOUNDS = {
+    "percht_bells": (percht_bells, 1),
+    "percht_steps": (percht_steps, 3),
+    "percht_roar": (percht_roar, 1),
+    "salzweibl_shriek": (salzweibl_shriek, 1),
+    "salzweibl_hum": (salzweibl_hum, 1),
+    "cuckoo": (cuckoo, 1),
+    "curse_whisper": (curse_whisper, 2),
+    "jodler": (jodler, 2),
+    "footstep_salt": (footstep_salt, 5),
+    "deep_groan": (deep_groan, 2),
+    "stone_settle": (stone_settle, 2),
+    "water_lap": (water_lap, 2),
     "tatzel_scrape": (tatzel_scrape, 1),
     "tatzel_hiss": (tatzel_hiss, 2),
     "tatzel_burst": (tatzel_burst, 1),
@@ -493,5 +627,5 @@ SOUNDS = {
     "mandl_steps": (mandl_steps, 3),
     "poof": (poof, 1),
 }
-LOOPS = {"lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row"}
-AMBIENCE = {"drip", "creak", "rumble"}
+LOOPS = {"percht_bells", "lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row"}
+AMBIENCE = {"drip", "creak", "rumble", "deep_groan", "stone_settle", "water_lap"}
