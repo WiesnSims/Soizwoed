@@ -29,7 +29,9 @@ The Gasthaus waltz (`assets/audio/music/stubenmusi.ogg`) is synthesised by `tool
 
 ## Gun recordings (CC0)
 
-`assets/audio/sfx/shot_pistole_*.ogg`, `shot_jagdflinte_*.ogg`, `mag_in_1`, `mag_out_1`, `dry_click_1`, `bolt_open_1`, `bolt_close_1` were copied from our earlier project Berghittn (`X:\Code\Projects\GeilesGame`, owner request 2026-10-30), where `tools/audio/recordings.py` cut them out of near-distance takes, mixed them to mono and limited them. Shots: Walther PPQ (Dienstpistole), Winchester Model 12 and Charles Daly 12 ga (Salzschrot-Flinte).
+`tools/audio/recordings/` holds recordings copied from our earlier project Berghittn (`X:\Code\Projects\GeilesGame`, owner request 2026-10-30; the owner allows copying from it, as long as each copy is checked to fit and improved where it can be). Berghittn's `tools/audio/recordings.py` cut them out of near-distance takes, mixed them to mono and limited them. Shots: Walther PPQ (Dienstpistole), Winchester Model 12 and Charles Daly 12 ga (Salzschrot-Flinte); plus magazine out/in, a dry click and a bolt opening/closing.
+
+They are kept untouched there; `tools/audio/guns.py` (run by `build.py`) builds the game's gun sounds from them: `shot_pistole_*` and `shot_flinte_*` get a mine-tunnel boom and early rock slaps, the Flinte extra weight; `flinte_open`, `flinte_close` and `dry_click_flinte` are made from the bolt and click recordings. `mag_in_1`, `mag_out_1`, `dry_click_1`, `bolt_open_1`, `bolt_close_1` are used as they are (the bolt for the Mannlicher-Stutzen, M8).
 
 | Source | Authors | Licence |
 |---|---|---|

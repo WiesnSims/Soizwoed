@@ -7,7 +7,7 @@
 
 Folders: sfx/, ambience/, music/, voices/<creature>/. A sound with several variants is written as
 name_1.ogg, name_2.ogg ...; one with a single variant as name.ogg. The game picks a variant at
-random (autoload/audio.gd). Voice lines need eSpeak NG; without it they are skipped.
+random (autoload/audio.gd). The guns come from real recordings (guns.py). Voice lines need eSpeak NG; without it they are skipped.
 Structure follows Berghittn's tools/audio/build.py."""
 import sys
 import zlib
@@ -17,6 +17,7 @@ import numpy as np
 import soundfile as sf
 
 import dsp
+import guns
 import music
 import sfx
 import voices
@@ -45,7 +46,7 @@ def render(path: Path, fn, variant: int, loop: bool) -> float:
 
 
 def jobs():
-    for name, (fn, variants) in sfx.SOUNDS.items():
+    for name, (fn, variants) in (sfx.SOUNDS | guns.SOUNDS).items():
         folder = "ambience" if name in sfx.AMBIENCE else "sfx"
         for v in range(variants):
             file = f"{name}_{v + 1}.ogg" if variants > 1 else f"{name}.ogg"

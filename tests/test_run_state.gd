@@ -48,3 +48,10 @@ func test_cannot_spend_more_than_money() -> void:
 	run.finish_shift(5)
 	assert_false(run.spend(6))
 	assert_eq(run.money, 5)
+
+
+func test_cheat_money_is_spendable_but_not_scored() -> void:
+	run.add_cheat_money(1000)
+	assert_eq(run.money, 1000)
+	assert_true(run.spend(320))
+	assert_eq(run.score(), {"cycles": 0, "money": 0})

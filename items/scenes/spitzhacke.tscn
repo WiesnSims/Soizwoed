@@ -2,52 +2,91 @@
 
 [ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
 
-[sub_resource type="StandardMaterial3D" id="mat_handle_wood"]
+[sub_resource type="StandardMaterial3D" id="wood"]
 albedo_color = Color(0.42, 0.28, 0.16, 1)
 roughness = 0.7
 
-[sub_resource type="StandardMaterial3D" id="mat_steel"]
-albedo_color = Color(0.34, 0.33, 0.32, 1)
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.3, 0.29, 0.28, 1)
+metallic = 0.9
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="edge"]
+albedo_color = Color(0.62, 0.6, 0.57, 1)
 metallic = 0.95
-roughness = 0.35
+roughness = 0.25
 
 [sub_resource type="CylinderMesh" id="handle"]
-top_radius = 0.018
+top_radius = 0.019
 bottom_radius = 0.022
-height = 0.8
+height = 0.78
+radial_segments = 10
+rings = 1
+
+[sub_resource type="BoxMesh" id="eye"]
+size = Vector3(0.042, 0.06, 0.06)
+
+[sub_resource type="BoxMesh" id="wedge"]
+size = Vector3(0.008, 0.012, 0.02)
+
+[sub_resource type="CylinderMesh" id="spike1"]
+top_radius = 0.016
+bottom_radius = 0.021
+height = 0.13
 radial_segments = 8
 rings = 1
 
-[sub_resource type="CylinderMesh" id="head"]
-top_radius = 0.004
-bottom_radius = 0.025
-height = 0.26
-radial_segments = 6
+[sub_resource type="CylinderMesh" id="spike2"]
+top_radius = 0.0
+bottom_radius = 0.016
+height = 0.17
+radial_segments = 8
+rings = 1
+
+[sub_resource type="CylinderMesh" id="chisel"]
+top_radius = 0.04
+bottom_radius = 0.022
+height = 0.15
+radial_segments = 4
 rings = 1
 
 [sub_resource type="BoxShape3D" id="shape"]
-size = Vector3(0.52, 0.82, 0.06)
+size = Vector3(0.06, 0.82, 0.5)
 
 [node name="Spitzhacke" type="RigidBody3D"]
 mass = 2.2
 script = ExtResource("1_item")
 
 [node name="Handle" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.39, 0)
 mesh = SubResource("handle")
-surface_material_override/0 = SubResource("mat_handle_wood")
+surface_material_override/0 = SubResource("wood")
 
-[node name="HeadA" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.13, 0.78, 0)
-mesh = SubResource("head")
-surface_material_override/0 = SubResource("mat_steel")
+[node name="Eye" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.765, 0)
+mesh = SubResource("eye")
+surface_material_override/0 = SubResource("steel")
 
-[node name="HeadB" type="MeshInstance3D" parent="."]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -0.13, 0.78, 0)
-mesh = SubResource("head")
-surface_material_override/0 = SubResource("mat_steel")
+[node name="Wedge" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.799, 0)
+mesh = SubResource("wedge")
+surface_material_override/0 = SubResource("wood")
+
+[node name="Spike" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.069756, 0.99756, 0, -0.99756, -0.069756, 0, 0.76047, -0.086842)
+mesh = SubResource("spike1")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Point" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.27564, 0.96126, 0, -0.96126, -0.27564, 0, 0.7325, -0.23339)
+mesh = SubResource("spike2")
+surface_material_override/0 = SubResource("edge")
+
+[node name="Chisel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.13917, -0.31689, 0, 0.99027, -0.044535, 0, 0.75456, 0.09627)
+mesh = SubResource("chisel")
+surface_material_override/0 = SubResource("steel")
 
 [node name="Shape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.41, 0)
 shape = SubResource("shape")
-

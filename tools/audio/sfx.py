@@ -565,23 +565,6 @@ def water_lap(v):
 
 # --- M6: guns and the Grubenhund --------------------------------------------------------------------
 
-def gunshot(crack_hz, boom_hz, body, tail):
-    """A shot in a tunnel: a hard crack, the boom of the charge, and the rock throwing it back."""
-    s = 0.6
-    crack = d.highpass(d.noise(s), crack_hz) * d.env_exp(s, 0.006)
-    blast = d.lowpass(d.noise(s), 2500) * d.env_exp(s, body)
-    boom = d.sine(d.glide(s, boom_hz, boom_hz * 0.45), s) * d.env_exp(s, body * 1.6)
-    return d.echo(cave(d.drive(d.mix(crack * 0.9, blast, boom * 0.9), 2.4), tail, 0.5), 0.22, 0.32, 3)
-
-
-def pistol_shot(v):
-    return gunshot(2500, 110, 0.04, 2.2)
-
-
-def shotgun_shot(v):
-    return gunshot(1800, 70, 0.09, 2.8)
-
-
 def shot_echo(v):
     """The mine answering a shot: no crack of its own, only the rock throwing the boom back –
     a few late slaps off far walls and a long, dark roll down the galleries."""
@@ -597,23 +580,6 @@ def flesh_hit(v):
     s = 0.3
     slap = d.bandpass(d.noise(s), 500 + 150 * v, 2600) * d.env_exp(s, 0.025)
     return cave(d.mix(thud(130 + 25 * v, 0.03, 0.9), slap * 0.7), 0.8, 0.2)
-
-
-def dry_fire(v):
-    """The hammer falling on an empty chamber."""
-    return d.mix(click(2600, 0.004, 0.8, ring=0.3), (0.05, click(1400, 0.006, 0.4)))
-
-
-def reload_pistol(v):
-    """Magazine out, magazine in, slide forward."""
-    return d.mix(click(1800, 0.01, 0.6, ring=0.4), (0.55, click(1200, 0.012, 0.8, ring=0.3)), (0.62, thud(400, 0.01, 0.3)),
-                 (1.2, click(2400, 0.008, 0.9, ring=0.5)))
-
-
-def reload_shell(v):
-    """A shell pushed into a barrel and the gun snapped shut."""
-    return d.mix(d.bandpass(d.noise(0.12), 800, 3000) * d.env_exp(0.12, 0.03) * 0.5, (0.25, click(1500, 0.01, 0.6, ring=0.3)),
-                 (0.85, thud(300, 0.02, 0.5)), (0.86, click(2000, 0.008, 0.9, ring=0.4)))
 
 
 def ammo_pickup(v):
@@ -674,11 +640,6 @@ def stone_hit(v):
 SOUNDS = {
     "shot_echo": (shot_echo, 2),
     "flesh_hit": (flesh_hit, 3),
-    "pistol_shot": (pistol_shot, 1),
-    "shotgun_shot": (shotgun_shot, 1),
-    "dry_fire": (dry_fire, 1),
-    "reload_pistol": (reload_pistol, 1),
-    "reload_shell": (reload_shell, 1),
     "ammo_pickup": (ammo_pickup, 1),
     "dog_growl": (dog_growl, 2),
     "dog_bark": (dog_bark, 3),

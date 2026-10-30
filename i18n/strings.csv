@@ -52,7 +52,7 @@ BOARD_QUOTA,Quote: %d Schilling,Quota: %d Schilling
 BOARD_MONEY,Kassa: %d Schilling,Till: %d Schilling
 BOARD_SHIFTS,Schichtn übrig: %d,Shifts left: %d
 SHOP_TITLE,Beim Wirt,At the landlord's
-SHOP_MONEY,Kassa: %d Schilling,Till: %d Schilling
+SHOP_MONEY,%d Schilling,%d Schilling
 SHOP_BUY,Kaufn (%d S),Buy (%d S)
 PANEL_CLOSE,Passt,Done
 PANEL_CONTINUE,Weiter,Continue
@@ -288,3 +288,14 @@ SET_OUTPUT_DEVICE,Lautsprecher / Kopfhörer,Speakers / headphones
 SET_INPUT_DEVICE,Mikrofon,Microphone
 SET_DEVICE_DEFAULT,Standard vom System,System default
 SET_MIC_LEVEL,Mikro-Pegel (red amoi),Mic level (say something)
+MSG_CHEAT_MONEY,"Zaster! +1000 – da Chef schaut grad ned hin.","Cash! +1000 – the boss isn't looking."
+SHOP_CAT_WEAPONS,Waffn,Weapons
+SHOP_CAT_AMMO,Munition,Ammo
+SHOP_CAT_THROWABLES,Zum Schmeißn,Throwables
+SHOP_CAT_PROVISIONS,Jausn & Schnaps,Food & drink
+SHOP_CAT_GEAR,Ausrüstung,Gear
+PROMPT_HAND_AMMO,%s Munition gebn,Give %s ammo
+MSG_AMMO_HANDED,Munition übergebn.,Ammo handed over.
+MSG_AMMO_RECEIVED,Du host Munition kriagt.,You got some ammo.
+MSG_NO_AMMO_TO_GIVE,Du host nix zum Herschenkn.,You have nothing to give.
+MSG_MATE_AMMO_FULL,Der ko nix mehr tragn.,They can't carry any more.

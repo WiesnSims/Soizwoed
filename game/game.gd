@@ -54,6 +54,9 @@ const SHOT_SECONDS: float = 1.5
 ## Dev flag: run a scripted situation from tools/dev/dev_scenario.gd.
 const SCENARIO_ARG: String = "--scenario="
 const SCENARIO_SCRIPT: String = "res://tools/dev/dev_scenario.gd"
+## Test cheat (owner request): typing this word anywhere in the game gives the crew money.
+const CHEAT_MONEY_WORD: String = "zaster"
+const CHEAT_MONEY_AMOUNT: int = 1000
 
 static var instance: Game
 ## Set for automated windowed runs (--shots): no focus, no mouse capture, no sound, so a test
@@ -103,6 +106,8 @@ var _special_left: Dictionary = {}
 var _cursed_for: Dictionary = {}
 ## Host: bodies of miners who died this shift, item name -> [peer id, time of death (s)].
 var _corpses: Dictionary = {}
+## The last letters typed, for the cheat word.
+var _typed: String = ""
 
 @onready var hub: Gasthaus = $Hub
 @onready var hub_cage: Foerderkorb = $Hub/Foerderkorb
@@ -154,6 +159,17 @@ func _ready() -> void:
 			var scenario: Node = (load(SCENARIO_SCRIPT) as GDScript).new()
 			add_child(scenario)
 			scenario.call(&"run", self, arg.trim_prefix(SCENARIO_ARG))
+
+
+## Watches the typed letters for the cheat word (before anything else uses the keys).
+func _input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.unicode == 0:
+		return
+	_typed = (_typed + char(key.unicode).to_lower()).right(CHEAT_MONEY_WORD.length())
+	if _typed == CHEAT_MONEY_WORD and NetworkManager.in_session():
+		_typed = ""
+		request_cheat_money.rpc_id(1)
 
 
 func _process(delta: float) -> void:
@@ -816,6 +832,17 @@ func request_buy(id: StringName) -> void:
 	_broadcast_run()
 
 
+## The money cheat: any player can ask, the host adds it to the run and tells everyone.
+@rpc("any_peer", "call_local", "reliable")
+func request_cheat_money() -> void:
+	if not multiplayer.is_server() or GameState.run == null or GameState.run.fired:
+		return
+	GameState.run.add_cheat_money(CHEAT_MONEY_AMOUNT)
+	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
+	_show_message_key.rpc("MSG_CHEAT_MONEY")
+	_broadcast_run()
+
+
 # --- requests from players (host) -----------------------------------------------------------------
 
 @rpc("any_peer", "call_local", "reliable")
@@ -975,18 +1002,31 @@ func _to_peer(peer: int, node: Node, method: StringName, args: Array = []) -> vo
 		node.callv(&"rpc_id", [peer, method] + args)
 
 
-## The company's kit before every shift: a Dienstpistole for whoever has no gun, and the
-## ration of pistol rounds (topped up, not added).
+## The company's kit before every shift: a Dienstpistole for whoever has no gun, a Spitzhacke
+## for whoever has none (DESIGN.md §7: everyone has one – the weapon that never runs dry), and
+## the ration of pistol rounds (topped up, not added).
 func _hand_out_kit(player: Player) -> void:
 	_to_peer(player.peer_id, player, &"give_ammo", [&"pistole", _config.ration_pistole, true])
+	var has_gun: bool = false
+	var has_pick: bool = false
 	for item: Object in player.inventory.all_items():
-		if item is WorldItem and (item as WorldItem).data.weapon != null:
-			return
-	var gun: WorldItem = _spawn_item_at(&"dienstpistole", 0, player.global_transform.translated(Vector3.UP * 1.0))
+		if item is WorldItem:
+			has_gun = has_gun or (item as WorldItem).data.weapon != null
+			has_pick = has_pick or (item as WorldItem).data.id == &"spitzhacke"
+	if not has_gun:
+		await _give_kit_item(player, &"dienstpistole")
+	if not has_pick:
+		await _give_kit_item(player, &"spitzhacke")
+
+
+func _give_kit_item(player: Player, id: StringName) -> void:
+	if not is_instance_valid(player):
+		return
+	var kit: WorldItem = _spawn_item_at(id, 0, player.global_transform.translated(Vector3.UP * 1.0))
 	await get_tree().create_timer(0.3).timeout
 	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT, ItemData.SlotKind.WEAPON) if is_instance_valid(player) else Inventory.NONE
-	if is_instance_valid(gun) and place != Inventory.NONE and gun.state == WorldItem.State.FREE:
-		gun.host_take(player.peer_id, place)
+	if is_instance_valid(kit) and place != Inventory.NONE and kit.state == WorldItem.State.FREE:
+		kit.host_take(player.peer_id, place)
 
 
 ## E on an ammo box: into the counter (up to the cap), the box is gone.
@@ -995,7 +1035,8 @@ func _pick_up_ammo(item: WorldItem, player: Player) -> void:
 	if player.ammo_count(type) >= _config.ammo_cap(type):
 		message_to(player.peer_id, "MSG_AMMO_FULL")
 		return
-	_to_peer(player.peer_id, player, &"give_ammo", [type, item.data.ammo_amount, false])
+	# A Notration drop holds fewer rounds than a full box (its value says how many).
+	_to_peer(player.peer_id, player, &"give_ammo", [type, item.value if item.value > 0 else item.data.ammo_amount, false])
 	play_sound_everywhere.rpc("ammo_pickup", item.global_position, -2.0, 12.0)
 	item.host_vanish()
 
@@ -1630,7 +1671,52 @@ func request_hit(creature_path: NodePath, damage: int, from: Vector3) -> void:
 		return
 	var creature: Creature = get_node_or_null(creature_path) as Creature
 	if creature != null:
+		var at: Transform3D = Transform3D(Basis.IDENTITY, creature.global_position + Vector3.UP * 0.4)
+		var was_alive: bool = creature.health > 0
 		creature.host_hit(damage, from)
+		if was_alive and creature.health <= 0:
+			_host_notration(player_by_peer(_sender()), at)
+
+
+## "Notration" (owner decision): a miner who is nearly out of ammo and kills a creature finds a
+## few rounds on it – for the gun in their hand (or their first gun). Only then.
+func _host_notration(killer: Player, at: Transform3D) -> void:
+	if killer == null or not killer.alive:
+		return
+	var left: Dictionary = killer.rounds_left_by_type()
+	if left.is_empty() or not _config.notration_due(left):
+		return
+	var held: WorldItem = killer.inventory.slots[killer.inventory.selected] as WorldItem
+	var ammo_type: StringName = held.data.weapon.ammo_type if held != null and held.data.weapon != null else left.keys()[0]
+	for entry: Resource in catalog.items:
+		var data: ItemData = entry as ItemData
+		if data.kind == ItemData.Kind.AMMO and data.ammo_type == ammo_type:
+			_spawn_item_at(data.id, _config.notration_rounds(ammo_type), at)
+			print("[game] notration: %d %s for P%d" % [_config.notration_rounds(ammo_type), ammo_type, killer.player_number])
+			return
+
+
+## G on a teammate: part of the giver's rounds of that type go over (DESIGN.md §3).
+@rpc("any_peer", "call_local", "reliable")
+func request_hand_ammo(to_peer: int, ammo_type: StringName) -> void:
+	if not multiplayer.is_server():
+		return
+	var giver: Player = player_by_peer(_sender())
+	var mate: Player = player_by_peer(to_peer)
+	if giver == null or mate == null or giver == mate or not giver.alive or not mate.alive:
+		return
+	if giver.global_position.distance_to(mate.global_position) > _config.hand_ammo_distance + 1.0:
+		return
+	var amount: int = _config.ammo_to_hand_over(giver.ammo_count(ammo_type), mate.ammo_count(ammo_type), ammo_type)
+	if amount <= 0:
+		message_to(giver.peer_id, "MSG_MATE_AMMO_FULL" if giver.ammo_count(ammo_type) > 0 else "MSG_NO_AMMO_TO_GIVE")
+		return
+	_to_peer(giver.peer_id, giver, &"lose_ammo", [ammo_type, amount])
+	_to_peer(mate.peer_id, mate, &"give_ammo", [ammo_type, amount, false])
+	play_sound_everywhere.rpc("ammo_pickup", mate.global_position + Vector3.UP, -2.0, 12.0)
+	message_to(giver.peer_id, "MSG_AMMO_HANDED")
+	message_to(mate.peer_id, "MSG_AMMO_RECEIVED")
+	print("[game] P%d handed %d %s to P%d" % [giver.player_number, amount, ammo_type, mate.player_number])
 
 
 ## "Plärren": a loud shout. Scares Bergmandl nearby (DESIGN.md §6, DECISIONS "Plärren key").

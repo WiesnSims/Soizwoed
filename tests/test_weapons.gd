@@ -76,3 +76,41 @@ func test_shotgun_beats_pistol_close_and_loses_far() -> void:
 	assert_gt(close_flinte, close_pistol * 3)
 	assert_eq(WeaponMath.damage_at(flinte, 30.0), 0)
 	assert_gt(WeaponMath.damage_at(pistol, 30.0), 0)
+
+
+func test_every_shop_item_sits_on_the_right_shelf() -> void:
+	var catalog: ItemCatalog = load("res://items/item_catalog.tres") as ItemCatalog
+	var shelves: Dictionary = {}
+	for data: ItemData in catalog.shop():
+		shelves[data.id] = data.shop_category()
+	assert_eq(shelves[&"dienstpistole"], ItemData.ShopCategory.WEAPONS)
+	assert_eq(shelves[&"spitzhacke"], ItemData.ShopCategory.WEAPONS)
+	assert_eq(shelves[&"salzschrot"], ItemData.ShopCategory.AMMO)
+	assert_eq(shelves[&"boeller"], ItemData.ShopCategory.THROWABLES)
+	assert_eq(shelves[&"obstler"], ItemData.ShopCategory.PROVISIONS)
+	assert_eq(shelves[&"seil"], ItemData.ShopCategory.GEAR)
+
+
+func test_the_spitzhacke_is_held_as_a_melee_weapon() -> void:
+	var catalog: ItemCatalog = load("res://items/item_catalog.tres") as ItemCatalog
+	var pick: ItemData = catalog.by_id(&"spitzhacke")
+	assert_eq(pick.slot_kind(), ItemData.SlotKind.WEAPON)
+	assert_null(pick.weapon)
+	assert_gt(pick.melee_damage, 0)
+	assert_lt(GunView.SWING_STRIKE, GunView.SWING_SECONDS)
+
+
+func test_notration_only_when_nearly_out() -> void:
+	var config: BalanceConfig = BalanceConfig.new()
+	assert_true(config.notration_due({&"pistole": 4}))
+	assert_false(config.notration_due({&"pistole": 5}))
+	assert_true(config.notration_due({&"pistole": 2, &"schrot": 1}))
+	assert_false(config.notration_due({&"pistole": 0, &"schrot": 6}), "a full shotgun is not out of ammo")
+	assert_true(config.notration_due({}), "no gun at all")
+
+
+func test_handing_ammo_gives_half_up_to_the_cap() -> void:
+	var config: BalanceConfig = BalanceConfig.new()
+	assert_eq(config.ammo_to_hand_over(9, 0, &"pistole"), 5)
+	assert_eq(config.ammo_to_hand_over(30, config.ammo_cap_pistole - 3, &"pistole"), 3)
+	assert_eq(config.ammo_to_hand_over(0, 0, &"schrot"), 0)
