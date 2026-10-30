@@ -31,7 +31,7 @@ func interaction_text(player: Player) -> String:
 		return loading
 	var pocket: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
 	if player.inventory.hands == null and pocket != null and pocket.is_loot() and can_load(pocket):
-		return tr("PROMPT_PUSH_CART") + "   " + tr("PROMPT_CART_DROP_IN") % pocket.display_name()
+		return tr("PROMPT_PUSH_CART") + "   " + tr("PROMPT_CART_DROP_IN") % [Settings.key_label(&"drop"), pocket.display_name()]
 	return tr("PROMPT_PUSH_CART")
 
 

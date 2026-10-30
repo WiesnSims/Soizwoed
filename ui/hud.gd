@@ -74,7 +74,7 @@ func _process(_delta: float) -> void:
 	_mic_label.visible = player.voice_chat != null and player.voice_chat.talking
 	if not player.alive:
 		var target: Player = player.spectating
-		_spectate_label.text = tr("HUD_SPECTATING") % target.display_name() if target != null and is_instance_valid(target) else tr("HUD_DEAD")
+		_spectate_label.text = tr("HUD_SPECTATING") % [target.display_name(), Settings.key_label(&"use")] if target != null and is_instance_valid(target) else tr("HUD_DEAD")
 		_prompt.visible = false
 		_hold_bar.visible = false
 		_watch.visible = false
@@ -241,12 +241,12 @@ func show_results(results: Dictionary, left_behind: bool, dead: bool = false) ->
 
 func _open_pause() -> void:
 	_start_panel("pause", tr("PAUSE_TITLE"))
-	_add_text(tr("PAUSE_KEYS"), DIM_COLOR, 15)
+	_add_text(_keys_help(), DIM_COLOR, 15)
 	_add_button(tr("PANEL_CONTINUE"), close_panels)
 	if NetworkManager.can_invite():
 		_add_button(tr("PAUSE_INVITE"), _open_invite)
 	if NetworkManager.voice_enabled():
-		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT"), _toggle_open_mic)
+		_add_button(tr("PAUSE_VOICE_OPEN") if Audio.voice_open_mic else tr("PAUSE_VOICE_PTT") % Settings.key_label(&"voice_talk"), _toggle_open_mic)
 		_add_button(tr("PAUSE_MIC_TEST_ON") if VoiceChat.echo else tr("PAUSE_MIC_TEST_OFF"), _toggle_mic_test)
 	_add_button(tr("MENU_SETTINGS"), _open_settings)
 	_add_button(tr("HUB_LEAVE"), func() -> void: leave_requested.emit())
@@ -255,6 +255,23 @@ func _open_pause() -> void:
 
 ## The Steam overlay's invite dialog when there is one, else our own list of Steam friends
 ## (the overlay is missing when Steam did not start the game, DESIGN.md §9 "in-game friends list").
+## Every key and what it does, in the keys the player has set (Esc menu).
+func _keys_help() -> String:
+	var lines: PackedStringArray = []
+	var line: PackedStringArray = []
+	for action: StringName in SettingsData.REBINDABLE:
+		if String(action).begins_with("slot_"):
+			continue
+		line.append("%s %s" % [Settings.key_label(action), tr("ACTION_" + String(action).to_upper())])
+		if line.size() == 5:
+			lines.append(" · ".join(line))
+			line = []
+	if not line.is_empty():
+		lines.append(" · ".join(line))
+	return "
+".join(lines)
+
+
 func _open_invite() -> void:
 	if NetworkManager.invite_friends():
 		close_panels()
@@ -365,7 +382,7 @@ func _update_prompt(player: Player) -> void:
 	if player.focus != null and is_instance_valid(player.focus):
 		text = player.focus.interaction_text(player)
 		var hold: bool = player.focus.has_method(&"interact_hold_seconds") and player.focus.interact_hold_seconds(player) > 0.0
-		text = ("[E …] " if hold else "[E] ") + text
+		text = ("[%s …] " if hold else "[%s] ") % Settings.key_label(&"interact") + text
 	_prompt.text = text
 	_prompt.visible = text != ""
 	var progress: float = maxf(player.hold_progress, player.use_progress)
@@ -383,7 +400,7 @@ func _update_slots(player: Player) -> void:
 	var pocket: WorldItem = inventory.slots[inventory.selected] as WorldItem
 	_hands_label.visible = hands != null or (pocket != null and pocket.data.use != ItemData.Use.NONE)
 	if hands == null and _hands_label.visible:
-		_hands_label.text = "[%s] %s" % [tr("HUD_USE_KEY"), tr("USE_" + ItemData.Use.keys()[pocket.data.use])]
+		_hands_label.text = "[%s] %s" % [Settings.key_label(&"use"), tr("USE_" + ItemData.Use.keys()[pocket.data.use])]
 	if hands != null:
 		var text: String = tr("HUD_HANDS") % hands.display_name()
 		var cart: Schubkarre = hands as Schubkarre
@@ -391,7 +408,9 @@ func _update_slots(player: Player) -> void:
 			text += "  (%d/%d)" % [cart.used_units(), Balance.config.schubkarre_capacity_medium]
 		elif inventory.shared_carry:
 			text += "  " + tr("HUD_TOGETHER")
-		_hands_label.text = text + "   [G] " + tr("HUD_DROP")
+		elif hands.data.melee_damage > 0:
+			text += "   [%s] %s" % [Settings.key_label(&"use"), tr("USE_STRIKE")]
+		_hands_label.text = text + "   [%s] " % Settings.key_label(&"drop") + tr("HUD_DROP")
 
 
 # --- building --------------------------------------------------------------------------------------

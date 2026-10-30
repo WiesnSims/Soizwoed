@@ -1,0 +1,73 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://world/chunks/chunk.gd" id="chunk"]
+[ext_resource type="Script" path="res://world/cave/cave_box.gd" id="box"]
+[ext_resource type="Script" path="res://world/props/celtic_stone.gd" id="stone"]
+[ext_resource type="Script" path="res://world/props/bones.gd" id="bones"]
+
+[node name="Cross" type="Node3D"]
+script = ExtResource("chunk")
+
+[node name="Cave" type="Node3D" parent="."]
+
+[node name="Center" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+script = ExtResource("box")
+size = Vector3(6, 4, 6)
+
+[node name="Arm_N" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_E" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 5, 0, 0)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_S" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 5)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Arm_W" type="Node3D" parent="Cave"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -5, 0, 0)
+script = ExtResource("box")
+size = Vector3(4, 3.5, 4)
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Stone1" type="StaticBody3D" parent="Props"]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, 2.1, 0, 2.1)
+script = ExtResource("stone")
+height = 2.0
+width = 0.8
+
+[node name="Bones1" type="Node3D" parent="Props"]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.0, 0, -1.8)
+script = ExtResource("bones")
+seed_value = 51
+count = 4
+
+[node name="Markers" type="Node3D" parent="."]
+
+[node name="Nav_C" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 0)
+
+[node name="Nav_N" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, -7)
+
+[node name="Nav_E" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 7, 0, 0)
+
+[node name="Nav_S" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 0, 0, 7)
+
+[node name="Nav_W" type="Marker3D" parent="Markers" groups=["nav_point"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -7, 0, 0)
+
+[node name="Loot1" type="Marker3D" parent="Markers" groups=["loot_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, -2.0, 0.4, 2.0)
+
+[node name="Enemy1" type="Marker3D" parent="Markers" groups=["enemy_spawn"]]
+transform = Transform3D(1.0, 0, -0.0, 0, 1, 0, 0.0, 0, 1.0, 1.5, 0.1, -1.5)

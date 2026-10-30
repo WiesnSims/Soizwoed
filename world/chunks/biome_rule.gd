@@ -10,3 +10,5 @@ extends Resource
 @export var enemy_budget_mult: float = 1.0
 ## Share of chunks (two or more steps from the lift) with a brine pool.
 @export var brine_share: float = 0.12
+## Firedamp pockets are this many times as common as the cycle's share (Die Tiefe: gassy).
+@export var gas_mult: float = 1.0

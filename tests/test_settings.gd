@@ -114,3 +114,49 @@ func test_fsr_default_of_version_2_goes_back_to_native() -> void:
 	var data: SettingsData = SettingsData.new()
 	data.load_from(file)
 	assert_false(data.auto_resolution)
+
+
+func test_language_and_keys_round_trip() -> void:
+	var data: SettingsData = SettingsData.new()
+	data.language = "en"
+	data.voice_lure = false
+	data.key_bindings = {"jump": int(KEY_X), "use": -int(MOUSE_BUTTON_RIGHT)}
+	var file: ConfigFile = ConfigFile.new()
+	data.save_to(file)
+	var loaded: SettingsData = SettingsData.new()
+	loaded.load_from(file)
+	assert_eq(loaded.language, "en")
+	assert_false(loaded.voice_lure)
+	assert_eq(int(loaded.key_bindings["jump"]), int(KEY_X))
+	assert_eq(int(loaded.key_bindings["use"]), -int(MOUSE_BUTTON_RIGHT))
+	# Unbinding everything removes the old section again.
+	loaded.key_bindings = {}
+	loaded.save_to(file)
+	assert_false(file.has_section("keys"))
+
+
+func test_bad_language_and_unknown_actions_are_dropped() -> void:
+	var data: SettingsData = SettingsData.new()
+	data.language = "klingon"
+	data.key_bindings = {"jump": int(KEY_X), "fly": int(KEY_Y)}
+	data.clamp_all()
+	assert_eq(data.language, "")
+	assert_false(data.key_bindings.has("fly"))
+	assert_true(data.key_bindings.has("jump"))
+
+
+func test_binding_a_taken_key_swaps() -> void:
+	var data: SettingsData = SettingsData.new()
+	var current: Dictionary = {&"jump": int(KEY_SPACE), &"interact": int(KEY_E)}
+	data.bind(&"jump", int(KEY_E), current)
+	assert_eq(int(data.key_bindings["jump"]), int(KEY_E))
+	assert_eq(int(data.key_bindings["interact"]), int(KEY_SPACE), "interact gets jump's old key")
+
+
+func test_event_codes() -> void:
+	var key: InputEventKey = SettingsData.event_for(int(KEY_Q)) as InputEventKey
+	assert_eq(key.physical_keycode, KEY_Q)
+	var button: InputEventMouseButton = SettingsData.event_for(-2) as InputEventMouseButton
+	assert_eq(button.button_index, MOUSE_BUTTON_RIGHT)
+	assert_eq(SettingsData.event_code(button), -2)
+	assert_eq(SettingsData.event_code(key), int(KEY_Q))

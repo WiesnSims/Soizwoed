@@ -53,3 +53,29 @@ func test_hard_landings_hurt_more_the_faster() -> void:
 	assert_gt(low, 0)
 	assert_gt(high, low)
 	assert_gte(config.fall_damage(30.0), config.player_max_health, "a long fall kills")
+
+
+## Every mine section asks for a fair share of its loot in the cycle it unlocks (DESIGN.md §2,
+## §8): not a giveaway, not impossible – for a solo miner and for a full crew.
+func test_each_section_is_fair_when_it_unlocks() -> void:
+	var report: GDScript = load("res://tools/balance_report.gd")
+	var real: BalanceConfig = load("res://balance.tres")
+	var catalog: ItemCatalog = load("res://items/item_catalog.tres")
+	for path: String in report.BIOME_PATHS:
+		var section: ChunkSet = load(path)
+		var cycle: int = real.biome_rule(section.id).unlock_cycle
+		for players: int in [1, 4]:
+			var share: float = report.quota_share(real, catalog, section, cycle, players)
+			assert_between(share, 0.25, 0.65, "%s, cycle %d, %d miner(s): %.0f %%" % [section.id, cycle, players, share * 100.0])
+
+
+## Deeper sections are worth the trouble: more loot value per shift in the same cycle.
+func test_deeper_sections_hold_more() -> void:
+	var report: GDScript = load("res://tools/balance_report.gd")
+	var real: BalanceConfig = load("res://balance.tres")
+	var catalog: ItemCatalog = load("res://items/item_catalog.tres")
+	var last: float = 0.0
+	for path: String in report.BIOME_PATHS:
+		var value: float = report.shift_value(real, catalog, load(path), 3, 2)
+		assert_gt(value, last * 1.2, path)
+		last = value

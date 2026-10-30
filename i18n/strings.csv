@@ -1,205 +1,258 @@
-keys,de
-GAME_TITLE,Soizwöd
-MENU_SUBTITLE,Soizwöd GmbH – Mia suachn Leit!
-MENU_SOLO,Alloa einifoahn
-MENU_HOST,Partie aufmacha
-MENU_JOIN,Partie beitretn
-MENU_JOIN_ADDRESS,Adress vom Host
-MENU_QUIT,Feierabend
-NET_CONNECTING,Verbind…
-NET_CONNECT_FAILED,Koa Verbindung zum Host.
-NET_HOST_LEFT,Da Host is gangen – Partie aus.
-NET_HOST_FAILED,Partie hot si ned aufmacha lossn.
-NET_LEFT,Partie verlossn.
-HUB_LEAVE,Hamgeh
-NET_SHIFT_RUNNING,"De san grad unten – wart, bis de Schicht aus is."
-BIOME_OBERER_STOLLEN,Oberer Stollen
-CREATURE_BERGMANDL,Bergmandl
-ITEM_SALZKRISTALL,Salzkristall
-ITEM_ALTE_JAUSENBOX,Alte Jausenbox
-ITEM_ANTIKE_GRUBENLAMPE,Antike Grubenlampe
-ITEM_KAISERLICHES_ABZEICHEN,Kaiserliches Abzeichen
-ITEM_STEINSALZ_BLOCK,Steinsalz-Block
-ITEM_SPITZHACKE,Spitzhacke
-ITEM_SPITZHACKE_DESC,Fürs Grobe. Haut a Bergmandl ordentlich.
-ITEM_KARBIDPATRONE,Karbidpatrone
-ITEM_KARBIDPATRONE_DESC,Füllt d'Lampn unterwegs nach (Klick).
-ITEM_SCHUBKARRE,Schubkarre
-ITEM_SCHUBKARRE_DESC,"A schwerer Brocken oder drei mittlere, fost so gschwind wia z'Fuaß."
-PROMPT_PICK_UP,Nehma: %s
-PROMPT_PUSH_CART,Schubkarre schiabn
-PROMPT_LOAD_CART,In d'Schubkarre legn
-PROMPT_CART_FULL,De Schubkarre is voll.
-PROMPT_LIFT_DOWN,Einifoahn – Schicht anfanga
-PROMPT_LIFT_UP,Aufifoahn – Schicht beenden
-PROMPT_REFILL_LAMP,Lampn auffülln
-PROMPT_SHOP,Beim Wirt eikaufn
-MSG_HANDS_FULL,De Händ san voll.
-MSG_SHIFT_START,Glück auf! Bring a Zeug in Förderkorb.
-MSG_WHISTLE,Schicht aus! In %d Sekundn foahrt da Korb aufi!
-MSG_TOO_POOR,"Des kost mehr, ois du host."
-HUD_HEALTH,Gsundheit
-HUD_LAMP,Karbid
-HUD_STAMINA,Puste
-HUD_HANDS,In de Händ: %s
-HUD_DROP,ablegn
-HUD_WATCH,Taschnuhr
-HUD_MONEY,Geld: %d S
-HUD_QUOTA,Quote: %d S (no %d Schichtn)
-BOARD_TITLE,Soizwöd GmbH – Schwarzes Brett
-BOARD_CYCLE,Quotenrundn %d
-BOARD_QUOTA,Quote: %d Schilling
-BOARD_MONEY,Kassa: %d Schilling
-BOARD_SHIFTS,Schichtn übrig: %d
-SHOP_TITLE,Beim Wirt
-SHOP_MONEY,Kassa: %d Schilling
-SHOP_BUY,Kaufn (%d S)
-PANEL_CLOSE,Passt
-PANEL_CONTINUE,Weiter
-PAUSE_TITLE,Brotzeit
-PAUSE_KEYS,"WASD gehn · Shift laufn · Strg/C duckn · Leertaste hupfn
-E nehma/benutzn · G ablegn · Klick haun/benutzn · 1–4 Fächer
-F Lampn · Q plärrn · T Taschnuhr · V redn"
-RESULTS_TITLE,Schicht vorbei
-RESULTS_LEFT_BEHIND,Du bist unten blieben!
-RESULTS_NOTHING,Nix verkauft.
-RESULTS_ITEM,%s … %d S
-RESULTS_TOTAL,Verkauft um %d Schilling
-RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.
-RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!
-RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S
-PROMPT_CART_DROP_IN,[G] %s einilegn
-PLAYER_NAME,Kumpl %d
-ITEM_LEICHE,Hiniger Kumpl (Sterbegeld)
-PROMPT_CARRY_TOGETHER,Mittrogn: %s
-MSG_LOST_GRIP,Auskemma! Ihr seid's z'weit ausanand.
-MSG_PLAYER_DIED,%s is hin!
-MSG_YOU_DIED,Du bist hin. Bis zur nächstn Schicht schaust nur mehr zua.
-HUD_SPECTATING,Du bist hin – du schaust %s zua.   [Klick] wechseln
-HUD_DEAD,Du bist hin.
-HUD_CREW,Kumpl dabei: %d
-RESULTS_DIED,Du bist hin worn!
-HUD_TOGETHER,(zu zweit)
-MENU_PUBLIC,Für olle sichtbor
-MENU_FIND,Partien suachn
-MENU_LOBBY,%s – %d/%d Kumpl
-MENU_LOBBY_FRIEND,%s (Freind) – %d/%d Kumpl
-MENU_STEAM_AS,Angmeldt ois %s
-NET_OPENING,Partie wird aufgmocht…
-NET_SEARCHING,"I schau, wer grad eifoahrt…"
-NET_NO_LOBBIES,Koa Partie gfundn. Lass di vo am Freind eiladn!
-NET_LOBBY_FULL,De Partie is scho voll.
-NET_WRONG_VERSION,De Partie lauft auf ana ondern Version vom Spü.
-NET_NOT_SOIZWOED,Des is koa Soizwöd-Partie.
-NET_JOINING_INVITE,Du gehst zu deim Freind…
-HUD_TALKING,Du redst…
-PAUSE_INVITE,Freind eiladn
-PAUSE_VOICE_PTT,"Redn: mit V (drucka)"
-PAUSE_VOICE_OPEN,"Redn: Mikro offn"
-PAUSE_MIC_TEST_OFF,"Mikro probiern: aus"
-PAUSE_MIC_TEST_ON,"Mikro probiern: ein (du hörst di selber)"
-INVITE_TITLE,Freind eiladn
-INVITE_NO_FRIENDS,Koane Steam-Freind gfundn.
-INVITE_IN_GAME,(spüt grad)
-INVITE_SEND,Eiladn
-INVITE_SENT,Eiglodn!
-INVITE_FAILED,Hot ned highaut
-MENU_SETTINGS,Einstellungen
-SETTINGS_TITLE,Einstellungen
-SETTINGS_AUDIO,Ton
-SETTINGS_DISPLAY,Anzeige
-SETTINGS_GRAPHICS,Grafik
-SETTINGS_GAMEPLAY,Spü
-SET_MASTER,Gsamtlautstärke
-SET_MUSIC,Musi
-SET_EFFECTS,Gräusch
-SET_VOICE,Stimmen vo de Kumpl
-SET_CREATURE_LINES,Gegner redn
-SET_OPEN_MIC,"Mikro offn (sunst redst mit V)"
-SET_WINDOW_MODE,Fenstermodus
-SET_WINDOWED,Fenster
-SET_BORDERLESS,Randloses Fenster
-SET_FULLSCREEN,Vollbild
-SET_VSYNC,VSync
-SET_FPS,Bildrate
-SET_FPS_UNLIMITED,Unbegrenzt
-SET_FOV,Blickwinkel
-SET_BRIGHTNESS,Helligkeit
-SET_QUALITY,Qualität
-SET_Q_LOW,Niedrig
-SET_Q_MEDIUM,Mittel
-SET_Q_HIGH,Hoch
-SET_Q_ULTRA,Ultra
-SET_RENDER_SCALE,3D-Auflösung
-SET_FOG,Staub im Liacht (Nebel)
-SET_AA,Kantenglättung
-SET_AA_OFF,Aus
-SET_AA_FXAA,FXAA
-SET_AA_TAA,TAA
-SET_AA_MSAA,MSAA + TAA
-SET_SENSITIVITY,Maus-Empfindlichkeit
-SET_INVERT_Y,Maus aufwärts umdrahn
-SET_HEAD_BOB,Kopfwackln beim Gehn
-SET_DEFAULTS,Standard
-CREATURE_TATZELWURM,Tatzelwurm
-CREATURE_KASERMANDL,Kasermandl
-CREATURE_SCHICHTMEISTER,Da Schichtmeister
-ITEM_STIRNLAMPE,Elektrische Stirnlampe
-ITEM_STIRNLAMPE_DESC,"Ka Flamm, ka Explosion. Klick: umschoitn zwischn Karbid und Batterie."
-ITEM_ALPHORN,Alphorn (Reiseformat)
-ITEM_ALPHORN_DESC,"Klick: a Trumm vom Ton. Wos vor dir is, steht deppat do – und de ganze Grubn hört's."
-ITEM_BOELLER,Böller
-ITEM_BOELLER_DESC,"Klick: anzündn und schmeißn. Kracht, lockt, verscheucht Bergmandl."
-ITEM_RAUCHBOMBE,"Rauchbombe ""Bierzelt"""
-ITEM_RAUCHBOMBE_DESC,"Klick: schmeißn. Stinkt wia 's Bierzelt am Montag in da Fruah – do geht nix eini."
-ITEM_FUNKGERAET,Funkgerät
-ITEM_FUNKGERAET_DESC,"Wer ans hot, hört de ondern mit Funk a von weit weg. Klick: anfunkn. Rauscht, wenn wos in da Näh is."
-ITEM_OBSTLER,Obstler
-ITEM_OBSTLER_DESC,"Klick: a Stamperl. +25 Gsundheit, dann draht si's a bissl."
-ITEM_LEBERKAESSEMMEL,Leberkässemmel
-ITEM_LEBERKAESSEMMEL_DESC,"Klick: in Ruah essn (4 Sekundn). +40 Gsundheit."
-ITEM_SEIL,Seil & Kletterhakn
-ITEM_SEIL_DESC,"Klick auf a Kantn: Seil owi lossn, rauf- und runterklettern. E hoitn am Hakn: wieder einholn."
-ITEM_PFEIFERL,Grubenhund-Pfeiferl
-ITEM_PFEIFERL_DESC,"Klick: da Hunt kummt auf de Gleis daher. Laut!"
-ITEM_HUNT,Hunt
-MSG_BATTERY_EMPTY,De Batterie is laar.
-MSG_LAMP_ELECTRIC,Stirnlampe an – ka Flamm.
-MSG_LAMP_CARBIDE,Zruck zur Karbidlampn.
-MSG_OUT_OF_BREATH,"Z'weng Luft, wort a bissl."
-MSG_ROPE_NO_EDGE,Do geht's net weit gnua owi.
-MSG_RADIO_CALL,%s funkt di an!
-MSG_NO_RAILS,Do gibt's ka Gleis.
-MSG_RAILS_FAR,"Da Hunt kummt, oba bis zu de Gleis muasst scho selber."
-MSG_NEED_PICK,Do brauchst a Spitzhackn.
-PROMPT_RAIL_PUSH,Hunt schiabn
-PROMPT_RAIL_LET_GO,Hunt auslossn
-PROMPT_LOAD_HUNT,In Hunt legn
-PROMPT_HUNT_FULL,Da Hunt is voll.
-PROMPT_ROPE_TAKE,Seil einholn
-HUD_USE_KEY,Klick
-USE_NONE,–
-USE_REFILL_LAMP,Lampn nachfülln
-USE_HEADLAMP,Lampn umschoitn
-USE_ALPHORN,Blosn
-USE_THROW,Anzündn und schmeißn
-USE_DRINK,Trinkn
-USE_EAT,Essn
-USE_ROPE,Seil owi lossn
-USE_PFEIFERL,Pfeifn
-USE_RADIO,Anfunkn
-BIOME_OBERER_STOLLEN_DESC,"Hoiz, Gleis und oide Lampn. Da Hunt rennt auf de Schienen."
-BIOME_SALZSEE,Salzsee
-BIOME_SALZSEE_DESC,"Riesige Hallen, a schwoaze Sole-See und a Fähre. Mehr wert – und wos im Wossa."
-PLAN_TITLE,Grubnplan
-PLAN_TODAY,Heit: %s
-PLAN_PICK,Do eini
-PLAN_PICKED,Do geht's eini
-PLAN_LOCKED,Ab Quotenrundn %d
-PROMPT_PLAN,Grubnplan – Abschnitt aussuachn
-PROMPT_FERRY_BELL,"Glockn läutn – ""Hol über!"""
-PROMPT_FERRY_BUSY,De Fähre is unterwegs.
-MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!
-MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.
-MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma."
-SET_AUTO_RESOLUTION,"FSR 2: 3D-Auflösung automatisch (höchstens 1080p)"
+keys,de,en
+GAME_TITLE,Soizwöd,Soizwöd
+MENU_SUBTITLE,Soizwöd GmbH – Mia suachn Leit!,Soizwöd Ltd. – now hiring!
+MENU_SOLO,Alloa einifoahn,Go down alone
+MENU_HOST,Partie aufmacha,Host a game
+MENU_JOIN,Partie beitretn,Join a game
+MENU_JOIN_ADDRESS,Adress vom Host,Host address
+MENU_QUIT,Feierabend,Clock off
+NET_CONNECTING,Verbind…,Connecting…
+NET_CONNECT_FAILED,Koa Verbindung zum Host.,Could not reach the host.
+NET_HOST_LEFT,Da Host is gangen – Partie aus.,The host has left – game over.
+NET_HOST_FAILED,Partie hot si ned aufmacha lossn.,Could not open the game.
+NET_LEFT,Partie verlossn.,You left the game.
+HUB_LEAVE,Hamgeh,Go home
+NET_SHIFT_RUNNING,"De san grad unten – wart, bis de Schicht aus is.",They are down the mine right now – wait until the shift is over.
+BIOME_OBERER_STOLLEN,Oberer Stollen,Oberer Stollen (upper tunnels)
+CREATURE_BERGMANDL,Bergmandl,Bergmandl
+ITEM_SALZKRISTALL,Salzkristall,Salt crystal
+ITEM_ALTE_JAUSENBOX,Alte Jausenbox,Old lunch tin
+ITEM_ANTIKE_GRUBENLAMPE,Antike Grubenlampe,Antique miner's lamp
+ITEM_KAISERLICHES_ABZEICHEN,Kaiserliches Abzeichen,Imperial badge
+ITEM_STEINSALZ_BLOCK,Steinsalz-Block,Rock salt block
+ITEM_SPITZHACKE,Spitzhacke,Pickaxe
+ITEM_SPITZHACKE_DESC,Fürs Grobe. Haut a Bergmandl ordentlich.,For the rough stuff. Gives a Bergmandl a proper whack.
+ITEM_KARBIDPATRONE,Karbidpatrone,Carbide cartridge
+ITEM_KARBIDPATRONE_DESC,Füllt d'Lampn unterwegs nach (Klick).,Tops up your lamp on the way (click).
+ITEM_SCHUBKARRE,Schubkarre,Wheelbarrow
+ITEM_SCHUBKARRE_DESC,"A schwerer Brocken oder drei mittlere, fost so gschwind wia z'Fuaß.","One heavy lump or three medium ones, almost as fast as on foot."
+PROMPT_PICK_UP,Nehma: %s,Take: %s
+PROMPT_PUSH_CART,Schubkarre schiabn,Push the wheelbarrow
+PROMPT_LOAD_CART,In d'Schubkarre legn,Put it in the wheelbarrow
+PROMPT_CART_FULL,De Schubkarre is voll.,The wheelbarrow is full.
+PROMPT_LIFT_DOWN,Einifoahn – Schicht anfanga,Go down – start the shift
+PROMPT_LIFT_UP,Aufifoahn – Schicht beenden,Go up – end the shift
+PROMPT_REFILL_LAMP,Lampn auffülln,Refill the lamp
+PROMPT_SHOP,Beim Wirt eikaufn,Shop at the landlord's
+MSG_HANDS_FULL,De Händ san voll.,Your hands are full.
+MSG_SHIFT_START,Glück auf! Bring a Zeug in Förderkorb.,Glück auf! Bring the goods to the lift cage.
+MSG_WHISTLE,Schicht aus! In %d Sekundn foahrt da Korb aufi!,Shift's over! The cage goes up in %d seconds!
+MSG_TOO_POOR,"Des kost mehr, ois du host.",That costs more than you have.
+HUD_HEALTH,Gsundheit,Health
+HUD_LAMP,Karbid,Carbide
+HUD_STAMINA,Puste,Breath
+HUD_HANDS,In de Händ: %s,In your hands: %s
+HUD_DROP,ablegn,put down
+HUD_WATCH,Taschnuhr,Pocket watch
+HUD_MONEY,Geld: %d S,Money: %d S
+HUD_QUOTA,Quote: %d S (no %d Schichtn),Quota: %d S (%d shifts left)
+BOARD_TITLE,Soizwöd GmbH – Schwarzes Brett,Soizwöd Ltd. – Notice board
+BOARD_CYCLE,Quotenrundn %d,Quota round %d
+BOARD_QUOTA,Quote: %d Schilling,Quota: %d Schilling
+BOARD_MONEY,Kassa: %d Schilling,Till: %d Schilling
+BOARD_SHIFTS,Schichtn übrig: %d,Shifts left: %d
+SHOP_TITLE,Beim Wirt,At the landlord's
+SHOP_MONEY,Kassa: %d Schilling,Till: %d Schilling
+SHOP_BUY,Kaufn (%d S),Buy (%d S)
+PANEL_CLOSE,Passt,Done
+PANEL_CONTINUE,Weiter,Continue
+PAUSE_TITLE,Brotzeit,Tea break
+RESULTS_TITLE,Schicht vorbei,Shift over
+RESULTS_LEFT_BEHIND,Du bist unten blieben!,You were left down there!
+RESULTS_NOTHING,Nix verkauft.,Nothing sold.
+RESULTS_ITEM,%s … %d S,%s … %d S
+RESULTS_TOTAL,Verkauft um %d Schilling,Sold for %d Schilling
+RESULTS_QUOTA_MET,Quote (%d S) gschafft! De nächste Rundn wird teurer.,Quota (%d S) met! The next round gets dearer.
+RESULTS_FIRED,Quote (%d S) ned gschafft – Kündigung!,Quota (%d S) missed – you're fired!
+RESULTS_SCORE,Quotenrundn überlebt: %d · Gsamt verdient: %d S,Quota rounds survived: %d · Total earned: %d S
+PROMPT_CART_DROP_IN,[%s] %s einilegn,[%s] Put %s in
+PLAYER_NAME,Kumpl %d,Miner %d
+ITEM_LEICHE,Hiniger Kumpl (Sterbegeld),Dead mate (death benefit)
+PROMPT_CARRY_TOGETHER,Mittrogn: %s,Help carry: %s
+MSG_LOST_GRIP,Auskemma! Ihr seid's z'weit ausanand.,Lost your grip! You're too far apart.
+MSG_PLAYER_DIED,%s is hin!,%s is dead!
+MSG_YOU_DIED,Du bist hin. Bis zur nächstn Schicht schaust nur mehr zua.,You're dead. Until the next shift you can only watch.
+HUD_SPECTATING,Du bist hin – du schaust %s zua.   [%s] wechseln,You're dead – watching %s.   [%s] switch
+HUD_DEAD,Du bist hin.,You're dead.
+HUD_CREW,Kumpl dabei: %d,Miners along: %d
+RESULTS_DIED,Du bist hin worn!,You died!
+HUD_TOGETHER,(zu zweit),(together)
+MENU_PUBLIC,Für olle sichtbor,Visible to everyone
+MENU_FIND,Partien suachn,Find games
+MENU_LOBBY,%s – %d/%d Kumpl,%s – %d/%d miners
+MENU_LOBBY_FRIEND,%s (Freind) – %d/%d Kumpl,%s (friend) – %d/%d miners
+MENU_STEAM_AS,Angmeldt ois %s,Signed in as %s
+NET_OPENING,Partie wird aufgmocht…,Opening the game…
+NET_SEARCHING,"I schau, wer grad eifoahrt…",Looking for who's going down…
+NET_NO_LOBBIES,Koa Partie gfundn. Lass di vo am Freind eiladn!,No games found. Get a friend to invite you!
+NET_LOBBY_FULL,De Partie is scho voll.,That game is full.
+NET_WRONG_VERSION,De Partie lauft auf ana ondern Version vom Spü.,That game runs a different version.
+NET_NOT_SOIZWOED,Des is koa Soizwöd-Partie.,That is not a Soizwöd game.
+NET_JOINING_INVITE,Du gehst zu deim Freind…,Joining your friend…
+HUD_TALKING,Du redst…,You're talking…
+PAUSE_INVITE,Freind eiladn,Invite friends
+PAUSE_VOICE_PTT,Redn: %s drucka,Talk: hold %s
+PAUSE_VOICE_OPEN,Redn: Mikro offn,Talk: open mic
+PAUSE_MIC_TEST_OFF,Mikro probiern: aus,Mic test: off
+PAUSE_MIC_TEST_ON,Mikro probiern: ein (du hörst di selber),Mic test: on (you hear yourself)
+INVITE_TITLE,Freind eiladn,Invite friends
+INVITE_NO_FRIENDS,Koane Steam-Freind gfundn.,No Steam friends found.
+INVITE_IN_GAME,(spüt grad),(playing)
+INVITE_SEND,Eiladn,Invite
+INVITE_SENT,Eiglodn!,Invited!
+INVITE_FAILED,Hot ned highaut,Didn't work
+MENU_SETTINGS,Einstellungen,Settings
+SETTINGS_TITLE,Einstellungen,Settings
+SETTINGS_AUDIO,Ton,Sound
+SETTINGS_DISPLAY,Anzeige,Display
+SETTINGS_GRAPHICS,Grafik,Graphics
+SETTINGS_GAMEPLAY,Spü,Game
+SET_MASTER,Gsamtlautstärke,Master volume
+SET_MUSIC,Musi,Music
+SET_EFFECTS,Gräusch,Sounds
+SET_VOICE,Stimmen vo de Kumpl,Teammates' voices
+SET_CREATURE_LINES,Gegner redn,Creatures talk
+SET_OPEN_MIC,Mikro offn (sunst redst mit V),Open mic (otherwise push to talk)
+SET_WINDOW_MODE,Fenstermodus,Window mode
+SET_WINDOWED,Fenster,Window
+SET_BORDERLESS,Randloses Fenster,Borderless window
+SET_FULLSCREEN,Vollbild,Fullscreen
+SET_VSYNC,VSync,VSync
+SET_FPS,Bildrate,Frame rate
+SET_FPS_UNLIMITED,Unbegrenzt,Unlimited
+SET_FOV,Blickwinkel,Field of view
+SET_BRIGHTNESS,Helligkeit,Brightness
+SET_QUALITY,Qualität,Quality
+SET_Q_LOW,Niedrig,Low
+SET_Q_MEDIUM,Mittel,Medium
+SET_Q_HIGH,Hoch,High
+SET_Q_ULTRA,Ultra,Ultra
+SET_RENDER_SCALE,3D-Auflösung,3D resolution
+SET_FOG,Staub im Liacht (Nebel),Dust in the light (fog)
+SET_AA,Kantenglättung,Anti-aliasing
+SET_AA_OFF,Aus,Off
+SET_AA_FXAA,FXAA,FXAA
+SET_AA_TAA,TAA,TAA
+SET_AA_MSAA,MSAA + TAA,MSAA + TAA
+SET_SENSITIVITY,Maus-Empfindlichkeit,Mouse sensitivity
+SET_INVERT_Y,Maus aufwärts umdrahn,Invert mouse Y
+SET_HEAD_BOB,Kopfwackln beim Gehn,Head bob when walking
+SET_DEFAULTS,Standard,Defaults
+CREATURE_TATZELWURM,Tatzelwurm,Tatzelwurm
+CREATURE_KASERMANDL,Kasermandl,Kasermandl
+CREATURE_SCHICHTMEISTER,Da Schichtmeister,The Schichtmeister
+ITEM_STIRNLAMPE,Elektrische Stirnlampe,Electric headlamp
+ITEM_STIRNLAMPE_DESC,"Ka Flamm, ka Explosion. Klick: umschoitn zwischn Karbid und Batterie.","No flame, no explosion. Click: switch between carbide and battery."
+ITEM_ALPHORN,Alphorn (Reiseformat),Alphorn (travel size)
+ITEM_ALPHORN_DESC,"Klick: a Trumm vom Ton. Wos vor dir is, steht deppat do – und de ganze Grubn hört's.",Click: one almighty note. Whatever is in front of you stands there dazed – and the whole mine hears it.
+ITEM_BOELLER,Böller,Firecracker
+ITEM_BOELLER_DESC,"Klick: anzündn und schmeißn. Kracht, lockt, verscheucht Bergmandl.","Click: light and throw. Bangs, lures, scares off Bergmandl."
+ITEM_RAUCHBOMBE,"Rauchbombe ""Bierzelt""","Smoke bomb ""Beer tent"""
+ITEM_RAUCHBOMBE_DESC,Klick: schmeißn. Stinkt wia 's Bierzelt am Montag in da Fruah – do geht nix eini.,Click: throw. Stinks like a beer tent on Monday morning – nothing goes in there.
+ITEM_FUNKGERAET,Funkgerät,Walkie-talkie
+ITEM_FUNKGERAET_DESC,"Wer ans hot, hört de ondern mit Funk a von weit weg. Klick: anfunkn. Rauscht, wenn wos in da Näh is.",Whoever carries one hears the others over the radio from far away. Click: call. Crackles when something is near.
+ITEM_OBSTLER,Obstler,Obstler (fruit schnapps)
+ITEM_OBSTLER_DESC,"Klick: a Stamperl. +25 Gsundheit, dann draht si's a bissl.","Click: a shot. +25 health, then the room spins a bit."
+ITEM_LEBERKAESSEMMEL,Leberkässemmel,Leberkäse roll
+ITEM_LEBERKAESSEMMEL_DESC,Klick: in Ruah essn (4 Sekundn). +40 Gsundheit.,Click: eat in peace (4 seconds). +40 health.
+ITEM_SEIL,Seil & Kletterhakn,Rope & climbing hook
+ITEM_SEIL_DESC,"Klick auf a Kantn: Seil owi lossn, rauf- und runterklettern. E hoitn am Hakn: wieder einholn.","Click at an edge: let the rope down, climb up and down. Hold E on the hook: take it back."
+ITEM_PFEIFERL,Grubenhund-Pfeiferl,Mine-cart whistle
+ITEM_PFEIFERL_DESC,Klick: da Hunt kummt auf de Gleis daher. Laut!,Click: the mine cart comes rolling along the rails. Loud!
+ITEM_HUNT,Hunt,Mine cart
+MSG_BATTERY_EMPTY,De Batterie is laar.,The battery is flat.
+MSG_LAMP_ELECTRIC,Stirnlampe an – ka Flamm.,Headlamp on – no flame.
+MSG_LAMP_CARBIDE,Zruck zur Karbidlampn.,Back to the carbide lamp.
+MSG_OUT_OF_BREATH,"Z'weng Luft, wort a bissl.","Out of breath, wait a moment."
+MSG_ROPE_NO_EDGE,Do geht's net weit gnua owi.,It doesn't go down far enough here.
+MSG_RADIO_CALL,%s funkt di an!,%s is calling you!
+MSG_NO_RAILS,Do gibt's ka Gleis.,There are no rails here.
+MSG_RAILS_FAR,"Da Hunt kummt, oba bis zu de Gleis muasst scho selber.","The cart is coming, but you'll have to walk to the rails yourself."
+MSG_NEED_PICK,Do brauchst a Spitzhackn.,You need a pickaxe for that.
+PROMPT_RAIL_PUSH,Hunt schiabn,Push the mine cart
+PROMPT_RAIL_LET_GO,Hunt auslossn,Let go of the mine cart
+PROMPT_LOAD_HUNT,In Hunt legn,Put it in the mine cart
+PROMPT_HUNT_FULL,Da Hunt is voll.,The mine cart is full.
+PROMPT_ROPE_TAKE,Seil einholn,Take the rope back
+USE_NONE,–,–
+USE_REFILL_LAMP,Lampn nachfülln,Refill the lamp
+USE_HEADLAMP,Lampn umschoitn,Switch lamps
+USE_ALPHORN,Blosn,Blow
+USE_THROW,Anzündn und schmeißn,Light and throw
+USE_DRINK,Trinkn,Drink
+USE_EAT,Essn,Eat
+USE_ROPE,Seil owi lossn,Let the rope down
+USE_PFEIFERL,Pfeifn,Whistle
+USE_RADIO,Anfunkn,Call
+BIOME_OBERER_STOLLEN_DESC,"Hoiz, Gleis und oide Lampn. Da Hunt rennt auf de Schienen.","Timber, rails and old lamps. The mine cart runs on the tracks."
+BIOME_SALZSEE,Salzsee,Salzsee (brine lake)
+BIOME_SALZSEE_DESC,"Riesige Hallen, a schwoaze Sole-See und a Fähre. Mehr wert – und wos im Wossa.","Huge halls, a black brine lake and a ferry. Worth more – and something in the water."
+PLAN_TITLE,Grubnplan,Mine plan
+PLAN_TODAY,Heit: %s,Today: %s
+PLAN_PICK,Do eini,Go in here
+PLAN_PICKED,Do geht's eini,We're going in here
+PLAN_LOCKED,Ab Quotenrundn %d,From quota round %d
+PROMPT_PLAN,Grubnplan – Abschnitt aussuachn,Mine plan – pick a section
+PROMPT_FERRY_BELL,"Glockn läutn – ""Hol über!""","Ring the bell – ""Ferry over!"""
+PROMPT_FERRY_BUSY,De Fähre is unterwegs.,The ferry is on its way.
+MSG_SOMETHING_IN_WATER,Do unten is wos! Raus aus'm Wossa!,Something's down there! Get out of the water!
+MSG_LAMP_DROWNED,Pfiat di Karbid – d'Lampn is ersoffn.,Bye-bye carbide – the lamp drowned.
+MSG_TOO_HEAVY_TO_SWIM,"Z'schwar zum Schwimmen, is da auskemma.","Too heavy to swim with, it slipped away."
+SET_AUTO_RESOLUTION,FSR 2: 3D-Auflösung automatisch (höchstens 1080p),FSR 2: automatic 3D resolution (at most 1080p)
+ITEM_KELTISCHES_BRONZESCHWERT,Keltisches Bronzeschwert,Celtic bronze sword
+ITEM_GOLDENE_HAUBE,Goldene Haube,Golden bonnet
+ITEM_KUCKUCKSUHR,Kuckucksuhr,Cuckoo clock
+ITEM_GAMSBART_HUT,Gamsbart-Hut,Chamois-tuft hat
+ITEM_MANN_IM_SALZ,"Stück vom ""Mann im Salz""","Piece of the ""Man in the Salt"""
+ITEM_SPECKBROT,Speckbrot (hundert Johr oid),Bacon bread (a hundred years old)
+USE_WEAR,Aufsetzn / obnehma,Put on / take off
+USE_OPEN,Aufmacha,Open
+USE_EAT_OLD,Trau di und iss,Dare to eat it
+USE_STRIKE,Zuaschlogn,Strike
+MSG_BOX_EMPTY,"De is laar, de host scho aufgmacht.","It's empty, you opened it already."
+MSG_BOX_NOTHING,Nix drin außer Bröseln.,Nothing inside but crumbs.
+MSG_BOX_SPECKBROT,A Speckbrot! Hundert Johr oid… schaut no guat aus?,A bacon bread! A hundred years old… still looks fine?
+MSG_POISONED,Uiii. Des Speckbrot wor nimma guat…,Ooh. That bacon bread was off…
+BIOME_DIE_TIEFE,Die Tiefe,Die Tiefe (the deep)
+BIOME_DIE_TIEFE_DESC,"Keltische Stollen, Knochn und da Mann im Salz. Vü Gas, ka Gleis, des beste Zeig – und de Percht.","Celtic galleries, bones and the Man in the Salt. Lots of gas, no rails, the best loot – and the Percht."
+SET_VOICE_LURE,Salzweibl derf mei Stimm nochmochn,The Salzweibl may copy my voice
+SETTINGS_CONTROLS,Tastn,Keys
+SET_LANGUAGE,Sproch,Language
+SET_LANG_AUTO,Automatisch,Automatic
+SET_LANG_DE,Deutsch (Österreich),Deutsch (Österreich)
+SET_LANG_EN,English,English
+SET_PRESS_KEY,Druck a Tastn… (Esc: obbrechn),Press a key… (Esc: cancel)
+SET_KEYS_RESET,Tastn zruckstelln,Default keys
+KEY_MOUSE_1,Linksklick,Left click
+KEY_MOUSE_2,Rechtsklick,Right click
+KEY_MOUSE_3,Mittlere Maustastn,Middle click
+KEY_MOUSE_4,Radl auffi,Wheel up
+KEY_MOUSE_5,Radl owi,Wheel down
+KEY_NONE,–,–
+ACTION_MOVE_FORWARD,Vire,Forward
+ACTION_MOVE_BACK,Zruck,Back
+ACTION_MOVE_LEFT,Links,Left
+ACTION_MOVE_RIGHT,Rechts,Right
+ACTION_JUMP,Hupfn,Jump
+ACTION_SPRINT,Laufn,Run
+ACTION_CROUCH,Duckn,Crouch
+ACTION_INTERACT,Nehma / benutzn,Take / use
+ACTION_DROP,Ablegn,Put down
+ACTION_USE,Haun / Zeig benutzn,Strike / use item
+ACTION_LAMP,Lampn,Lamp
+ACTION_SHOUT,Plärrn,Shout
+ACTION_VOICE_TALK,Redn (Mikro),Talk (voice)
+ACTION_WATCH,Taschnuhr,Pocket watch
+ACTION_EMOTE_JODLER,Jodln,Yodel
+ACTION_EMOTE_WAVE,Winkn,Wave
+ACTION_EMOTE_POINT,Zeign,Point
+ACTION_SLOT_1,Fach 1,Pocket 1
+ACTION_SLOT_2,Fach 2,Pocket 2
+ACTION_SLOT_3,Fach 3,Pocket 3
+ACTION_SLOT_4,Fach 4,Pocket 4
+ITEM_WUNDERHEILERIN_SALBE,Wunderheilerin-Salbe,Wise woman's salve
+USE_REVIVE,Auf an hinign Kumpl: aufwecken,On a dead mate: bring them back
+MSG_REVIVE_AIM,Schau auf an hinign Kumpl.,Look at a dead mate.
+MSG_REVIVE_TOO_LATE,Z'spät – do hilft ka Salbn mehr.,Too late – no salve helps now.
+MSG_REVIVED,%s is wieder do!,%s is back!
+MSG_YOU_REVIVED,De Salbn wirkt – du bist wieder do!,The salve works – you're back!

@@ -129,6 +129,7 @@ static func _add_dead_end_walls(layout: MineLayout, rng: RandomNumberGenerator, 
 
 
 static func _pick_chunks(layout: MineLayout, rng: RandomNumberGenerator, chunks: ChunkSet) -> void:
+	var placed: Dictionary = {}  # entry index -> how many so far
 	for cell: Vector2i in layout.cells:
 		var mask: int = layout.cells[cell]
 		var is_start: bool = cell == layout.start
@@ -138,6 +139,8 @@ static func _pick_chunks(layout: MineLayout, rng: RandomNumberGenerator, chunks:
 			var entry: ChunkEntry = chunks.entries[index]
 			if entry.is_station != is_start or int(layout.depth.get(cell, 0)) < entry.min_depth:
 				continue
+			if entry.max_count > 0 and int(placed.get(index, 0)) >= entry.max_count:
+				continue
 			var fit: Vector2i = _best_rotation(entry.openings, mask)
 			if fit.x < 0:
 				continue
@@ -146,6 +149,7 @@ static func _pick_chunks(layout: MineLayout, rng: RandomNumberGenerator, chunks:
 		assert(not options.is_empty(), "no chunk fits cell %s mask %d" % [cell, mask])
 		var choice: Vector2i = options[rng.rand_weighted(weights)]
 		layout.chunk_index[cell] = choice.x
+		placed[choice.x] = int(placed.get(choice.x, 0)) + 1
 		layout.chunk_rotation[cell] = choice.y
 
 

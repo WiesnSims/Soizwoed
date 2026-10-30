@@ -1,0 +1,106 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.32, 0.19, 0.1, 1)
+metallic = 0.0
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="dark"]
+albedo_color = Color(0.16, 0.09, 0.05, 1)
+metallic = 0.0
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="face"]
+albedo_color = Color(0.88, 0.84, 0.72, 1)
+metallic = 0.0
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="brass"]
+albedo_color = Color(0.7, 0.52, 0.22, 1)
+metallic = 0.9
+roughness = 0.4
+
+[sub_resource type="BoxMesh" id="house"]
+size = Vector3(0.26, 0.3, 0.13)
+
+[sub_resource type="BoxMesh" id="roof"]
+size = Vector3(0.2, 0.02, 0.17)
+
+[sub_resource type="CylinderMesh" id="face"]
+top_radius = 0.065
+bottom_radius = 0.065
+height = 0.01
+radial_segments = 20
+rings = 1
+
+[sub_resource type="BoxMesh" id="door"]
+size = Vector3(0.06, 0.06, 0.01)
+
+[sub_resource type="BoxMesh" id="hand"]
+size = Vector3(0.006, 0.05, 0.004)
+
+[sub_resource type="CylinderMesh" id="cone"]
+top_radius = 0.018
+bottom_radius = 0.012
+height = 0.09
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.28, 0.4, 0.17)
+
+
+[node name="Kuckucksuhr" type="RigidBody3D"]
+mass = 3.0
+script = ExtResource("1_item")
+
+[node name="House" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("house")
+surface_material_override/0 = SubResource("wood")
+
+[node name="RoofL" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8192, 0.5736, 0, -0.5736, 0.8192, 0, 0, 0, 1, -0.08, 0.34, 0)
+mesh = SubResource("roof")
+surface_material_override/0 = SubResource("dark")
+
+[node name="RoofR" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.8192, -0.5736, 0, 0.5736, 0.8192, 0, 0, 0, 1, 0.08, 0.34, 0)
+mesh = SubResource("roof")
+surface_material_override/0 = SubResource("dark")
+
+[node name="Face" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.0, 1.0, 0, -1.0, 0.0, 0, 0.13, -0.066)
+mesh = SubResource("face")
+surface_material_override/0 = SubResource("face")
+
+[node name="Door" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.255, -0.066)
+mesh = SubResource("door")
+surface_material_override/0 = SubResource("dark")
+
+[node name="HandH" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.145, -0.073)
+mesh = SubResource("hand")
+surface_material_override/0 = SubResource("dark")
+
+[node name="HandM" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.5, 0.866, 0, -0.866, 0.5, 0, 0, 0, 1, 0.012, 0.13, -0.073)
+mesh = SubResource("hand")
+surface_material_override/0 = SubResource("dark")
+
+[node name="ConeL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0.05, 0.0)
+mesh = SubResource("cone")
+surface_material_override/0 = SubResource("brass")
+
+[node name="ConeR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.06, 0.05, 0.0)
+mesh = SubResource("cone")
+surface_material_override/0 = SubResource("brass")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("shape")

@@ -59,7 +59,7 @@ Back at the surface
 - **Inventory:** 4 small slots + both hands for one heavy object.
 - **Heavy loot:** some loot is too heavy to carry fast alone (sprint disabled, slow walk). Two players carrying together move normally. Solo players use the Schubkarre (see tools).
 - **Death:** ragdoll, drop all items. Dead players spectate living teammates (cycle through cameras). A body carried back to the lift gives a small "Sterbegeld" bonus.
-- **Revive:** none in base design (keeps stakes high). Optional item: "Wunderheilerin-Salbe", rare, revives within 30 s.
+- **Revive:** only with the rare "Wunderheilerin-Salbe" (found in the mine, 3+ steps deep): used on a dead teammate's body within 30 s of their death, it brings them back with 40 health (owner decision 2026-10-30).
 
 ---
 
@@ -298,6 +298,5 @@ Work milestone by milestone. Each milestone should end in a playable Windows bui
 ## 14. Open Questions (decide during development)
 
 - Exact quota curve and shift length – tune in M1/M2 playtests.
-- Whether a rare revive item stays in.
 - Max player count: 4 fixed, or allow 6?
 - Persistent unlocks between runs (cosmetics like hats) – yes/no?

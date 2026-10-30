@@ -52,6 +52,8 @@ func run(game: Game, scenario: String) -> void:
 	await get_tree().create_timer(0.5).timeout
 	if scenario == "salzsee" or scenario == "salzseelook":
 		_game.biome_index = 1  # unlocked or not: this is a check of the section itself
+	if scenario in ["tiefe", "percht", "tiefelook"]:
+		_game.biome_index = 2
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
 		await get_tree().process_frame
@@ -90,6 +92,14 @@ func run(game: Game, scenario: String) -> void:
 			await _tools()
 		"hazards":
 			await _hazards()
+		"tiefe":
+			await _tiefe()
+		"tiefelook":
+			await _tiefe_look()
+		"percht":
+			await _percht()
+		"weibl":
+			await _weibl()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -266,12 +276,24 @@ func _coop() -> void:
 	_game.request_drop(block.get_path(), host.hold_point.global_transform, Vector3.ZERO)
 	await get_tree().create_timer(1.5).timeout
 	print("[scenario] host: after letting go, block holder %d helper %d" % [block.holder_peer, block.helper_peer])
+	# Two miners side by side: a Salzweibl right next to them does not dare and flees.
+	_game.spawn_creature(&"salzweibl", Transform3D(Basis.IDENTITY, host.global_position - host.global_basis.z * 1.5))
+	await get_tree().create_timer(1.5).timeout
 	_game.host_damage_player(client, 1000)
 	await get_tree().create_timer(5.0).timeout
 	var corpses: int = 0
 	for item: WorldItem in _game._items():
 		corpses += 1 if item.data.id == &"leiche" else 0
 	print("[scenario] host: %d corpse(s), client alive %s" % [corpses, client.alive])
+	# The Wunderheilerin-Salbe on the body, well within the 30 s: the client is back.
+	var salve: WorldItem = await _give(&"wunderheilerin_salbe")
+	for item: WorldItem in _game._items():
+		if item.data.id == &"leiche":
+			host.teleport(Transform3D(Basis.IDENTITY, item.global_position + Vector3(1.0, 0.2, 0.0)))
+			await get_tree().create_timer(0.3).timeout
+			_game.request_revive(salve.get_path(), item.get_path())
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] host: client alive after the salve %s, health %d" % [client.alive, client.health])
 	host.teleport(cage.player_spot(0))
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
@@ -326,6 +348,159 @@ func _meister() -> void:
 	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(14.0)))
 	_game.shift_time_left = 0.5
 	await get_tree().create_timer(Balance.config.schichtmeister_delay + 20.0).timeout
+
+
+## Die Tiefe and the M5 loot: what spawned, then the hat, the Jausenbox and its Speckbrot, the
+## Bronzeschwert, the Kuckucksuhr and the cursed Mann im Salz.
+func _tiefe() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	var section: StringName = _game.mine.chunk_set.id
+	var foreign: int = 0
+	for item: WorldItem in _game._items():
+		if item.is_loot() and not item.data.spawns_in(section):
+			foreign += 1
+	print("[scenario] section %s, %d chunks, cell %.0f m, relics %d, loot from other sections %d, rails %s" % [section, _game.mine.chunks.size(),
+			_game.mine.chunk_set.cell_size, _count(&"mann_im_salz"), foreign, _game.mine.rails != null])
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(6.0)))
+	await get_tree().create_timer(0.5).timeout
+	# The Gamsbart-Hut: on the head, still in the pocket.
+	var hat: WorldItem = await _give(&"gamsbart_hut")
+	player._use_active()
+	await get_tree().create_timer(0.4).timeout
+	print("[scenario] hat worn %s on %s" % [hat.worn, hat.follow.name if hat.follow != null else "-"])
+	player._use_cooldown = 0.0
+	# The Jausenbox: a Speckbrot inside, and it makes you sick.
+	config.speckbrot_chance = 1.0
+	config.speckbrot_poison_chance = 1.0
+	var box: WorldItem = await _give(&"alte_jausenbox")
+	player._use_active()
+	await get_tree().create_timer(0.8).timeout
+	player._use_cooldown = 0.0
+	var bread: WorldItem = null
+	for item: Object in player.inventory.slots:
+		if item != null and (item as WorldItem).data.id == &"speckbrot":
+			bread = item as WorldItem
+	print("[scenario] box opened %s, speckbrot in a pocket %s" % [box.opened, bread != null])
+	player.set_health(50)
+	player.inventory.select(player.inventory.slots.find(bread))
+	player._use_active()
+	await get_tree().create_timer(config.speckbrot_eat_seconds + 0.5).timeout
+	var after_eating: int = player.health
+	await get_tree().create_timer(config.speckbrot_poison_seconds + 1.0).timeout
+	print("[scenario] speckbrot: health 50 -> %d, after the poisoning %d" % [after_eating, player.health])
+	player.set_health(config.player_max_health)
+	# The Bronzeschwert in both hands against a Bergmandl right in front.
+	var sword: WorldItem = _game._spawn_item_at(&"keltisches_bronzeschwert", 100, player.global_transform.translated(Vector3.UP))
+	await get_tree().create_timer(0.3).timeout
+	_game.request_take(sword.get_path(), player.peer_id)
+	await get_tree().create_timer(0.3).timeout
+	player.head.rotation.x = -0.6  # a Bergmandl is small
+	var mandl: Creature = _game.spawn_creature(&"bergmandl", Transform3D(Basis.IDENTITY, player.camera.global_position - player.camera.global_basis.z * 1.4 - Vector3.UP * 1.0))
+	mandl.host_stun(5.0)  # or it snatches the sword first
+	await get_tree().create_timer(0.3).timeout
+	player._use_cooldown = 0.0
+	player._use_active()
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] sword in hands %s, bergmandl health %d" % [player.inventory.hands == sword, mandl.health if is_instance_valid(mandl) else -1])
+	_game.request_drop(sword.get_path(), player.hold_point.global_transform, Vector3.ZERO)
+	# The Kuckucksuhr cuckoos on its own.
+	var clock: WorldItem = _game._spawn_item_at(&"kuckucksuhr", 90, player.global_transform.translated(Vector3.UP * 0.5))
+	await get_tree().create_timer(0.3).timeout
+	_game._special_left[String(clock.name)] = 0.1
+	await get_tree().create_timer(0.5).timeout
+	# The Mann im Salz: carried, the creatures sense it from further away.
+	var relic: WorldItem = _game._spawn_item_at(&"mann_im_salz", 500, player.global_transform.translated(Vector3.UP * 0.5))
+	await get_tree().create_timer(0.3).timeout
+	_game.request_take(relic.get_path(), player.peer_id)
+	await get_tree().create_timer(config.curse_pulse_seconds * 3.0 + 0.5).timeout
+	print("[scenario] relic held %s, carried %.0f s, sensed from %.0f m" % [player.inventory.hands == relic,
+			float(_game._cursed_for.get(String(relic.name), 0.0)), _game.curse_reach(float(_game._cursed_for.get(String(relic.name), 0.0)))])
+
+
+## For screenshots: down a Tiefe tunnel, then at the Mann im Salz if this mine has him.
+func _tiefe_look() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(10.0)))
+	await get_tree().create_timer(5.0).timeout
+	for chunk: Chunk in _game.mine.chunks.values():
+		var man: Node3D = chunk.find_child("SaltMan", true, false) as Node3D
+		if man != null:
+			var stand: Vector3 = man.global_position - man.global_basis.z * 3.2 + Vector3.UP * 0.1
+			player.teleport(Transform3D(Basis.looking_at(-man.global_basis.z * -1.0), stand))
+			player.head.rotation.x = 0.1
+			print("[scenario] at the Mann im Salz")
+			break
+	await get_tree().create_timer(4.0).timeout
+	var percht: Creature = _game.spawn_creature(&"percht", Transform3D(Basis.IDENTITY, player.global_position + player.global_basis.z * 4.0 + Vector3.UP * 0.2))
+	percht.look_at(Vector3(player.global_position.x, percht.global_position.y, player.global_position.z), Vector3.UP)
+	percht.host_stun(60.0)  # stands for its portrait
+	player.rotate_y(PI)
+
+
+## The Percht: sees a lit lamp from afar, a crouching miner in the dark not at all; hunts,
+## loses you, is drawn off by a noise, strikes.
+func _percht() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	var stand: Vector3 = _out_of_station(4.0)
+	player.teleport(Transform3D(_game.mine_cage.global_basis, stand))
+	player.lamp_on = false
+	player.crouching = true
+	var at: Vector3 = _out_of_station(13.0)
+	await get_tree().create_timer(0.5).timeout
+	var percht: Percht = _game.spawn_creature(&"percht", Transform3D(Basis.looking_at(stand - at), at + Vector3.UP * 0.2)) as Percht
+	await get_tree().create_timer(0.5).timeout
+	# Held still facing the miner for the sight check.
+	percht.host_stun(30.0)
+	percht.look_at(Vector3(player.global_position.x, percht.global_position.y, player.global_position.z), Vector3.UP)
+	await get_tree().physics_frame
+	print("[scenario] percht: dark and crouching at %.0f m: seen %s" % [percht.global_position.distance_to(player.global_position), percht._spot() != null])
+	player.crouching = false
+	player.lamp_on = true
+	await get_tree().physics_frame
+	print("[scenario] percht: lamp on: seen %s" % [percht._spot() == player])
+	percht.stunned_left = 0.0
+	await get_tree().create_timer(0.6).timeout
+	print("[scenario] percht: then %s" % Percht.State.keys()[percht.state])
+	# Gone round a corner, dark: it loses the scent and searches.
+	player.lamp_on = false
+	player.teleport(Transform3D(Basis.IDENTITY, _game.mine_cage.global_position + Vector3.UP * 0.2))
+	await get_tree().create_timer(config.percht_lose_seconds + 1.5).timeout
+	print("[scenario] percht: out of sight: %s" % Percht.State.keys()[percht.state])
+	# A Böller-like bang further on draws it away.
+	var bang: Vector3 = _out_of_station(30.0)
+	_game.host_noise(bang, config.noise_boeller)
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] percht: after a bang: %s towards %.0f m off" % [Percht.State.keys()[percht.state], percht._goal.distance_to(bang)])
+	# Face to face with a lamp on: it strikes.
+	player.set_health(config.player_max_health)
+	player.lamp_on = true
+	player.teleport(Transform3D(Basis.IDENTITY, percht.global_position - percht.global_basis.z * 1.5 + Vector3.UP * 0.1))
+	await get_tree().create_timer(2.0).timeout
+	print("[scenario] percht: face to face, player health %d" % player.health)
+
+
+## The Salzweibl in solo: calls with its own lines (no voice to copy), takes a lone miner.
+func _weibl() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(5.0)))
+	await get_tree().create_timer(0.5).timeout
+	player.lamp_on = false  # it never calls while a lamp is on it
+	var weibl: Salzweibl = _game.spawn_creature(&"salzweibl", Transform3D(Basis.IDENTITY, _out_of_station(18.0) + Vector3.UP * 0.2)) as Salzweibl
+	await get_tree().create_timer(6.0).timeout
+	print("[scenario] salzweibl waits %.0f m away, shown %s" % [weibl.global_position.distance_to(player.global_position), weibl.net_shown])
+	player.teleport(Transform3D(Basis.IDENTITY, weibl.global_position + Vector3(0.8, 0.1, 0.0)))
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] salzweibl: lone miner health %d, shown %s" % [player.health, weibl.net_shown])
 
 
 ## Gives the local player a fresh `id` in the selected pocket slot.
@@ -706,7 +881,7 @@ func _coop_client() -> void:
 	var seen: Dictionary = {}
 	_track_when_thrown()
 	var fall_start: float = INF
-	for i: int in 80:
+	for i: int in 140:
 		await get_tree().create_timer(0.25).timeout
 		if _game.phase != Game.Phase.SHIFT:
 			break
@@ -727,6 +902,9 @@ func _coop_client() -> void:
 		if not me.alive and me.spectating != null and not seen.has("dead"):
 			seen.dead = true
 			print("[scenario] client dead, spectating P%d" % me.spectating.peer_id)
+		if seen.has("dead") and me.alive and me.health < Balance.config.player_max_health and not seen.has("revived"):
+			seen.revived = true
+			print("[scenario] client revived, health %d, own camera %s" % [me.health, me.camera.current])
 
 
 ## Logs where a thrown item flies, every 0.1 s from the moment it is let go (host and client).

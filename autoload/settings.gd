@@ -15,9 +15,13 @@ var shadow_distance: float = 24.0
 
 ## The environments' tuned exposure and SSAO/SSIL switches, before any settings.
 var _base: Dictionary = {}  # Environment -> Dictionary
+## The keys from project.godot, before any rebinding: action -> Array[InputEvent].
+var _default_events: Dictionary = {}
 
 
 func _ready() -> void:
+	for action: StringName in SettingsData.REBINDABLE:
+		_default_events[action] = InputMap.action_get_events(action)
 	var file: ConfigFile = ConfigFile.new()
 	if file.load(PATH) == OK:
 		data.load_from(file)
@@ -33,6 +37,8 @@ func _ready() -> void:
 func apply() -> void:
 	data.clamp_all()
 	_apply_audio()
+	_apply_language()
+	_apply_keys()
 	if _may_touch_window():
 		_apply_display()
 	_apply_graphics()
@@ -50,6 +56,58 @@ func save() -> void:
 func reset_to_defaults() -> void:
 	data = SettingsData.new()
 	apply()
+
+
+func reset_keys() -> void:
+	data.key_bindings = {}
+	apply()
+
+
+## The language picked, or the system's (German for German systems, English otherwise).
+func locale() -> String:
+	if data.language != "":
+		return data.language
+	return "de" if OS.get_locale_language() == "de" else "en"
+
+
+func _apply_language() -> void:
+	if TranslationServer.get_locale() != locale():
+		TranslationServer.set_locale(locale())
+
+
+func _apply_keys() -> void:
+	for action: StringName in SettingsData.REBINDABLE:
+		InputMap.action_erase_events(action)
+		if data.key_bindings.has(String(action)):
+			InputMap.action_add_event(action, SettingsData.event_for(int(data.key_bindings[String(action)])))
+		else:
+			for event: InputEvent in _default_events.get(action, []):
+				InputMap.action_add_event(action, event)
+
+
+## The code (SettingsData.event_code) of the first key on every rebindable action right now.
+func current_codes() -> Dictionary:
+	var codes: Dictionary = {}
+	for action: StringName in SettingsData.REBINDABLE:
+		var events: Array[InputEvent] = InputMap.action_get_events(action)
+		codes[action] = SettingsData.event_code(events[0]) if not events.is_empty() else 0
+	return codes
+
+
+## How the key of `action` is called on this keyboard ("E", "Linksklick", ...).
+func key_label(action: StringName) -> String:
+	var events: Array[InputEvent] = InputMap.action_get_events(action) if InputMap.has_action(action) else []
+	return code_label(SettingsData.event_code(events[0])) if not events.is_empty() else tr("KEY_NONE")
+
+
+func code_label(code: int) -> String:
+	if code < 0:
+		return tr("KEY_MOUSE_%d" % -code) if -code <= 5 else "M%d" % -code
+	if code == 0:
+		return tr("KEY_NONE")
+	# The key's name on this keyboard's layout (a headless run has no keyboard to ask).
+	var on_layout: Key = KEY_NONE if DisplayServer.get_name() == "headless" else DisplayServer.keyboard_get_keycode_from_physical(code as Key)
+	return OS.get_keycode_string(on_layout if on_layout != KEY_NONE else code as Key)
 
 
 func _may_touch_window() -> bool:

@@ -1,0 +1,61 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="Script" path="res://enemies/voice_line.gd" id="2_line"]
+[ext_resource type="PackedScene" path="res://enemies/percht/percht.tscn" id="3_scene"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/spot_riach.ogg" id="s0"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/spot_do.ogg" id="s1"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/idle_raunacht.ogg" id="s2"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/idle_brumm.ogg" id="s3"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/strike_hob.ogg" id="s4"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/hit_ha.ogg" id="s5"]
+[ext_resource type="AudioStream" path="res://assets/audio/voices/percht/flee_wo.ogg" id="s6"]
+
+[sub_resource type="Resource" id="line_spot_riach"]
+script = ExtResource("2_line")
+id = &"spot_riach"
+moment = 0
+stream = ExtResource("s0")
+
+[sub_resource type="Resource" id="line_spot_do"]
+script = ExtResource("2_line")
+id = &"spot_do"
+moment = 0
+stream = ExtResource("s1")
+
+[sub_resource type="Resource" id="line_idle_raunacht"]
+script = ExtResource("2_line")
+id = &"idle_raunacht"
+moment = 1
+stream = ExtResource("s2")
+
+[sub_resource type="Resource" id="line_idle_brumm"]
+script = ExtResource("2_line")
+id = &"idle_brumm"
+moment = 1
+stream = ExtResource("s3")
+
+[sub_resource type="Resource" id="line_strike_hob"]
+script = ExtResource("2_line")
+id = &"strike_hob"
+moment = 2
+stream = ExtResource("s4")
+
+[sub_resource type="Resource" id="line_hit_ha"]
+script = ExtResource("2_line")
+id = &"hit_ha"
+moment = 3
+stream = ExtResource("s5")
+
+[sub_resource type="Resource" id="line_flee_wo"]
+script = ExtResource("2_line")
+id = &"flee_wo"
+moment = 5
+stream = ExtResource("s6")
+
+[resource]
+script = ExtResource("1_data")
+id = &"percht"
+name_key = "CREATURE_PERCHT"
+scene = ExtResource("3_scene")
+voice_lines = Array[ExtResource("2_line")]([SubResource("line_spot_riach"), SubResource("line_spot_do"), SubResource("line_idle_raunacht"), SubResource("line_idle_brumm"), SubResource("line_strike_hob"), SubResource("line_hit_ha"), SubResource("line_flee_wo")])

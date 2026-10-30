@@ -27,6 +27,13 @@ const TALK_HOLD_SECONDS: float = 0.3
 
 ## Dev/test: also play your own voice back to yourself ("Mikro probiern" in the pause menu).
 static var echo: bool = false
+## Host: short things each miner said, for the Salzweibl to play back (DESIGN.md §6), only from
+## miners who allow it (setting). peer id -> Array of snippets, each an Array of Steam voice
+## packets, newest last.
+static var snippets: Dictionary = {}
+
+## A pause this long ends a snippet.
+const SNIPPET_GAP_SECONDS: float = 0.45
 
 ## Local player: transmitting right now (for the HUD).
 var talking: bool = false
@@ -42,6 +49,67 @@ var _speaker_radio: AudioStreamPlayer
 var _playback: AudioStreamGeneratorPlayback
 var _playback_flat: AudioStreamGeneratorPlayback
 var _playback_radio: AudioStreamGeneratorPlayback
+## Host: the snippet being recorded from this miner right now.
+var _snippet: Array[PackedByteArray] = []
+var _snippet_started: float = 0.0
+var _snippet_last: float = 0.0
+
+
+## The snippet's packets decoded into one sound, or null (no Steam, or nothing in it).
+static func decode(packets: Array) -> AudioStreamWAV:
+	if not ClassDB.class_exists(&"Steam"):
+		return null
+	var pcm: PackedByteArray = PackedByteArray()
+	for packet: Variant in packets:
+		var result: Dictionary = Steam.decompressVoice(packet as PackedByteArray, SAMPLE_RATE, DECOMPRESS_BUFFER)
+		if int(result.get("result", -1)) == Steam.VOICE_RESULT_OK:
+			pcm.append_array((result["uncompressed"] as PackedByteArray).slice(0, int(result["size"])))
+	if pcm.is_empty():
+		return null
+	var wav: AudioStreamWAV = AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = SAMPLE_RATE
+	wav.stereo = false
+	wav.data = pcm
+	return wav
+
+
+## A random snippet of someone other than `not_peer` (falls back to theirs), as
+## {"peer": id, "packets": Array}; empty when nobody has said anything usable yet.
+static func pick_snippet(not_peer: int) -> Dictionary:
+	var others: Array = snippets.keys().filter(func(peer: int) -> bool: return peer != not_peer and not (snippets[peer] as Array).is_empty())
+	if others.is_empty() and snippets.has(not_peer) and not (snippets[not_peer] as Array).is_empty():
+		others = [not_peer]
+	if others.is_empty():
+		return {}
+	var peer: int = others.pick_random()
+	return {"peer": peer, "packets": (snippets[peer] as Array).pick_random()}
+
+
+## Host: one more packet of this miner's voice. Packets with short pauses between them are one
+## snippet; a finished snippet of the right length is kept.
+func _capture(data: PackedByteArray) -> void:
+	if not multiplayer.is_server() or not _player.voice_lure_ok:
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if not _snippet.is_empty() and now - _snippet_last > SNIPPET_GAP_SECONDS:
+		_finish_snippet()
+	if _snippet.is_empty():
+		_snippet_started = now
+	if now - _snippet_started < _config.salzweibl_snippet_max_seconds:
+		_snippet.append(data)
+	_snippet_last = now
+
+
+func _finish_snippet() -> void:
+	var length: float = _snippet_last - _snippet_started
+	if length >= _config.salzweibl_snippet_min_seconds:
+		var kept: Array = snippets.get(_player.peer_id, [])
+		kept.append(_snippet.duplicate())
+		while kept.size() > _config.salzweibl_snippets_kept:
+			kept.pop_front()
+		snippets[_player.peer_id] = kept
+	_snippet.clear()
 
 
 ## Who hears a voice: dead players are heard only by the dead (DESIGN.md §9); living players
@@ -115,6 +183,8 @@ func _generator() -> AudioStreamGenerator:
 func _process(delta: float) -> void:
 	if _player.is_local():
 		_process_local(delta)
+	if not _snippet.is_empty() and Time.get_ticks_msec() / 1000.0 - _snippet_last > SNIPPET_GAP_SECONDS:
+		_finish_snippet()
 
 
 func _process_local(delta: float) -> void:
@@ -132,6 +202,7 @@ func _process_local(delta: float) -> void:
 		var data: PackedByteArray = voice["buffer"]
 		data = data.slice(0, int(voice["written"]))
 		_voice_packet.rpc(data)
+		_capture(data)
 		_last_sent_at = now
 		_check_loudness(data, delta)
 		if echo:
@@ -159,6 +230,7 @@ func _check_loudness(data: PackedByteArray, delta: float) -> void:
 func _voice_packet(data: PackedByteArray) -> void:
 	if multiplayer.get_remote_sender_id() != _player.peer_id:
 		return
+	_capture(data)
 	var listener: Player = Game.instance.local_player() if Game.instance != null else null
 	var listener_alive: bool = listener == null or listener.alive
 	var both_radio: bool = listener != null and _player.has_tool(&"funkgeraet") and listener.has_tool(&"funkgeraet")

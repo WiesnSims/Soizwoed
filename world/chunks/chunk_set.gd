@@ -17,3 +17,7 @@ extends Resource
 @export var has_rails: bool = false
 ## Size of a passage between two chunks (width, height), for the salt walls that close one.
 @export var passage_size: Vector2 = Vector2(4.0, 3.5)
+## Sounds played around the miners now and then (Game.AMBIENCE when empty).
+@export var ambience: PackedStringArray = []
+## What boots sound like on the floor here (Player footsteps).
+@export var footsteps: String = "footstep_gravel"

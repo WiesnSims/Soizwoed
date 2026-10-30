@@ -31,6 +31,10 @@ var helper_peer: int = 0
 ## The Schubkarre or rail cart carrying this item (CARTED).
 var cart: CargoItem
 var follow: Node3D
+## The Alte Jausenbox was opened already (whatever was in it is out).
+var opened: bool = false
+## Worn on the holder's head (the Gamsbart-Hut), still in its pocket slot.
+var worn: bool = false
 
 var _impact_cooldown: float = 0.0
 ## Clients: the host's transforms of this item while it is free.
@@ -163,6 +167,14 @@ func host_vanish() -> void:
 	_vanish.rpc()
 
 
+func host_set_opened() -> void:
+	_apply_flags.rpc(true, worn)
+
+
+func host_set_worn(on: bool) -> void:
+	_apply_flags.rpc(opened, on)
+
+
 ## Sends this item's whole state to a peer that just joined (`place` from the holder's
 ## inventory). The spawner only knows where the item was first spawned.
 func host_send_state_to(peer: int, place: int) -> void:
@@ -170,6 +182,8 @@ func host_send_state_to(peer: int, place: int) -> void:
 	_apply_state.rpc_id(peer, state, holder_peer, place, follow_path, global_transform)
 	if helper_peer != 0:
 		_apply_helper.rpc_id(peer, helper_peer)
+	if opened or worn:
+		_apply_flags.rpc_id(peer, opened, worn)
 
 
 # --- every peer ------------------------------------------------------------------------------------
@@ -180,6 +194,8 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 	state = new_state
 	holder_peer = peer
 	follow = null
+	if new_state != State.STORED:
+		worn = false  # off the head when it leaves the pocket
 	match new_state:
 		State.HELD, State.STORED:
 			var player: Player = Game.instance.player_by_peer(peer)
@@ -209,6 +225,17 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 		(node as GeometryInstance3D).cast_shadow = shadow
 	if new_state != State.STORED:
 		visible = true
+	state_changed.emit()
+
+
+@rpc("authority", "call_local", "reliable")
+func _apply_flags(is_opened: bool, is_worn: bool) -> void:
+	opened = is_opened
+	worn = is_worn and state == State.STORED
+	var player: Player = Game.instance.player_by_peer(holder_peer) if Game.instance != null else null
+	if player != null and state == State.STORED:
+		follow = player.follow_point_for(self, player.inventory.slots.find(self))
+		player.refresh_held_items()
 	state_changed.emit()
 
 

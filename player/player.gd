@@ -35,6 +35,8 @@ var player_number: int = 1
 var steam_name: String = ""
 ## Proximity voice (Steam sessions only), else null.
 var voice_chat: VoiceChat
+## The owner lets the Salzweibl copy their voice (setting; the host keeps snippets only then).
+var voice_lure_ok: bool = true
 var inventory: Inventory
 var health: int = 100
 var stamina: float = 1.0
@@ -166,6 +168,7 @@ func _ready() -> void:
 		add_child(voice_chat)
 	if not local:
 		_build_nameplate()
+		_right_arm()  # both arms, for others to see
 		sync.synchronized.connect(_on_synchronized)
 		inventory.select(net_slot)
 	_update_lamp()
@@ -177,6 +180,15 @@ func _exit_tree() -> void:
 
 func _on_settings_changed() -> void:
 	camera.fov = Settings.data.fov
+	if voice_lure_ok != Settings.data.voice_lure:
+		_set_voice_lure_ok.rpc_id(1, Settings.data.voice_lure)  # only the host keeps snippets
+
+
+@rpc("authority", "call_local", "reliable")
+func _set_voice_lure_ok(allowed: bool) -> void:
+	voice_lure_ok = allowed
+	if not allowed and VoiceChat.snippets.has(peer_id):
+		VoiceChat.snippets.erase(peer_id)  # what was kept is forgotten too
 
 
 ## On the ground, on every peer: remote players are not moved by physics here, so their
@@ -216,6 +228,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_use_active()
 	elif event.is_action_pressed(&"shout"):
 		_shout()
+	elif event.is_action_pressed(&"emote_jodler"):
+		game().request_emote.rpc_id(1, Emote.JODLER)
+	elif event.is_action_pressed(&"emote_wave"):
+		game().request_emote.rpc_id(1, Emote.WAVE)
+	elif event.is_action_pressed(&"emote_point"):
+		game().request_emote.rpc_id(1, Emote.POINT)
 	elif event.is_action_pressed(&"slot_next"):
 		inventory.select(inventory.selected + 1)
 	elif event.is_action_pressed(&"slot_prev"):
@@ -468,18 +486,21 @@ func _footsteps_and_bob(delta: float) -> void:
 	head.position.y = _head_height + absf(sin(_bob_phase)) * bob
 
 
-enum Surface { GRAVEL, WOOD, BRINE }
+enum Surface { GRAVEL, WOOD, BRINE, SALT }
 
 
 func _surface() -> Surface:
 	if global_position.y > Game.HUB_FLOOR_ABOVE:
 		return Surface.WOOD
-	return Surface.BRINE if in_brine else Surface.GRAVEL
+	if in_brine:
+		return Surface.BRINE
+	var mine: Mine = game().mine
+	return Surface.SALT if mine != null and mine.chunk_set.footsteps == "footstep_salt" else Surface.GRAVEL
 
 
 @rpc("authority", "call_local", "unreliable")
 func _play_footstep(surface: Surface) -> void:
-	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade"][surface], 0.06)
+	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade", "footstep_salt"][surface], 0.06)
 	footsteps.volume_db = -14.0 if crouching else -6.0
 
 
@@ -814,7 +835,14 @@ func _drop_active() -> void:
 
 
 func _use_active() -> void:
-	if _use_cooldown > 0.0 or inventory.hands_busy() or _eating != null:
+	if _use_cooldown > 0.0 or _eating != null:
+		return
+	var held: WorldItem = inventory.hands as WorldItem
+	if inventory.hands_busy():
+		# Something in both hands can still be swung if it is a weapon (the Bronzeschwert).
+		if held != null and held.data.melee_damage > 0 and not inventory.shared_carry:
+			_use_cooldown = 0.8
+			_melee(held.data.melee_damage, false, held.data.breaks_rock)
 		return
 	var item: WorldItem = inventory.slots[inventory.selected] as WorldItem
 	var use: ItemData.Use = item.data.use if item != null else ItemData.Use.NONE
@@ -845,10 +873,23 @@ func _use_active() -> void:
 			_use_cooldown = 1.0
 			game().request_consume.rpc_id(1, item.get_path(), peer_id)
 			_wobble_left = _config.obstler_wobble_seconds
-		ItemData.Use.EAT:
+		ItemData.Use.EAT, ItemData.Use.EAT_OLD:
 			_eating = item
-			_eating_left = _config.leberkaese_eat_seconds
+			_eating_left = _eat_seconds(item)
 			game().play_sound_everywhere.rpc("eat", camera.global_position)
+		ItemData.Use.WEAR:
+			_use_cooldown = 0.5
+			game().request_wear.rpc_id(1, item.get_path())
+		ItemData.Use.OPEN:
+			_use_cooldown = 1.0
+			game().request_open.rpc_id(1, item.get_path())
+		ItemData.Use.REVIVE:
+			_use_cooldown = 1.0
+			var body: WorldItem = focus as WorldItem
+			if body == null or body.data.id != &"leiche":
+				game().show_message(tr("MSG_REVIVE_AIM"))
+				return
+			game().request_revive.rpc_id(1, item.get_path(), body.get_path())
 		ItemData.Use.ROPE:
 			_use_cooldown = 1.0
 			_place_rope(item)
@@ -875,10 +916,19 @@ func _tick_eating(delta: float) -> void:
 		_stop_eating()
 		return
 	_eating_left -= delta
-	use_progress = 1.0 - _eating_left / _config.leberkaese_eat_seconds
+	use_progress = 1.0 - _eating_left / _eat_seconds(_eating)
 	if _eating_left <= 0.0:
 		game().request_consume.rpc_id(1, _eating.get_path(), peer_id)
 		_stop_eating()
+
+
+func _eat_seconds(item: WorldItem) -> float:
+	return _config.speckbrot_eat_seconds if item.data.use == ItemData.Use.EAT_OLD else _config.leberkaese_eat_seconds
+
+
+## A hundred-year-old Speckbrot disagrees with you: the view swims for a while.
+func feel_sick(seconds: float) -> void:
+	_wobble_left = maxf(_wobble_left, seconds)
 
 
 func _stop_eating() -> void:
@@ -962,6 +1012,51 @@ func voice_shout() -> void:
 	game().request_shout.rpc_id(1, peer_id, global_position, false)
 
 
+## Emotes (DESIGN.md §9): wave, point, and the Jodler, which carries far – creatures too.
+enum Emote { JODLER, WAVE, POINT }
+
+
+## Shows an emote on every peer: the yodel is heard, the arm moves on the body others see.
+func play_emote(kind: Emote) -> void:
+	if kind == Emote.JODLER:
+		Audio.play_on(voice, "jodler", 0.04)
+		return
+	var arm: Node3D = _right_arm()
+	var tween: Tween = arm.create_tween()
+	if kind == Emote.WAVE:
+		tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 150), 0.25)
+		for i: int in 3:
+			tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 125), 0.18)
+			tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 165), 0.18)
+	else:
+		tween.tween_property(arm, "rotation_degrees", Vector3(80, 0, 0), 0.2)
+		tween.tween_interval(1.4)
+	tween.tween_property(arm, "rotation_degrees", Vector3.ZERO, 0.3)
+
+
+## The arms on the body other players see (made on first use; the right one does the emotes).
+func _right_arm() -> Node3D:
+	var arm: Node3D = body_mesh.get_node_or_null(^"ArmR") as Node3D
+	if arm != null:
+		return arm
+	var jacket: Material = (body_mesh.get_node(^"Torso") as MeshInstance3D).get_surface_override_material(0)
+	for side: float in [-1.0, 1.0]:
+		var pivot: Node3D = Node3D.new()
+		pivot.name = "ArmR" if side > 0.0 else "ArmL"
+		pivot.position = Vector3(side * 0.34, 1.4, 0.0)
+		body_mesh.add_child(pivot)
+		BodyParts.add(pivot, BodyParts.capsule(0.07, 0.65), jacket, Vector3(0.0, -0.3, 0.0))
+		BodyParts.add(pivot, BodyParts.sphere(0.06, 10), _hand_material(), Vector3(0.0, -0.63, 0.0))
+	return body_mesh.get_node(^"ArmR") as Node3D
+
+
+static func _hand_material() -> StandardMaterial3D:
+	var glove: StandardMaterial3D = StandardMaterial3D.new()
+	glove.albedo_color = Color(0.3, 0.22, 0.14)
+	glove.roughness = 0.9
+	return glove
+
+
 func play_shout() -> void:
 	Audio.play_on(voice, "shout_%d" % (randi() % 3 + 1), 0.05)
 
@@ -986,15 +1081,24 @@ func play_radio(seconds: float) -> void:
 func follow_point_for(item: WorldItem, place: int) -> Node3D:
 	if item is Schubkarre:
 		return cart_point
+	if item.worn and place != Inventory.HANDS:
+		return _hat_point()
 	return hold_point if place == Inventory.HANDS else hand_point
 
 
+## Where a worn hat sits: on top of the helmet (made on first use).
+func _hat_point() -> Node3D:
+	var point: Node3D = head.get_node_or_null(^"HatPoint") as Node3D
+	if point == null:
+		point = Node3D.new()
+		point.name = "HatPoint"
+		point.position = Vector3(0.0, 0.16, 0.02)
+		head.add_child(point)
+	return point
+
+
 func _on_inventory_changed() -> void:
-	# Only the selected slot item shows in the hand, and only while the hands are free.
-	for i: int in inventory.slots.size():
-		var item: WorldItem = inventory.slots[i] as WorldItem
-		if item != null:
-			item.visible = i == inventory.selected and not inventory.hands_busy()
+	refresh_held_items()
 	if is_local():
 		net_slot = inventory.selected
 		# Dropped or lost the Stirnlampe: back to the carbide lamp (deferred: items also leave
@@ -1002,6 +1106,17 @@ func _on_inventory_changed() -> void:
 		if lamp_electric:
 			_check_headlamp.call_deferred()
 	inventory_changed.emit()
+
+
+## Only the selected slot item shows in the hand, and only while the hands are free. A worn
+## hat shows on the head, to everyone but its wearer.
+func refresh_held_items() -> void:
+	for i: int in inventory.slots.size():
+		var item: WorldItem = inventory.slots[i] as WorldItem
+		if item != null and item.worn:
+			item.visible = not is_local() and alive
+		elif item != null:
+			item.visible = i == inventory.selected and not inventory.hands_busy()
 
 
 func _check_headlamp() -> void:

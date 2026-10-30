@@ -1,0 +1,96 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="felt"]
+albedo_color = Color(0.17, 0.24, 0.13, 1)
+metallic = 0.0
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="cord"]
+albedo_color = Color(0.45, 0.32, 0.18, 1)
+metallic = 0.0
+roughness = 0.8
+
+[sub_resource type="StandardMaterial3D" id="beard"]
+albedo_color = Color(0.12, 0.1, 0.08, 1)
+metallic = 0.0
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="tips"]
+albedo_color = Color(0.75, 0.68, 0.55, 1)
+metallic = 0.0
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="crown"]
+top_radius = 0.07
+bottom_radius = 0.095
+height = 0.1
+radial_segments = 18
+rings = 1
+
+[sub_resource type="CylinderMesh" id="brim"]
+top_radius = 0.16
+bottom_radius = 0.16
+height = 0.008
+radial_segments = 24
+rings = 1
+
+[sub_resource type="CylinderMesh" id="band"]
+top_radius = 0.097
+bottom_radius = 0.097
+height = 0.015
+radial_segments = 18
+rings = 1
+
+[sub_resource type="CylinderMesh" id="tuft"]
+top_radius = 0.035
+bottom_radius = 0.008
+height = 0.14
+radial_segments = 10
+rings = 1
+
+[sub_resource type="CylinderMesh" id="tip"]
+top_radius = 0.045
+bottom_radius = 0.034
+height = 0.03
+radial_segments = 10
+rings = 1
+
+[sub_resource type="CylinderShape3D" id="shape"]
+radius = 0.16
+height = 0.12
+
+
+[node name="GamsbartHut" type="RigidBody3D"]
+mass = 0.3
+script = ExtResource("1_item")
+
+[node name="Brim" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.004, 0)
+mesh = SubResource("brim")
+surface_material_override/0 = SubResource("felt")
+
+[node name="Crown" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.055, 0)
+mesh = SubResource("crown")
+surface_material_override/0 = SubResource("felt")
+
+[node name="Band" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.015, 0)
+mesh = SubResource("band")
+surface_material_override/0 = SubResource("cord")
+
+[node name="Tuft" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9397, -0.342, 0, 0.342, 0.9397, 0, 0, 0, 1, 0.11, 0.08, 0.02)
+mesh = SubResource("tuft")
+surface_material_override/0 = SubResource("beard")
+
+[node name="Tips" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.9397, -0.342, 0, 0.342, 0.9397, 0, 0, 0, 1, 0.135, 0.15, 0.02)
+mesh = SubResource("tip")
+surface_material_override/0 = SubResource("tips")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+shape = SubResource("shape")

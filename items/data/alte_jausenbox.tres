@@ -17,3 +17,4 @@ spawn_weight = 1.5
 min_depth = 1
 scene = ExtResource("2_scene")
 melee_damage = 0
+use = 11
