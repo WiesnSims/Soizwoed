@@ -35,6 +35,8 @@ var follow: Node3D
 var opened: bool = false
 ## Worn on the holder's head (the Gamsbart-Hut), still in its pocket slot.
 var worn: bool = false
+## A gun: rounds in its magazine (the holder changes it, the host tells everyone).
+var rounds: int = 0
 
 var _impact_cooldown: float = 0.0
 ## Clients: the host's transforms of this item while it is free.
@@ -184,6 +186,8 @@ func host_send_state_to(peer: int, place: int) -> void:
 		_apply_helper.rpc_id(peer, helper_peer)
 	if opened or worn:
 		_apply_flags.rpc_id(peer, opened, worn)
+	if data.weapon != null:
+		set_rounds.rpc_id(peer, rounds)
 
 
 # --- every peer ------------------------------------------------------------------------------------
@@ -226,6 +230,12 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 	if new_state != State.STORED:
 		visible = true
 	state_changed.emit()
+
+
+## The magazine's count, from the host to everyone (after a shot or a reload).
+@rpc("authority", "call_local", "reliable")
+func set_rounds(count: int) -> void:
+	rounds = count
 
 
 @rpc("authority", "call_local", "reliable")

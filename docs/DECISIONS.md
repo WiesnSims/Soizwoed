@@ -383,3 +383,37 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Friendly fire on, 33 %** of the damage to start with.
 - **The Fundstück is handed over, not thrown;** creatures focus its carrier.
 - DESIGN v2 approved; milestones M6–M10.
+
+## 2026-10-30 – M6 combat prototype (chosen by Claude unless marked, change any time)
+
+### Guns (DESIGN.md §3, §7)
+- **Weapons are data:** `WeaponData` (damage per pellet, pellets, fire interval, magazine, reload, spread from the hip and aimed, falloff, recoil, noise, zoom) on the gun's `ItemData`. Guns are light pocket items; the selected one is fired with the use click.
+- **Controls:** left click shoots, right click (hold) aims down the sights (narrower cone, 82–90 % FOV, 60 % walking speed), R reloads. Moving widens the cone 1.6×, crouching narrows it to 0.8×. Recoil kicks the view up; about two thirds of the kick comes back down by itself.
+- **Dienstpistole** (start, 150 S spare): 14 damage, 8 rounds, 1.6 s reload, accurate (0.7° aimed), falls to 60 % beyond 15 m, works lying down.
+- **Salzschrot-Flinte** (320 S): 8 pellets × 7, two shells loaded one by one (1.1 s each; firing cuts the reload short), useless beyond 25 m.
+- **Ammo:** counters per type, no pocket slots (cap 48 pistol rounds, 20 shells). Boxes: "Schachtl Pistoln-Patronen" (10, 40 S) and "Schachtl Salzschrot" (5, 55 S), in the shop and lying in the mine (2.5 boxes per miner, at least one). E on a box adds it; at the cap the box stays.
+- **The company's kit before every shift:** a Dienstpistole for whoever has no gun, and pistol rounds topped up to 16. So nobody is ever completely unarmed, but spare ammo beyond 16 must be found or bought.
+- **Shooting over the network:** the shooter's own screen decides hits (no delay); the host applies the damage, keeps every magazine count in sync, makes the noise (pistol 30 m, shotgun 45 m – the Tatzelwurm comes) and shows the flash, tracer and impact on the other peers. **The muzzle flash is a flame:** shooting inside firedamp sets it off.
+- **Friendly fire (owner decision):** on, 33 % of the damage ("Au! Pass auf, wo'st hinschiaßt!").
+
+### Creatures fight
+- Every creature can now die through one path (`Creature.host_damage`): a flinch on every peer, and at 0 health the body falls over and sinks into the floor.
+- **Creature health scales with the crew** (§8): ×0.7 solo, 0.85, 0.95, 1.0.
+- **Grubenhund (new, the basic enemy):** packs of 2–3, 55 health (solo 38: three pistol hits), 5.2 m/s (a sprint still gets away), sees a lit lamp from 22 m and the dark from 10 m (half when crouching), hears shots and noise. Bites for 12, springs back to the side and comes again (1.3 s). One that finds a miner calls the pack. Below 30 % it runs off yelping once for 3 s. Prefers standing miners over downed ones.
+- **Bergmandl:** dies for real (30 health, scaled), still steals – now ammo boxes too – and with nothing to steal it throws stones from 4–14 m every ~3.5 s (8 damage, a lobbed arc every peer sees; the host decides hits).
+- **Spawning:** the Grubenhund is in every section (weight 4, cost 1). The enemy budget is raised for the action pace: 9 + 3 per cycle (was 6 + 2). The other creatures still behave as in v1 until M8.
+
+### Downed, helped up, second wind (§3)
+- **Co-op:** the first time a miner's health hits 0 in a shift (and someone else is still standing), they go down: dropping what is in their hands, crawling at 0.8 m/s, eyes at floor level, only the pistol works. A teammate holds E on them for 3 s → back up with 30 health. After 20 s, or any further hit while down, they die. Downed a second time in the same shift = dead.
+- **Solo:** no downed state; once per shift a killing blow leaves 1 health and 3 s of invulnerability ("Zweite Luft").
+- The Wunderheilerin-Salbe still brings back the dead.
+
+### Not yet (M7+)
+- The money quota is still the run's goal in M6; the Fundstück, alarm and Rückweg-timer replace it in M7.
+- No per-shift difficulty curve yet (M7), no weapon upgrades (M7/M9), other creatures unchanged (M8).
+
+### Tests
+- `tests/test_weapons.gd` (spread, cone, falloff, reload, friendly fire, gun data).
+- `smoke_combat`: the kit, a dog pack shot down with aimed pistol fire, the shotgun's shell reload, Bergmandl stones, a dog bite, the solo second wind.
+- `mp_test.ps1 -Coop` adds friendly fire (30 → 10), downed, helped up (30 health), down for good; `-Tools` adds a client shooting a Grubenhund dead with the host applying it.
+- Version **0.6.0**.

@@ -14,6 +14,7 @@ const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _root: Control
 var _crosshair: ColorRect
+var _ammo_label: Label
 var _prompt: Label
 var _hold_bar: ProgressBar
 var _message: Label
@@ -48,6 +49,7 @@ func _ready() -> void:
 	add_child(_root)
 	_build_center()
 	_build_bottom()
+	_build_ammo()
 	_build_top()
 	_build_panel()
 	_settings = SettingsPanel.new()
@@ -70,7 +72,9 @@ func _process(_delta: float) -> void:
 		return
 	for node: Control in _alive_nodes:
 		node.visible = player.alive
-	_spectate_label.visible = not player.alive
+	_spectate_label.visible = not player.alive or player.downed
+	if player.downed:
+		_spectate_label.text = tr("HUD_DOWNED") % ceili(player.downed_left())
 	_mic_label.visible = player.voice_chat != null and player.voice_chat.talking
 	if not player.alive:
 		var target: Player = player.spectating
@@ -81,6 +85,7 @@ func _process(_delta: float) -> void:
 		return
 	_update_prompt(player)
 	_update_slots(player)
+	_update_gun(player)
 	_health_bar.value = float(player.health) / Balance.config.player_max_health
 	_stamina_bar.value = player.stamina
 	_stamina_bar.modulate.a = 0.0 if player.stamina >= 0.999 else 1.0
@@ -449,6 +454,44 @@ func _build_center() -> void:
 	_watch.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_watch.add_theme_color_override("font_color", Color(1.0, 0.86, 0.55))
 	_root.add_child(_watch)
+
+
+## The gun in hand: magazine and spare rounds, bottom right.
+func _build_ammo() -> void:
+	_ammo_label = _label("", 26)
+	_ammo_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_ammo_label.position = Vector2(-320, -80)
+	_ammo_label.size = Vector2(296, 60)
+	_ammo_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_ammo_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.62))
+	_root.add_child(_ammo_label)
+	_alive_nodes.append(_ammo_label)
+
+
+## Ammo text, crosshair (wider with the spread, red for a hit) and the reload bar.
+func _update_gun(player: Player) -> void:
+	var gunner: Gunner = player.gunner
+	var item: WorldItem = gunner.weapon_item() if gunner != null else null
+	_ammo_label.visible = item != null
+	var size: float = 4.0
+	if item != null:
+		var weapon: WeaponData = item.data.weapon
+		_ammo_label.text = "%s\n%d / %d" % [item.display_name(), item.rounds, player.ammo_count(weapon.ammo_type)]
+		if gunner.reloading:
+			_ammo_label.text = "%s\n%s" % [item.display_name(), tr("HUD_RELOADING")]
+		elif item.rounds == 0 and player.ammo_count(weapon.ammo_type) == 0:
+			_ammo_label.text = "%s\n%s" % [item.display_name(), tr("HUD_NO_AMMO")]
+		var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
+		size = clampf(WeaponMath.spread(weapon, gunner.aiming, moving, player.crouching) * 3.0, 3.0, 26.0)
+	var marker: bool = gunner != null and gunner.hit_marker_left > 0.0
+	if marker:
+		size = 10.0
+	_crosshair.color = (Color(1.0, 0.25, 0.2, 0.9) if gunner.marker_kill else Color(1.0, 1.0, 1.0, 0.95)) if marker else Color(1, 1, 1, 0.55)
+	_crosshair.size = Vector2(size, size)
+	_crosshair.position = Vector2(-size / 2.0, -size / 2.0)
+	if gunner != null and gunner.reloading:
+		_hold_bar.visible = true
+		_hold_bar.value = gunner.reload_progress
 
 
 func _build_bottom() -> void:

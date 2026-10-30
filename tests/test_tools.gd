@@ -28,6 +28,6 @@ func test_rail_line_measures_and_projects() -> void:
 func test_every_shop_tool_has_a_use_or_a_weapon() -> void:
 	var catalog: ItemCatalog = load("res://items/item_catalog.tres")
 	for data: ItemData in catalog.shop():
-		if data.id == &"schubkarre":
+		if data.id == &"schubkarre" or data.kind == ItemData.Kind.AMMO:
 			continue
 		assert_true(data.use != ItemData.Use.NONE or data.melee_damage > 0, "%s does nothing when used" % data.id)

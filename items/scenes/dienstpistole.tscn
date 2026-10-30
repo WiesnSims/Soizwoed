@@ -1,0 +1,61 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.16, 0.16, 0.17, 1)
+metallic = 0.85
+roughness = 0.38
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.33, 0.19, 0.09, 1)
+metallic = 0.0
+roughness = 0.6
+
+[sub_resource type="BoxMesh" id="slide"]
+size = Vector3(0.032, 0.035, 0.2)
+
+[sub_resource type="BoxMesh" id="grip"]
+size = Vector3(0.03, 0.11, 0.05)
+
+[sub_resource type="BoxMesh" id="guard"]
+size = Vector3(0.008, 0.025, 0.05)
+
+[sub_resource type="CylinderMesh" id="barrel"]
+top_radius = 0.009
+bottom_radius = 0.009
+height = 0.05
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.05, 0.15, 0.24)
+
+
+[node name="Dienstpistole" type="RigidBody3D"]
+mass = 1.0
+script = ExtResource("1_item")
+
+[node name="Slide" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0, -0.02)
+mesh = SubResource("slide")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9659, -0.2588, 0, 0.2588, 0.9659, 0, -0.06, 0.06)
+mesh = SubResource("grip")
+surface_material_override/0 = SubResource("wood")
+
+[node name="Guard" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0.01)
+mesh = SubResource("guard")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Muzzle" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.0, 1.0, 0, -1.0, 0.0, 0, 0.0, -0.13)
+mesh = SubResource("barrel")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)
+shape = SubResource("shape")

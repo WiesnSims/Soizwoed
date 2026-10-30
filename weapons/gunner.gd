@@ -1,0 +1,211 @@
+class_name Gunner
+extends Node
+## The local player's shooting (DESIGN.md §3, §7): aim down the sights (hold `aim`), fire (the
+## `use` click, via Player._use_active), reload (`reload`), recoil and spread. The shooter's own
+## screen decides what was hit – zero delay, fine among friends (§11) – and tells the host,
+## which applies the damage, makes the noise and shows the shot to everyone else.
+## Rounds in the magazine live on the gun item (WorldItem.rounds); spare ammo is the player's
+## counter (Player.ammo).
+
+const RAY_MASK: int = 1 | 2 | 8  # rock, players, creatures
+## How quickly the view comes back down after the kick (share per second).
+const RECOIL_RECOVERY: float = 7.0
+const RECOIL_RECOVER_SHARE: float = 0.65
+const HIT_MARKER_SECONDS: float = 0.18
+
+var player: Player
+var aiming: bool = false
+var reloading: bool = false
+## 0..1 of the current reload step (HUD bar).
+var reload_progress: float = 0.0
+## Seconds the hit marker still shows; `marker_kill` when the hit killed.
+var hit_marker_left: float = 0.0
+var marker_kill: bool = false
+
+var _cooldown: float = 0.0
+var _reload_left: float = 0.0
+var _reload_item: WorldItem
+var _recoil_left: float = 0.0
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var _aim_point: Node3D
+## Where a gun sits from the hip: low on the right, pointing where you look.
+var _hip_point: Node3D
+var _base_fov: float = 78.0
+
+
+func _ready() -> void:
+	player = get_parent() as Player
+	_rng.randomize()
+	_aim_point = Node3D.new()
+	_aim_point.name = "AimPoint"
+	_aim_point.position = Vector3(0.0, -0.1, -0.32)
+	player.camera.add_child(_aim_point)
+	_hip_point = Node3D.new()
+	_hip_point.name = "HipPoint"
+	_hip_point.position = Vector3(0.17, -0.17, -0.46)
+	player.camera.add_child(_hip_point)
+
+
+## The gun in the selected pocket, if the hands are free for it (or the miner is downed –
+## then only a light gun).
+func weapon_item() -> WorldItem:
+	if player.inventory.hands_busy():
+		return null
+	var item: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
+	if item == null or item.data.weapon == null or (player.downed and not item.data.weapon.usable_downed):
+		return null
+	return item
+
+
+func _process(delta: float) -> void:
+	if not player.is_local():
+		return
+	_cooldown = maxf(0.0, _cooldown - delta)
+	hit_marker_left = maxf(0.0, hit_marker_left - delta)
+	var item: WorldItem = weapon_item()
+	var can_aim: bool = item != null and player.input_enabled and player.alive and not reloading
+	_set_aiming(can_aim and Input.is_action_pressed(&"aim"), item)
+	_tick_reload(delta, item)
+	_tick_recoil(delta)
+	var fov: float = Settings.data.fov * (item.data.weapon.ads_zoom if aiming and item != null else 1.0)
+	player.camera.fov = lerpf(player.camera.fov, fov, clampf(delta * 14.0, 0.0, 1.0))
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if player.is_local() and player.input_enabled and player.alive and event.is_action_pressed(&"reload"):
+		start_reload()
+
+
+func _set_aiming(on: bool, item: WorldItem) -> void:
+	if item != null and item.state == WorldItem.State.STORED:
+		var point: Node3D = _aim_point if on else _hip_point
+		if item.follow != point and not item.worn:
+			item.follow = point
+	aiming = on
+
+
+## Pulls the trigger. True when a shot went off.
+func fire() -> bool:
+	var item: WorldItem = weapon_item()
+	if item == null or _cooldown > 0.0:
+		return false
+	var weapon: WeaponData = item.data.weapon
+	if reloading:
+		# A shell-by-shell reload can be cut short to shoot what is loaded.
+		if weapon.reload_per_round and item.rounds > 0:
+			_stop_reload()
+		else:
+			return false
+	if item.rounds <= 0:
+		_cooldown = 0.3
+		Audio.play_at("dry_fire", player.camera.global_position, &"SFX", -6.0, 8.0)
+		start_reload()
+		return false
+	item.rounds -= 1
+	_cooldown = weapon.fire_interval
+	var origin: Vector3 = player.camera.global_position
+	var forward: Vector3 = -player.camera.global_basis.z
+	var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
+	var cone: float = WeaponMath.spread(weapon, aiming, moving, player.crouching)
+	var space: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
+	var creature_damage: Dictionary = {}  # Creature -> int
+	var player_damage: Dictionary = {}  # peer id -> int
+	var ends: PackedVector3Array = []
+	var flesh: PackedByteArray = []
+	for direction: Vector3 in WeaponMath.pellet_directions(forward, cone, weapon.pellets, _rng):
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(origin, origin + direction * weapon.range, RAY_MASK)
+		query.exclude = [player.get_rid()]
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty():
+			ends.append(origin + direction * weapon.range)
+			flesh.append(0)
+			continue
+		var at: Vector3 = hit.position
+		ends.append(at)
+		var damage: int = WeaponMath.damage_at(weapon, origin.distance_to(at))
+		var creature: Creature = _creature_of(hit.collider as Node)
+		var other: Player = hit.collider as Player
+		flesh.append(1 if creature != null or other != null else 0)
+		if creature != null:
+			creature_damage[creature] = int(creature_damage.get(creature, 0)) + damage
+		elif other != null and other != player:
+			player_damage[other.peer_id] = int(player_damage.get(other.peer_id, 0)) + damage
+	var game: Game = player.game()
+	for creature: Creature in creature_damage:
+		game.request_hit.rpc_id(1, creature.get_path(), int(creature_damage[creature]), player.global_position)
+		hit_marker_left = HIT_MARKER_SECONDS
+		marker_kill = creature.health <= int(creature_damage[creature])
+	for peer: int in player_damage:
+		game.request_shoot_player.rpc_id(1, peer, int(player_damage[peer]))
+	var muzzle: Vector3 = item.global_position - player.camera.global_basis.z * 0.25
+	ShotFx.play(muzzle, ends, flesh, weapon.sound)
+	game.request_fire.rpc_id(1, item.get_path(), item.rounds, muzzle, ends, flesh)
+	_kick(weapon.recoil)
+	if not creature_damage.is_empty():
+		Audio.play_ui("hit_tick")
+	return true
+
+
+func _creature_of(node: Node) -> Creature:
+	while node != null and not node is Creature:
+		node = node.get_parent()
+	return node as Creature
+
+
+func start_reload() -> void:
+	var item: WorldItem = weapon_item()
+	if item == null or reloading:
+		return
+	var weapon: WeaponData = item.data.weapon
+	if WeaponMath.rounds_to_load(weapon, item.rounds, player.ammo_count(weapon.ammo_type)) <= 0:
+		return
+	reloading = true
+	_reload_item = item
+	_reload_left = weapon.reload_seconds
+	reload_progress = 0.0
+	Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
+
+
+func _tick_reload(delta: float, item: WorldItem) -> void:
+	if not reloading:
+		reload_progress = 0.0
+		return
+	if item == null or item != _reload_item or not player.alive:
+		_stop_reload()  # switched away: the reload is lost
+		return
+	var weapon: WeaponData = item.data.weapon
+	_reload_left -= delta
+	reload_progress = 1.0 - _reload_left / weapon.reload_seconds
+	if _reload_left > 0.0:
+		return
+	var loaded: int = WeaponMath.rounds_to_load(weapon, item.rounds, player.ammo_count(weapon.ammo_type))
+	item.rounds += loaded
+	player.use_ammo(weapon.ammo_type, loaded)
+	player.game().request_reload.rpc_id(1, item.get_path(), item.rounds)
+	if weapon.reload_per_round and WeaponMath.rounds_to_load(weapon, item.rounds, player.ammo_count(weapon.ammo_type)) > 0:
+		_reload_left = weapon.reload_seconds
+		Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
+	else:
+		_stop_reload()
+
+
+func _stop_reload() -> void:
+	reloading = false
+	_reload_item = null
+	reload_progress = 0.0
+
+
+## The muzzle kicks the view up; most of it comes back down by itself.
+func _kick(degrees: float) -> void:
+	var kick: float = deg_to_rad(degrees * _rng.randf_range(0.85, 1.15))
+	player.head.rotation.x = clampf(player.head.rotation.x + kick, deg_to_rad(-85), deg_to_rad(85))
+	player.rotate_y(deg_to_rad(degrees * _rng.randf_range(-0.2, 0.2)))
+	_recoil_left += kick * RECOIL_RECOVER_SHARE
+
+
+func _tick_recoil(delta: float) -> void:
+	if _recoil_left <= 0.0:
+		return
+	var step: float = minf(_recoil_left, _recoil_left * RECOIL_RECOVERY * delta + 0.0005)
+	_recoil_left -= step
+	player.head.rotation.x = clampf(player.head.rotation.x - step, deg_to_rad(-85), deg_to_rad(85))

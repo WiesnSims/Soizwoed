@@ -34,6 +34,7 @@ const CREATURE_PATHS: PackedStringArray = [
 	"res://enemies/schichtmeister/schichtmeister.tres",
 	"res://enemies/salzweibl/salzweibl.tres",
 	"res://enemies/percht/percht.tres",
+	"res://enemies/grubenhund/grubenhund.tres",
 ]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
@@ -169,6 +170,7 @@ func _process(delta: float) -> void:
 			_host_tick_noise(delta)
 			_host_tick_specials(delta)
 			_host_tick_poison(delta)
+			_host_tick_downed()
 
 
 # --- session --------------------------------------------------------------------------------------
@@ -282,6 +284,8 @@ func _spawn_item(spawn_data: Array) -> Node:
 	item.data = data
 	item.value = spawn_data[2]
 	item.transform = spawn_data[3]
+	if data.weapon != null:
+		item.rounds = data.weapon.magazine
 	return item
 
 
@@ -330,6 +334,20 @@ func _spawn_loot(seed_value: int) -> void:
 		if i >= spots.size():
 			xform.origin += Vector3(rng.randf_range(-0.6, 0.6), 0.2, rng.randf_range(-0.6, 0.6))
 		_spawn_item_at(picked.id, value, xform)
+	# Ammo boxes on the spots the loot left free (DESIGN.md §5: never enough).
+	var boxes: Array[ItemData] = []
+	var box_weights: PackedFloat32Array = []
+	for data: ItemData in catalog.items:
+		if data.kind == ItemData.Kind.AMMO and data.spawn_weight > 0.0:
+			boxes.append(data)
+			box_weights.append(data.spawn_weight)
+	var box_count: int = maxi(1, roundi(_config.ammo_boxes_per_player * run.player_count))
+	for i: int in box_count if not boxes.is_empty() else 0:
+		var box_spot: Array = spots[(count + i) % spots.size()]
+		var box: ItemData = boxes[rng.rand_weighted(box_weights)]
+		var box_at: Transform3D = (box_spot[0] as Marker3D).global_transform
+		box_at.origin += Vector3(rng.randf_range(-0.4, 0.4), 0.1, rng.randf_range(-0.4, 0.4))
+		_spawn_item_at(box.id, 0, box_at)
 	# Relics lie where their chunk puts them (the Mann im Salz in Die Tiefe).
 	for spot: Array in mine.markers_with_depth(&"relic_spawn"):
 		var marker: Marker3D = spot[0]
@@ -420,6 +438,8 @@ func _descend() -> void:
 	_broadcast_run()
 	var seed_value: int = randi()
 	_all_dead_time = 0.0
+	for player: Player in players():
+		_hand_out_kit(player)
 	_begin_ride.rpc(true, seed_value, run.cycle, biome_index)
 	await get_tree().create_timer(RIDE_SECONDS).timeout
 	if phase != Phase.DESCENDING:
@@ -430,6 +450,8 @@ func _descend() -> void:
 			item.host_move(hub_cage.carry_to(mine_cage, item.global_transform))
 	for player: Player in players():
 		player.revive.rpc()
+		for key: StringName in [&"was_downed", &"second_wind_used", &"bleeds_out_at", &"invulnerable_until"]:
+			player.remove_meta(key)
 		player.teleport.rpc(mine_cage.player_spot(index))
 		index += 1
 	_spawn_loot(seed_value)
@@ -806,6 +828,9 @@ func request_take(item_path: NodePath, peer: int) -> void:
 		return
 	if item.state != WorldItem.State.FREE and item.state != WorldItem.State.CARTED or item is RailCart:
 		return
+	if item.data.kind == ItemData.Kind.AMMO:
+		_pick_up_ammo(item, player)
+		return
 	var place: int = player.inventory.place_for(item.data.weight_class)
 	if place == Inventory.NONE:
 		return
@@ -938,6 +963,106 @@ func request_open(item_path: NodePath) -> void:
 	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
 	if is_instance_valid(bread) and place != Inventory.NONE and bread.state == WorldItem.State.FREE:
 		bread.host_take(player.peer_id, place)
+
+
+# --- combat (host) ---------------------------------------------------------------------------------
+
+## Calls `node.method(args)` on `peer` only: directly for the host itself, else as an RPC.
+func _to_peer(peer: int, node: Node, method: StringName, args: Array = []) -> void:
+	if peer == multiplayer.get_unique_id():
+		node.callv(method, args)
+	else:
+		node.callv(&"rpc_id", [peer, method] + args)
+
+
+## The company's kit before every shift: a Dienstpistole for whoever has no gun, and the
+## ration of pistol rounds (topped up, not added).
+func _hand_out_kit(player: Player) -> void:
+	_to_peer(player.peer_id, player, &"give_ammo", [&"pistole", _config.ration_pistole, true])
+	for item: Object in player.inventory.all_items():
+		if item is WorldItem and (item as WorldItem).data.weapon != null:
+			return
+	var gun: WorldItem = _spawn_item_at(&"dienstpistole", 0, player.global_transform.translated(Vector3.UP * 1.0))
+	await get_tree().create_timer(0.3).timeout
+	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT) if is_instance_valid(player) else Inventory.NONE
+	if is_instance_valid(gun) and place != Inventory.NONE and gun.state == WorldItem.State.FREE:
+		gun.host_take(player.peer_id, place)
+
+
+## E on an ammo box: into the counter (up to the cap), the box is gone.
+func _pick_up_ammo(item: WorldItem, player: Player) -> void:
+	var type: StringName = item.data.ammo_type
+	if player.ammo_count(type) >= _config.ammo_cap(type):
+		message_to(player.peer_id, "MSG_AMMO_FULL")
+		return
+	_to_peer(player.peer_id, player, &"give_ammo", [type, item.data.ammo_amount, false])
+	play_sound_everywhere.rpc("ammo_pickup", item.global_position, -2.0, 12.0)
+	item.host_vanish()
+
+
+## A shot went off (the shooter decided what it hit and asked for the damage separately):
+## the magazine count for everyone, the noise for the creatures, the flash and bang for the
+## other peers. The muzzle flash is a flame: firedamp right there goes up.
+@rpc("any_peer", "call_local", "reliable")
+func request_fire(item_path: NodePath, rounds_left: int, muzzle: Vector3, ends: PackedVector3Array, flesh: PackedByteArray) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var shooter: int = _sender()
+	if item == null or item.holder_peer != shooter or item.data.weapon == null:
+		return
+	item.set_rounds.rpc(clampi(rounds_left, 0, item.data.weapon.magazine))
+	_shot_fx.rpc(shooter, muzzle, ends, flesh, item.data.weapon.sound)
+	host_noise(muzzle, item.data.weapon.noise)
+	host_flame(muzzle, 0.6)
+
+
+@rpc("authority", "call_local", "unreliable")
+func _shot_fx(shooter: int, muzzle: Vector3, ends: PackedVector3Array, flesh: PackedByteArray, sound: String) -> void:
+	if shooter != multiplayer.get_unique_id():
+		ShotFx.play(muzzle, ends, flesh, sound)
+
+
+## A creature throws a stone (host): every peer flies it, the host's copy decides the hit.
+func host_throw_stone(from: Vector3, target: Vector3, damage: int, thrower_path: NodePath) -> void:
+	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	_stone.rpc(from, Stone.lob(from, target, _config.stone_speed, gravity), damage, thrower_path)
+
+
+@rpc("authority", "call_local", "reliable")
+func _stone(from: Vector3, velocity: Vector3, damage: int, thrower_path: NodePath) -> void:
+	var stone: Stone = Stone.new()
+	stone.velocity = velocity
+	stone.damage = damage
+	stone.thrower = get_node_or_null(thrower_path) as Node3D
+	(mine if mine != null else mine_root).add_child(stone)
+	stone.global_position = from
+
+
+## A reload finished: the new magazine count for everyone.
+@rpc("any_peer", "call_local", "reliable")
+func request_reload(item_path: NodePath, rounds: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	if item != null and item.holder_peer == _sender() and item.data.weapon != null:
+		item.set_rounds.rpc(clampi(rounds, 0, item.data.weapon.magazine))
+
+
+## A miner shot a teammate: friendly fire is on, at a share of the damage (DESIGN.md §3).
+@rpc("any_peer", "call_local", "reliable")
+func request_shoot_player(peer: int, damage: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var shooter: Player = player_by_peer(_sender())
+	var target: Player = player_by_peer(peer)
+	if shooter == null or target == null or shooter == target or not shooter.alive:
+		return
+	var hurt: int = WeaponMath.friendly_damage(clampi(damage, 0, 200), _config.friendly_fire)
+	host_damage_player(target, hurt)
+	if hurt > 0 and phase == Phase.SHIFT:
+		message_to(target.peer_id, "MSG_SHOT_BY_FRIEND")
+		print("[game] P%d shot P%d for %d" % [shooter.peer_id, target.peer_id, hurt])
 
 
 ## The Wunderheilerin-Salbe on a dead miner's body: back on their feet, if it is not too late
@@ -1408,19 +1533,93 @@ func request_fall_damage(amount: int) -> void:
 func host_damage_player(player: Player, amount: int) -> void:
 	if not player.alive or phase != Phase.SHIFT or amount <= 0:
 		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if now < float(player.get_meta(&"invulnerable_until", 0.0)):
+		return
+	if player.downed:
+		_kill_player(player)  # hurt again while down: that was it
+		return
 	var health: int = maxi(0, player.health - amount)
+	if health == 0 and _crew_alive() == 1 and players().size() == 1 and not player.get_meta(&"second_wind_used", false):
+		# Solo: one second wind per shift (DESIGN.md §3).
+		player.set_meta(&"second_wind_used", true)
+		player.set_meta(&"invulnerable_until", now + _config.second_wind_seconds)
+		player.set_health.rpc(1)
+		message_to(player.peer_id, "MSG_SECOND_WIND")
+		print("[game] P%d: second wind" % player.peer_id)
+		return
 	player.set_health.rpc(health)
-	if health == 0:
-		_kill_player(player)
+	if health > 0:
+		return
+	if players().size() > 1 and not player.get_meta(&"was_downed", false) and _crew_alive() > 1:
+		player.set_meta(&"was_downed", true)
+		player.set_meta(&"bleeds_out_at", now + _config.downed_seconds)
+		_drop_hands(player)
+		player.set_downed.rpc(true)
+		_player_message.rpc("MSG_PLAYER_DOWNED", player.player_number, player.peer_id)
+		print("[game] P%d downed" % player.peer_id)
+		return
+	_kill_player(player)
+
+
+## Living miners (downed ones count) in the mine.
+func _crew_alive() -> int:
+	var count: int = 0
+	for player: Player in players():
+		count += 1 if player.alive else 0
+	return count
+
+
+## Whatever is in the hands falls (a downed miner can't carry); the pockets stay.
+func _drop_hands(player: Player) -> void:
+	var held: WorldItem = player.inventory.hands as WorldItem
+	if held == null:
+		return
+	if held.helper_peer == player.peer_id:
+		held.host_set_helper(0)
+	elif held.helper_peer != 0:
+		held.host_take(held.helper_peer, Inventory.HANDS)
+	else:
+		held.host_release(Transform3D(Basis.IDENTITY, player.global_position + Vector3.UP * 0.6), Vector3.ZERO)
+
+
+## A teammate held E on a downed miner long enough: back on their feet.
+@rpc("any_peer", "call_local", "reliable")
+func request_help_up(target_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var target: Player = get_node_or_null(target_path) as Player
+	var helper: Player = player_by_peer(_sender())
+	if target == null or helper == null or target == helper or not target.downed or not target.alive or not helper.alive or helper.downed:
+		return
+	if helper.global_position.distance_to(target.global_position) > _config.interact_distance + 1.0:
+		return
+	target.set_downed.rpc(false)
+	target.set_health.rpc(_config.help_up_health)
+	target.remove_meta(&"bleeds_out_at")
+	_player_message.rpc("MSG_PLAYER_UP", target.player_number, target.peer_id)
+	print("[game] P%d helped up by P%d" % [target.peer_id, helper.peer_id])
+
+
+## Downed miners nobody helped bleed out (host).
+func _host_tick_downed() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	for player: Player in players():
+		if player.downed and player.alive and now >= float(player.get_meta(&"bleeds_out_at", INF)):
+			print("[game] P%d bled out" % player.peer_id)
+			_kill_player(player)
 
 
 func _kill_player(player: Player) -> void:
+	if player.downed:
+		player.set_downed.rpc(false)
 	_drop_everything(player)
 	# The body stays down there as heavy loot: carried to the lift, it pays Sterbegeld (§3).
 	var at: Transform3D = Transform3D(Basis(Vector3.UP, player.rotation.y), player.global_position + Vector3.UP * 0.3)
 	var corpse: WorldItem = _spawn_item_at(&"leiche", _config.sterbegeld, at)
 	_corpses[String(corpse.name)] = [player.peer_id, Time.get_ticks_msec() / 1000.0]
 	player.die.rpc()
+	_to_peer(player.peer_id, player, &"clear_ammo")
 	_player_message.rpc("MSG_PLAYER_DIED", player.player_number, player.peer_id)
 	print("[game] P%d died, corpse spawned" % player.peer_id)
 
@@ -1496,7 +1695,8 @@ func _show_message_key(key: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func _player_message(key: String, number: int, about_peer: int) -> void:
 	if about_peer == multiplayer.get_unique_id():
-		show_message(tr("MSG_YOU_REVIVED") if key == "MSG_REVIVED" else tr("MSG_YOU_DIED"), 5.0)
+		var own: Dictionary = {"MSG_REVIVED": "MSG_YOU_REVIVED", "MSG_PLAYER_DOWNED": "MSG_YOU_DOWNED", "MSG_PLAYER_UP": "MSG_YOU_UP"}
+		show_message(tr(own.get(key, "MSG_YOU_DIED")), 5.0)
 		return
 	var about: Player = player_by_peer(about_peer)
 	show_message(tr(key) % (about.display_name() if about != null else tr("PLAYER_NAME") % number), 4.0)

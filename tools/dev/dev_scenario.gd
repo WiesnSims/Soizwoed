@@ -100,6 +100,23 @@ func run(game: Game, scenario: String) -> void:
 			await _percht()
 		"weibl":
 			await _weibl()
+		"combat":
+			await _combat()
+		"combatlook":
+			# For screenshots: the pistol in hand, a Grubenhund held still in the lamp light.
+			for creature: Creature in _game.creatures():
+				creature.queue_free()
+			var miner: Player = _game.local_player()
+			miner.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(6.0)))
+			await get_tree().create_timer(1.0).timeout
+			for slot: int in miner.inventory.slots.size():
+				if miner.inventory.slots[slot] != null:
+					miner.inventory.select(slot)
+			var dog: Creature = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, miner.global_position - miner.global_basis.z * 3.5 + Vector3.UP * 0.2))
+			dog.host_stun(60.0)
+			await get_tree().create_timer(0.5).timeout
+			dog.look_at(Vector3(miner.global_position.x, dog.global_position.y, miner.global_position.z), Vector3.UP)
+			miner.head.rotation.x = -0.15
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -279,6 +296,18 @@ func _coop() -> void:
 	# Two miners side by side: a Salzweibl right next to them does not dare and flees.
 	_game.spawn_creature(&"salzweibl", Transform3D(Basis.IDENTITY, host.global_position - host.global_basis.z * 1.5))
 	await get_tree().create_timer(1.5).timeout
+	# Friendly fire (33 %), then down, helped up, then down for good.
+	_game.request_shoot_player(client.peer_id, 30)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] host: friendly fire, client health %d" % client.health)
+	_game.host_damage_player(client, 1000)
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] host: client downed %s, alive %s" % [client.downed, client.alive])
+	_game.request_help_up(client.get_path())
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] host: helped up, downed %s, health %d" % [client.downed, client.health])
+	_game.host_damage_player(client, 1000)
+	await get_tree().create_timer(1.0).timeout
 	_game.host_damage_player(client, 1000)
 	await get_tree().create_timer(5.0).timeout
 	var corpses: int = 0
@@ -503,6 +532,87 @@ func _weibl() -> void:
 	print("[scenario] salzweibl: lone miner health %d, shown %s" % [player.health, weibl.net_shown])
 
 
+## M6 combat: the kit from the company, a pack of Grubenhunde shot down (aiming like a player
+## would), a reload, the shotgun, a Bergmandl throwing stones.
+func _combat() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	await get_tree().create_timer(0.5).timeout
+	var pistol: WorldItem = null
+	for item: Object in player.inventory.slots:
+		if item != null and (item as WorldItem).data.id == &"dienstpistole":
+			pistol = item as WorldItem
+	print("[scenario] kit: pistol %s, rounds %d, spare %d" % [pistol != null, pistol.rounds if pistol != null else -1, player.ammo_count(&"pistole")])
+	player.inventory.select(player.inventory.slots.find(pistol))
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(4.0)))
+	player.lamp_on = true
+	await get_tree().create_timer(0.3).timeout
+	var dogs: Array[Creature] = []
+	for i: int in 2:
+		dogs.append(_game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, _out_of_station(16.0 + i) + Vector3(i * 0.8, 0.3, 0.0))))
+	var shots: int = 0
+	for frame: int in 600:
+		await get_tree().physics_frame
+		var target: Creature = null
+		for dog: Creature in dogs:
+			if is_instance_valid(dog) and not dog.is_queued_for_deletion():
+				target = dog
+		if target == null:
+			break
+		player.look_at(Vector3(target.global_position.x, player.global_position.y, target.global_position.z))
+		var aim: Vector3 = target.global_position + Vector3.UP * 0.5 - player.camera.global_position
+		player.head.rotation.x = atan2(aim.y, Vector2(aim.x, aim.z).length())
+		if pistol.rounds == 0 and not player.gunner.reloading:
+			player.gunner.start_reload()
+		if player.gunner.fire():
+			shots += 1
+	var alive: int = 0
+	for dog: Creature in dogs:
+		alive += 1 if is_instance_valid(dog) and not dog.is_queued_for_deletion() else 0
+	print("[scenario] dogs: %d left after %d shots, player health %d, rounds %d, spare %d" % [alive, shots, player.health, pistol.rounds, player.ammo_count(&"pistole")])
+	# The shotgun: two shells, reloaded one by one.
+	player.set_health(config.player_max_health)
+	var flinte: WorldItem = await _give(&"salzschrot_flinte")
+	_game._to_peer(player.peer_id, player, &"give_ammo", [&"schrot", 5, false])
+	await get_tree().create_timer(0.2).timeout
+	player.head.rotation.x = 0.0
+	player.gunner._cooldown = 0.0
+	var fired: bool = player.gunner.fire()
+	await get_tree().create_timer(0.5).timeout
+	player.gunner.start_reload()
+	await get_tree().create_timer(flinte.data.weapon.reload_seconds * 2.0 + 0.5).timeout
+	print("[scenario] flinte fired %s, rounds %d, spare shells %d" % [fired, flinte.rounds, player.ammo_count(&"schrot")])
+	# A Bergmandl with nothing to steal throws stones.
+	for item: WorldItem in _game._items():
+		if item.state == WorldItem.State.FREE and item.global_position.y < Game.HUB_FLOOR_ABOVE:
+			item.host_vanish()
+	var mandl: Creature = _game.spawn_creature(&"bergmandl", Transform3D(Basis.IDENTITY, _out_of_station(12.0) + Vector3.UP * 0.3))
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(4.0)))
+	await get_tree().create_timer(9.0).timeout
+	print("[scenario] stones: player health %d, bergmandl alive %s" % [player.health, is_instance_valid(mandl)])
+	if is_instance_valid(mandl):
+		mandl.queue_free()
+	# A dog right next to an unarmed miner bites.
+	player.set_health(config.player_max_health)
+	player.inventory.select(player.inventory.slots.find(null))
+	_game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, player.global_position - player.global_basis.z * 2.5 + Vector3.UP * 0.3))
+	await get_tree().create_timer(2.5).timeout
+	print("[scenario] bitten: player health %d" % player.health)
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	# Solo: the second wind saves you once, then you are gone.
+	player.set_health(5)
+	_game.host_damage_player(player, 50)
+	var after_wind: int = player.health
+	_game.host_damage_player(player, 50)
+	var while_invulnerable: int = player.health
+	await get_tree().create_timer(config.second_wind_seconds + 0.5).timeout
+	_game.host_damage_player(player, 50)
+	print("[scenario] second wind: health %d, still %d, then alive %s" % [after_wind, while_invulnerable, player.alive])
+
+
 ## Gives the local player a fresh `id` in the selected pocket slot.
 func _give(id: StringName) -> WorldItem:
 	var player: Player = _game.local_player()
@@ -611,6 +721,10 @@ func _tools() -> void:
 		await get_tree().physics_frame
 	var wall: Breakable = walls[0] as Breakable
 	player.teleport(Transform3D(Basis.IDENTITY, wall.global_position + wall.global_basis.z * 1.2 + Vector3.UP * 0.1))
+	for item: Object in player.inventory.slots:
+		if item != null and (item as WorldItem).data.id == &"dienstpistole":
+			(item as WorldItem).host_vanish()  # a free pocket for the pick
+	await get_tree().create_timer(0.2).timeout
 	await _give(&"spitzhacke")
 	var hits: int = 0
 	while wall.health > 0 and hits < 10:
@@ -824,7 +938,11 @@ func _mp_tools() -> void:
 		_game.request_take(item.get_path(), client.peer_id)
 		await get_tree().create_timer(2.5 if id == &"boeller" else 1.5).timeout
 	print("[scenario] host sees P%d: lamp electric %s, health %d" % [client.peer_id, client.lamp_electric, client.health])
+	# A Grubenhund held still in front of the client: the client shoots it, the host applies it.
+	var dog: Creature = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, client.global_position - client.global_basis.z * 5.0 + Vector3.UP * 0.3))
+	dog.host_stun(60.0)
 	await get_tree().create_timer(6.0).timeout
+	print("[scenario] host: dog shot dead by the client %s" % (not is_instance_valid(dog)))
 	host.teleport(_game.mine_cage.player_spot(0))
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
@@ -841,6 +959,9 @@ func _mp_tools_client() -> void:
 		await get_tree().create_timer(0.2).timeout
 		if _game.phase != Game.Phase.SHIFT:
 			break
+		for creature: Creature in _game.creatures():
+			if creature is Grubenhund:
+				_client_shoot_at(me, creature)
 		for slot: int in me.inventory.slots.size():
 			var item: WorldItem = me.inventory.slots[slot] as WorldItem
 			if item == null or used.has(item.name):
@@ -855,12 +976,28 @@ func _mp_tools_client() -> void:
 						cart_from = other.global_position
 			me._use_active()
 			print("[scenario] client used %s" % item.data.id)
+			if item.data.id == &"alphorn":
+				await get_tree().create_timer(0.3).timeout
+				me._drop_active()  # pockets: the company pistol needs one now
 			if item.data.id == &"obstler":
 				await get_tree().create_timer(0.6).timeout
 				print("[scenario] client health after obstler %d" % me.health)
 	for other: WorldItem in _game._items():
 		if other is RailCart and cart_from != Vector3.INF:
 			print("[scenario] client saw the hunt roll %.1f m" % other.global_position.distance_to(cart_from))
+
+
+## The client aims its pistol at `target` and pulls the trigger (one shot per call).
+func _client_shoot_at(me: Player, target: Creature) -> void:
+	for slot: int in me.inventory.slots.size():
+		var item: WorldItem = me.inventory.slots[slot] as WorldItem
+		if item != null and item.data.id == &"dienstpistole":
+			me.inventory.select(slot)
+	me.look_at(Vector3(target.global_position.x, me.global_position.y, target.global_position.z))
+	var aim: Vector3 = target.global_position + Vector3.UP * 0.5 - me.camera.global_position
+	me.head.rotation.x = atan2(aim.y, Vector2(aim.x, aim.z).length())
+	if me.gunner.fire():
+		print("[scenario] client fired, rounds %d" % me.gunner.weapon_item().rounds)
 
 
 func _count(id: StringName) -> int:
@@ -899,6 +1036,12 @@ func _coop_client() -> void:
 		if block != null and block.holder_peer == me.peer_id and seen.has("helper") and not seen.has("holder"):
 			seen.holder = true
 			print("[scenario] client took the block over")
+		if me.downed and not seen.has("downed"):
+			seen.downed = true
+			print("[scenario] client downed, crouching %s" % me.crouching)
+		if seen.has("downed") and not me.downed and me.alive and me.health > 0 and not seen.has("up"):
+			seen.up = true
+			print("[scenario] client up again, health %d" % me.health)
 		if not me.alive and me.spectating != null and not seen.has("dead"):
 			seen.dead = true
 			print("[scenario] client dead, spectating P%d" % me.spectating.peer_id)
@@ -939,6 +1082,7 @@ func _track_when_thrown() -> void:
 	_game.request_take.rpc_id(1, mine.get_path(), me.peer_id)
 	_track(mine, "client", "ITestThrow2")
 	await get_tree().create_timer(0.3).timeout
+	me.inventory.select(me.inventory.slots.find(mine))  # the company pistol is in the other pocket
 	# Walk (real input) and throw with the drop key, as a player would.
 	Input.action_press(&"move_forward")
 	await get_tree().create_timer(0.6).timeout

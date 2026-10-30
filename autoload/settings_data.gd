@@ -24,7 +24,7 @@ const SENSITIVITY_MAX: float = 3.0
 const LANGUAGES: Array[String] = ["", "de", "en"]
 ## Input actions the player may put on other keys (Tastn tab), in the order shown.
 const REBINDABLE: Array[StringName] = [&"move_forward", &"move_back", &"move_left", &"move_right", &"jump", &"sprint",
-		&"crouch", &"interact", &"drop", &"use", &"lamp", &"shout", &"voice_talk", &"watch", &"emote_jodler",
+		&"crouch", &"interact", &"drop", &"use", &"aim", &"reload", &"lamp", &"shout", &"voice_talk", &"watch", &"emote_jodler",
 		&"emote_wave", &"emote_point", &"slot_1", &"slot_2", &"slot_3", &"slot_4"]
 
 # Audio (volumes 0–1, linear)

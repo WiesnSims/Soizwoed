@@ -78,6 +78,6 @@ biome_name_key = "BIOME_OBERER_STOLLEN"
 cell_size = 12.0
 entries = Array[ExtResource("2_entry")]([SubResource("Resource_station"), SubResource("Resource_straight"), SubResource("Resource_rails"), SubResource("Resource_corner"), SubResource("Resource_t"), SubResource("Resource_cross"), SubResource("Resource_sideroom"), SubResource("Resource_hall"), SubResource("Resource_gesenk")])
 superset_weight = 0.25
-creatures = Array[StringName]([&"bergmandl", &"tatzelwurm", &"kasermandl"])
+creatures = Array[StringName]([&"grubenhund", &"bergmandl", &"tatzelwurm", &"kasermandl"])
 echo = 0.2
 has_rails = true
