@@ -1035,7 +1035,8 @@ func _pick_up_ammo(item: WorldItem, player: Player) -> void:
 	if player.ammo_count(type) >= _config.ammo_cap(type):
 		message_to(player.peer_id, "MSG_AMMO_FULL")
 		return
-	_to_peer(player.peer_id, player, &"give_ammo", [type, item.data.ammo_amount, false])
+	# A Notration drop holds fewer rounds than a full box (its value says how many).
+	_to_peer(player.peer_id, player, &"give_ammo", [type, item.value if item.value > 0 else item.data.ammo_amount, false])
 	play_sound_everywhere.rpc("ammo_pickup", item.global_position, -2.0, 12.0)
 	item.host_vanish()
 
@@ -1670,7 +1671,52 @@ func request_hit(creature_path: NodePath, damage: int, from: Vector3) -> void:
 		return
 	var creature: Creature = get_node_or_null(creature_path) as Creature
 	if creature != null:
+		var at: Transform3D = Transform3D(Basis.IDENTITY, creature.global_position + Vector3.UP * 0.4)
+		var was_alive: bool = creature.health > 0
 		creature.host_hit(damage, from)
+		if was_alive and creature.health <= 0:
+			_host_notration(player_by_peer(_sender()), at)
+
+
+## "Notration" (owner decision): a miner who is nearly out of ammo and kills a creature finds a
+## few rounds on it – for the gun in their hand (or their first gun). Only then.
+func _host_notration(killer: Player, at: Transform3D) -> void:
+	if killer == null or not killer.alive:
+		return
+	var left: Dictionary = killer.rounds_left_by_type()
+	if left.is_empty() or not _config.notration_due(left):
+		return
+	var held: WorldItem = killer.inventory.slots[killer.inventory.selected] as WorldItem
+	var ammo_type: StringName = held.data.weapon.ammo_type if held != null and held.data.weapon != null else left.keys()[0]
+	for entry: Resource in catalog.items:
+		var data: ItemData = entry as ItemData
+		if data.kind == ItemData.Kind.AMMO and data.ammo_type == ammo_type:
+			_spawn_item_at(data.id, _config.notration_rounds(ammo_type), at)
+			print("[game] notration: %d %s for P%d" % [_config.notration_rounds(ammo_type), ammo_type, killer.player_number])
+			return
+
+
+## G on a teammate: part of the giver's rounds of that type go over (DESIGN.md §3).
+@rpc("any_peer", "call_local", "reliable")
+func request_hand_ammo(to_peer: int, ammo_type: StringName) -> void:
+	if not multiplayer.is_server():
+		return
+	var giver: Player = player_by_peer(_sender())
+	var mate: Player = player_by_peer(to_peer)
+	if giver == null or mate == null or giver == mate or not giver.alive or not mate.alive:
+		return
+	if giver.global_position.distance_to(mate.global_position) > _config.hand_ammo_distance + 1.0:
+		return
+	var amount: int = _config.ammo_to_hand_over(giver.ammo_count(ammo_type), mate.ammo_count(ammo_type), ammo_type)
+	if amount <= 0:
+		message_to(giver.peer_id, "MSG_MATE_AMMO_FULL" if giver.ammo_count(ammo_type) > 0 else "MSG_NO_AMMO_TO_GIVE")
+		return
+	_to_peer(giver.peer_id, giver, &"lose_ammo", [ammo_type, amount])
+	_to_peer(mate.peer_id, mate, &"give_ammo", [ammo_type, amount, false])
+	play_sound_everywhere.rpc("ammo_pickup", mate.global_position + Vector3.UP, -2.0, 12.0)
+	message_to(giver.peer_id, "MSG_AMMO_HANDED")
+	message_to(mate.peer_id, "MSG_AMMO_RECEIVED")
+	print("[game] P%d handed %d %s to P%d" % [giver.player_number, amount, ammo_type, mate.player_number])
 
 
 ## "Plärren": a loud shout. Scares Bergmandl nearby (DESIGN.md §6, DECISIONS "Plärren key").

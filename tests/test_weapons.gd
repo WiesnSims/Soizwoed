@@ -98,3 +98,19 @@ func test_the_spitzhacke_is_held_as_a_melee_weapon() -> void:
 	assert_null(pick.weapon)
 	assert_gt(pick.melee_damage, 0)
 	assert_lt(GunView.SWING_STRIKE, GunView.SWING_SECONDS)
+
+
+func test_notration_only_when_nearly_out() -> void:
+	var config: BalanceConfig = BalanceConfig.new()
+	assert_true(config.notration_due({&"pistole": 4}))
+	assert_false(config.notration_due({&"pistole": 5}))
+	assert_true(config.notration_due({&"pistole": 2, &"schrot": 1}))
+	assert_false(config.notration_due({&"pistole": 0, &"schrot": 6}), "a full shotgun is not out of ammo")
+	assert_true(config.notration_due({}), "no gun at all")
+
+
+func test_handing_ammo_gives_half_up_to_the_cap() -> void:
+	var config: BalanceConfig = BalanceConfig.new()
+	assert_eq(config.ammo_to_hand_over(9, 0, &"pistole"), 5)
+	assert_eq(config.ammo_to_hand_over(30, config.ammo_cap_pistole - 3, &"pistole"), 3)
+	assert_eq(config.ammo_to_hand_over(0, 0, &"schrot"), 0)

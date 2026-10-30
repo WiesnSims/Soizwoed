@@ -535,6 +535,8 @@ func _update_prompt(player: Player) -> void:
 		text = player.focus.interaction_text(player)
 		var hold: bool = player.focus.has_method(&"interact_hold_seconds") and player.focus.interact_hold_seconds(player) > 0.0
 		text = ("[%s …] " if hold else "[%s] ") % Settings.key_label(&"interact") + text
+	elif player.ammo_mate() != null:
+		text = "[%s] " % Settings.key_label(&"drop") + tr("PROMPT_HAND_AMMO") % player.ammo_mate().display_name()
 	_prompt.text = text
 	_prompt.visible = text != ""
 	var progress: float = maxf(player.hold_progress, player.use_progress)

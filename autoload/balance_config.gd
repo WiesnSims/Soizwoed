@@ -107,6 +107,17 @@ extends Resource
 @export var ammo_cap_schrot: int = 20
 ## The company's ration at the start of every shift: whoever has less gets topped up to this.
 @export var ration_pistole: int = 24
+## Handing ammo to a teammate (G while looking at them): how close, and the share of your
+## rounds of that type that goes over (rounded up).
+@export var hand_ammo_distance: float = 2.5
+@export var hand_ammo_share: float = 0.5
+## "Notration" (owner decision): a creature killed by a miner who is nearly out of ammo drops
+## a few rounds. Nearly out = every gun they carry has at most this many rounds left (magazine
+## plus spare) – only then; and how many rounds the drop holds.
+@export var notration_left_pistole: int = 4
+@export var notration_left_schrot: int = 1
+@export var notration_pistole: int = 5
+@export var notration_schrot: int = 2
 ## Ammo boxes lying in a mine per miner (at least one), before the section's share.
 @export var ammo_boxes_per_player: float = 3.5
 ## Moving while aiming down the sights is this much slower.
@@ -383,6 +394,31 @@ func ammo_cap(ammo_type: StringName) -> int:
 		&"schrot":
 			return ammo_cap_schrot
 	return 99
+
+
+## Rounds of `ammo_type` left at which a miner counts as nearly out (Notration).
+func notration_left(ammo_type: StringName) -> int:
+	return notration_left_schrot if ammo_type == &"schrot" else notration_left_pistole
+
+
+## How many rounds a Notration drop of `ammo_type` holds.
+func notration_rounds(ammo_type: StringName) -> int:
+	return notration_schrot if ammo_type == &"schrot" else notration_pistole
+
+
+## Whether a miner with these rounds left per ammo type (magazines plus spare, one entry per type
+## of gun they carry) is nearly out of ammo: no gun at all, or every type at its Notration limit.
+func notration_due(rounds_left: Dictionary) -> bool:
+	for ammo_type: StringName in rounds_left:
+		if int(rounds_left[ammo_type]) > notration_left(ammo_type):
+			return false
+	return true
+
+
+## How many rounds go over when handing ammo: the share of what the giver has (rounded up),
+## no more than the receiver can still carry.
+func ammo_to_hand_over(giver_has: int, receiver_has: int, ammo_type: StringName) -> int:
+	return clampi(ceili(giver_has * hand_ammo_share), 0, maxi(0, ammo_cap(ammo_type) - receiver_has))
 
 
 func enemy_budget_mult(player_count: int) -> float:

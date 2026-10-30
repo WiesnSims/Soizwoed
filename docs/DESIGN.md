@@ -95,6 +95,8 @@ Unchanged in principle: assembled at runtime from hand-made chunks by a seeded g
 
 - **Loot** (salt crystals, Jausenbox, Grubenlampe, Kaiserliches Abzeichen, Steinsalz-Block, Bronzeschwert, Goldene Haube, Kuckucksuhr, Gamsbart-Hut, Stück vom Mann im Salz) stays as built: optional greed, sold for money in the hub. Carrying heavy loot means not shooting, like the Fundstück. The cursed Mann im Salz and the cuckoo clock keep drawing enemies.
 - **Ammo** is found in the mine (old miners' lockers, Munitionskisten – a few per mine, more in deeper sections) and bought in the hub. Never enough to shoot everything.
+- **Sharing ammo (owner decision):** G while looking at a teammate close by hands them half of your rounds of the type their gun takes (up to what they can carry).
+- **Notration (owner decision):** a miner who is nearly out of ammo (every gun at 4 pistol rounds / 1 shell or less, magazine plus spare) finds a few rounds on every creature they kill (5 pistol rounds / 2 shells). Only then – with ammo left, kills drop nothing extra.
 - **Fundstück** per section (examples; one per shift, the company's "Auftrag" on the notice board):
   - Oberer Stollen: the **Goldener Grubenkompass**, the **Kaiserliche Grubenuhr**;
   - Salzsee: the **Seekristall** (glows – lights the carrier, everything sees them);

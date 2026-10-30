@@ -294,3 +294,8 @@ SHOP_CAT_AMMO,Munition,Ammo
 SHOP_CAT_THROWABLES,Zum Schmeißn,Throwables
 SHOP_CAT_PROVISIONS,Jausn & Schnaps,Food & drink
 SHOP_CAT_GEAR,Ausrüstung,Gear
+PROMPT_HAND_AMMO,%s Munition gebn,Give %s ammo
+MSG_AMMO_HANDED,Munition übergebn.,Ammo handed over.
+MSG_AMMO_RECEIVED,Du host Munition kriagt.,You got some ammo.
+MSG_NO_AMMO_TO_GIVE,Du host nix zum Herschenkn.,You have nothing to give.
+MSG_MATE_AMMO_FULL,Der ko nix mehr tragn.,They can't carry any more.

@@ -896,6 +896,15 @@ func _try_take(item: WorldItem) -> void:
 
 
 func _drop_active() -> void:
+	# Looking at a teammate close by: hand them ammo instead of dropping anything.
+	var mate: Player = ammo_mate()
+	if mate != null:
+		var ammo_type: StringName = ammo_type_for(mate)
+		if ammo_type == &"" or ammo_count(ammo_type) <= 0:
+			game().show_message(tr("MSG_NO_AMMO_TO_GIVE"))
+		else:
+			game().request_hand_ammo.rpc_id(1, mate.peer_id, ammo_type)
+		return
 	if pushed_cart() != null:
 		game().request_push_rail.rpc_id(1, pushed_cart().get_path())  # lets go of it
 		return
@@ -1224,6 +1233,53 @@ func _check_headlamp() -> void:
 
 func ammo_count(ammo_type: StringName) -> int:
 	return int(ammo.get(ammo_type, 0))
+
+
+## The living teammate right in front of the crosshair, close enough to hand ammo to.
+func ammo_mate() -> Player:
+	if not alive or downed:
+		return null
+	var from: Vector3 = camera.global_position
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * _config.hand_ammo_distance, 1 | 2)
+	query.exclude = [get_rid()]
+	var mate: Player = get_world_3d().direct_space_state.intersect_ray(query).get("collider") as Player
+	return mate if mate != null and mate.alive else null
+
+
+## Which ammo goes to `mate`: what their gun in hand takes if we have some, else what ours takes,
+## else whatever we have most of. Empty when we have nothing.
+func ammo_type_for(mate: Player) -> StringName:
+	var theirs: WorldItem = mate.inventory.slots[mate.inventory.selected] as WorldItem
+	if theirs != null and theirs.data.weapon != null and ammo_count(theirs.data.weapon.ammo_type) > 0:
+		return theirs.data.weapon.ammo_type
+	var ours: WorldItem = inventory.slots[inventory.selected] as WorldItem
+	if ours != null and ours.data.weapon != null and ammo_count(ours.data.weapon.ammo_type) > 0:
+		return ours.data.weapon.ammo_type
+	var best: StringName = &""
+	for ammo_type: StringName in ammo:
+		if ammo_count(ammo_type) > 0 and (best == &"" or ammo_count(ammo_type) > ammo_count(best)):
+			best = ammo_type
+	return best
+
+
+## Rounds left per type of gun this miner carries: magazines plus spare (Notration check).
+func rounds_left_by_type() -> Dictionary:
+	var left: Dictionary = {}
+	for item: Object in inventory.all_items():
+		var gun: WorldItem = item as WorldItem
+		if gun == null or gun.data.weapon == null:
+			continue
+		var ammo_type: StringName = gun.data.weapon.ammo_type
+		left[ammo_type] = int(left.get(ammo_type, ammo_count(ammo_type))) + gun.rounds
+	return left
+
+
+## The host takes rounds off this miner's counter (handed to a teammate).
+@rpc("any_peer", "call_local", "reliable")
+func lose_ammo(ammo_type: StringName, amount: int) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return  # only the host
+	use_ammo(ammo_type, amount)
 
 
 ## Takes `amount` rounds off a counter (the owner, when reloading).

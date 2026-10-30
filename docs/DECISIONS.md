@@ -514,3 +514,11 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Out of ammo while chased (owner question) – current answer and proposals
 - Now: the Spitzhacke (34 damage, a Grubenhund in 2 hits) is always there; the Watschn (bare hand) shoves; Rauchbombe breaks contact; running to the crew; ammo boxes and lockers in the mine; killing a Bergmandl gets stolen ammo back.
 - Proposed for M7 (owner to decide): teammates can hand ammo over (G on a teammate: half of your rounds of their gun's type); a creature killed by a miner who is completely out of ammo drops a few rounds ("Notration"); later (M9) a kick/shove that knocks creatures back for everyone.
+
+## 2026-10-30 – Ammo hand-over and Notration (owner decision); playtest approved
+
+- The owner approved the playtest of the gun look, reloads, Spitzhacke and shop, and chose both out-of-ammo proposals:
+  - **Hand ammo to a teammate:** G while looking at a living teammate within 2.5 m (the prompt says "[G] <name> Munition gebn"). Half of your rounds (rounded up) of the type their gun in hand takes (else yours, else what you have most of) go over, no more than they can carry. The host checks distance and moves the rounds; both get a message.
+  - **Notration:** only when the killer is nearly out – every gun they carry has at most 4 pistol rounds / 1 shell left (magazine plus spare) – a killed creature drops a small ammo box for the gun in their hand: 5 pistol rounds or 2 shells. With ammo left nothing extra drops.
+  - Numbers in `balance.tres` (`hand_ammo_*`, `notration_*`).
+- Branch `m7` merged into `main` at the owner's request; M7 itself (the Fundstück loop) continues on `m7`.

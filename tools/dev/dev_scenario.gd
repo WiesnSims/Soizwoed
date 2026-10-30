@@ -11,6 +11,7 @@ extends Node
 ##   coop   – host with one ENet client (`--wait-peers=1`): drops a crystal from above, carries
 ##            a salt block together with the client, hands it over, then the client dies.
 ##   coopclient – the client side of coop: logs what it sees of all that.
+##   notration – nearly out of ammo, a kill drops a few rounds; with ammo it does not.
 ##   shoplook – the shop, every shelf (screenshots).
 ##   cheat  – in the Gasthaus: types the money cheat word, logs the money before and after.
 
@@ -37,6 +38,9 @@ func run(game: Game, scenario: String) -> void:
 			await get_tree().create_timer(1.5).timeout
 			await _snap("shop_%d" % category)
 		print("[scenario] shoplook done")
+		return
+	if scenario == "notration":
+		await _notration()
 		return
 	if scenario == "cheat":
 		await _cheat()
@@ -272,6 +276,33 @@ func _cart() -> void:
 		print("[scenario] %s %s, %.2f m from its slot" % [item.data.id, WorldItem.State.keys()[item.state], item.global_position.distance_to(item.follow.global_position) if item.follow != null else -1.0])
 
 
+## Out of ammo (one round left, no spare): a creature killed drops a few rounds; with a full
+## pocket of ammo it does not.
+func _notration() -> void:
+	var miner: Player = _game.local_player()
+	await _give(&"dienstpistole")
+	_select(miner, &"dienstpistole")
+	await get_tree().process_frame
+	var pistol: WorldItem = miner.gunner.weapon_item()
+	for spare: int in [0, 30]:
+		pistol.rounds = 1
+		miner.use_ammo(&"pistole", 999)
+		miner.give_ammo(&"pistole", spare)
+		var dog: Creature = _game.spawn_creature(&"grubenhund", miner.global_transform.translated(-miner.global_basis.z * 3.0))
+		await get_tree().create_timer(0.3).timeout
+		var boxes_before: int = _ammo_boxes()
+		_game.request_hit(dog.get_path(), 999, miner.global_position)
+		await get_tree().create_timer(0.5).timeout
+		print("[scenario] notration with %d spare: boxes %+d" % [spare, _ammo_boxes() - boxes_before])
+
+
+func _ammo_boxes() -> int:
+	var count: int = 0
+	for item: WorldItem in _game._items():
+		count += 1 if item.data.kind == ItemData.Kind.AMMO else 0
+	return count
+
+
 func _cheat() -> void:
 	var before: int = GameState.run.money
 	for letter: String in Game.CHEAT_MONEY_WORD:
@@ -408,6 +439,17 @@ func _coop() -> void:
 	_game.request_drop(block.get_path(), host.hold_point.global_transform, Vector3.ZERO)
 	await get_tree().create_timer(1.5).timeout
 	print("[scenario] host: after letting go, block holder %d helper %d" % [block.holder_peer, block.helper_peer])
+	# G while looking at the teammate: half of the host's pistol rounds go over.
+	host.give_ammo(&"pistole", 20)
+	var to_client: Vector3 = client.global_position - host.global_position
+	host.rotation.y = atan2(-to_client.x, -to_client.z)
+	host.head.rotation.x = -0.25
+	await get_tree().create_timer(0.3).timeout
+	var host_before: int = host.ammo_count(&"pistole")
+	var client_before: int = client.ammo_count(&"pistole")
+	host._drop_active()
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] host: handed ammo, client %+d, host %+d" % [client.ammo_count(&"pistole") - client_before, host.ammo_count(&"pistole") - host_before])
 	# Two miners side by side: a Salzweibl right next to them does not dare and flees.
 	_game.spawn_creature(&"salzweibl", Transform3D(Basis.IDENTITY, host.global_position - host.global_basis.z * 1.5))
 	await get_tree().create_timer(1.5).timeout
