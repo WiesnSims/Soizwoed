@@ -139,6 +139,8 @@ func _look_around() -> bool:
 		_set_state(State.FETCH)
 		return true
 	if _throw_left <= 0.0:
+		# Whoever carries the Fundstück gets the stones first.
+		seen.sort_custom(func(a: Player, b: Player) -> bool: return is_carrier(a) and not is_carrier(b))
 		for player: Player in seen:
 			var distance: float = player.global_position.distance_to(global_position)
 			if distance > _config.bergmandl_throw_min and distance < _config.bergmandl_throw_max:
@@ -170,8 +172,8 @@ func _nearest_loot() -> WorldItem:
 func _can_take(item: WorldItem) -> bool:
 	if item == null or not is_instance_valid(item) or item.is_queued_for_deletion():
 		return false
-	if not item.is_loot() and item.data.kind != ItemData.Kind.AMMO:
-		return false
+	if not item.is_loot() and item.data.kind != ItemData.Kind.AMMO or item.data.fundstueck:
+		return false  # the Fundstück is too much for a Bergmandl
 	if item.global_position.y > Game.HUB_FLOOR_ABOVE or Game.instance.in_mine_cage(item.global_position):
 		return false
 	if stash.has(item):
@@ -190,8 +192,9 @@ func _loot_in_hands(player: Player) -> WorldItem:
 		return null  # two miners holding on: too much for a Bergmandl
 	if hands is Schubkarre:
 		var cart: Schubkarre = hands as Schubkarre
-		return null if cart.cargo.is_empty() else cart.cargo.back()
-	return hands if hands != null and hands.is_loot() else null
+		var top: WorldItem = null if cart.cargo.is_empty() else cart.cargo.back()
+		return top if top != null and not top.data.fundstueck else null
+	return hands if hands != null and hands.is_loot() and not hands.data.fundstueck else null
 
 
 func _grab(item: WorldItem) -> void:
@@ -251,7 +254,7 @@ func _throw_at(player: Player) -> void:
 	var target: Vector3 = player.global_position + Vector3.UP * 1.2 + player.velocity * 0.35
 	target += Vector3(randf_range(-0.6, 0.6), randf_range(-0.3, 0.3), randf_range(-0.6, 0.6))
 	look_at(Vector3(target.x, global_position.y, target.z), Vector3.UP)
-	Game.instance.host_throw_stone(from, target, _config.bergmandl_stone_damage, get_path())
+	Game.instance.host_throw_stone(from, target, scaled_damage(_config.bergmandl_stone_damage), get_path())
 	play_sound.rpc("voices/bergmandl/giggle", -8.0)
 
 

@@ -13,7 +13,8 @@ enum SlotKind { WEAPON, THROWABLE, ITEM }
 ## Something the item does by itself in the mine (host, Game._host_tick_specials).
 enum Special { NONE, CUCKOO, CURSED }
 ## The shelves of the shop in the Gasthaus (ShopCategory order is the order of the tabs).
-enum ShopCategory { WEAPONS, AMMO, THROWABLES, PROVISIONS, GEAR }
+## UPGRADES holds the run upgrades (RunUpgrade), not items.
+enum ShopCategory { WEAPONS, AMMO, THROWABLES, PROVISIONS, GEAR, UPGRADES }
 
 @export var id: StringName = &""
 ## Translation key of the shown name.
@@ -41,6 +42,10 @@ enum ShopCategory { WEAPONS, AMMO, THROWABLES, PROVISIONS, GEAR }
 @export var special: Special = Special.NONE
 ## A gun: how it shoots (its use is SHOOT).
 @export var weapon: WeaponData
+## The shift's Fundstück (DESIGN.md §5): one per shift from its section (`biomes`), never sold
+## as loot or spawned by weight; the alarm pulses from it `pulse_mult` times as far.
+@export var fundstueck: bool = false
+@export var pulse_mult: float = 1.0
 ## Ammo boxes (kind AMMO): picking one up adds `ammo_amount` to the counter `ammo_type`.
 @export var ammo_type: StringName = &""
 @export var ammo_amount: int = 0

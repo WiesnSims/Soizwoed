@@ -104,7 +104,7 @@ func _hunt(delta: float) -> void:
 	if _bite_left <= 0.0 and global_position.distance_to(_target.global_position) < _config.grubenhund_bite_distance:
 		_bite_left = _config.grubenhund_bite_cooldown
 		play_sound.rpc("dog_bite", 2.0)
-		game.host_damage_player(_target, _config.grubenhund_bite_damage)
+		game.host_damage_player(_target, scaled_damage(_config.grubenhund_bite_damage))
 		# Spring back to the side, then come again.
 		var away: Vector3 = (global_position - _target.global_position)
 		away.y = 0.0
@@ -123,9 +123,9 @@ func _look() -> void:
 			continue
 		var chest: Vector3 = player.global_position + Vector3.UP * (0.7 if player.crouching or player.downed else 1.2)
 		var distance: float = eyes.distance_to(chest)
-		if distance > sight_distance(player.light_range() > 0.0, player.crouching) or not _clear(eyes, chest):
+		if distance > sight_distance(player.is_lit(), player.crouching) or not _clear(eyes, chest):
 			continue
-		var score: float = distance + (30.0 if player.downed else 0.0)
+		var score: float = distance + (30.0 if player.downed else 0.0) - (15.0 if is_carrier(player) else 0.0)
 		if score < best_score:
 			best = player
 			best_score = score
@@ -185,6 +185,10 @@ func _set_state(new_state: State) -> void:
 
 
 func host_heard(where: Vector3, _reach: float) -> void:
+	# The alarm's pulse: a dog already after someone else turns to the carrier's whereabouts.
+	var carrier: Player = Game.instance.fundstueck_carrier() if Game.instance.alarm_on else null
+	if carrier != null and state == State.HUNT and _target != carrier and where.distance_to(carrier.global_position) < 2.0 and _unseen_time > 0.0:
+		_set_state(State.INVESTIGATE)
 	if state == State.ROAM or state == State.INVESTIGATE:
 		if in_smoke(where) or Game.instance.in_mine_cage(where):
 			return

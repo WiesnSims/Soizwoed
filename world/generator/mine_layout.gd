@@ -14,8 +14,14 @@ var depth: Dictionary = {}
 var chunk_index: Dictionary = {}
 ## Vector2i -> int, quarter turns clockwise.
 var chunk_rotation: Dictionary = {}
+## The Fundort: the end of the main path, a dead end, where the Fundstück lies (DESIGN.md §4).
+var fundort: Vector2i = Vector2i(0, 9999)
 ## Salt walls closing a passage: Vector3i(cell.x, cell.y, dir) for the side of cell they close.
 var walls: Array[Vector3i] = []
+
+
+func is_fundort(cell: Vector2i) -> bool:
+	return cell == fundort and cell != start
 
 
 func has_cell(cell: Vector2i) -> bool:

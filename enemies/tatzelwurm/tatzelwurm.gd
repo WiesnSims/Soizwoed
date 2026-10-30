@@ -158,7 +158,7 @@ func _bite() -> void:
 	if not is_instance_valid(_victim) or not _victim.alive:
 		return
 	if _flat_distance(_victim.global_position) < _config.tatzelwurm_lunge_distance + 0.6:
-		Game.instance.host_damage_player(_victim, _config.tatzelwurm_bite_damage)
+		Game.instance.host_damage_player(_victim, scaled_damage(_config.tatzelwurm_bite_damage))
 
 
 ## A living player close to the hole who is moving fast enough to be felt (crouching is not).

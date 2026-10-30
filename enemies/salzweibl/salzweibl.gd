@@ -121,7 +121,7 @@ func is_alone(player: Player) -> bool:
 func _strike(player: Player) -> void:
 	say(VoiceLine.Moment.ACTION, true)
 	play_sound.rpc("salzweibl_shriek", 4.0)
-	Game.instance.host_damage_player(player, _config.salzweibl_damage)
+	Game.instance.host_damage_player(player, scaled_damage(_config.salzweibl_damage))
 	print("[salzweibl] took P%d" % player.peer_id)
 	_vanish()
 

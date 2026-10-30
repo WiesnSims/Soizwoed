@@ -1,0 +1,116 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/fundstueck_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_brass"]
+albedo_color = Color(0.72, 0.55, 0.28, 1)
+metallic = 0.9
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="mat_dark"]
+albedo_color = Color(0.04, 0.03, 0.03, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_enamel"]
+albedo_color = Color(0.92, 0.88, 0.78, 1)
+roughness = 0.3
+
+[sub_resource type="StandardMaterial3D" id="mat_glass"]
+transparency = 1
+albedo_color = Color(0.8, 0.9, 0.95, 0.3)
+roughness = 0.05
+metallic_specular = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_gold"]
+albedo_color = Color(0.93, 0.72, 0.3, 1)
+metallic = 1.0
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="mat_red"]
+albedo_color = Color(0.7, 0.1, 0.08, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="mesh_0"]
+top_radius = 0.15
+bottom_radius = 0.15
+height = 0.06
+radial_segments = 24
+rings = 1
+
+[sub_resource type="TorusMesh" id="mesh_1"]
+inner_radius = 0.13
+outer_radius = 0.16
+rings = 24
+ring_segments = 6
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.125
+bottom_radius = 0.125
+height = 0.005
+radial_segments = 24
+rings = 1
+
+[sub_resource type="BoxMesh" id="mesh_3"]
+size = Vector3(0.02, 0.006, 0.11)
+
+[sub_resource type="BoxMesh" id="mesh_4"]
+size = Vector3(0.02, 0.006, 0.11)
+
+[sub_resource type="CylinderMesh" id="mesh_5"]
+top_radius = 0.13
+bottom_radius = 0.13
+height = 0.01
+radial_segments = 24
+rings = 1
+
+[sub_resource type="TorusMesh" id="mesh_6"]
+inner_radius = 0.02
+outer_radius = 0.035
+rings = 16
+ring_segments = 6
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.34, 0.1, 0.38)
+
+[node name="GoldenerGrubenkompass" type="RigidBody3D"]
+mass = 4.0
+script = ExtResource("1_item")
+
+[node name="Case" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Rim" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_brass")
+
+[node name="Face" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.062, 0)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_enamel")
+
+[node name="NeedleN" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.068, -0.05)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_red")
+
+[node name="NeedleS" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.068, 0.05)
+mesh = SubResource("mesh_4")
+surface_material_override/0 = SubResource("mat_dark")
+
+[node name="Glass" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, 0)
+mesh = SubResource("mesh_5")
+surface_material_override/0 = SubResource("mat_glass")
+
+[node name="Ring" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0.03, -0.17)
+mesh = SubResource("mesh_6")
+surface_material_override/0 = SubResource("mat_gold")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+shape = SubResource("shape")

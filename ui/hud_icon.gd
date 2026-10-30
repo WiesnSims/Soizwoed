@@ -2,9 +2,10 @@ class_name HudIcon
 extends Control
 ## Small vector icons for the HUD, drawn in code (no image files): a cross for health, a flame
 ## for the lamp, chevrons for breath, a cartridge and a shotgun shell for ammo; for the shop's
-## shelves a pistol, a cartridge, a bomb, a bottle and a pick; a coin for money.
+## shelves a pistol, a cartridge, a bomb, a bottle and a pick; a coin for money; a shield for
+## armour and the upgrades shelf.
 
-enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN }
+enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN, ARMOUR }
 
 @export var kind: Kind = Kind.HEALTH
 @export var color: Color = Color.WHITE:
@@ -81,6 +82,11 @@ func _draw() -> void:
 			draw_circle(s / 2.0 + Vector2(1.5, 1.5), s.x * 0.42, shadow)
 			draw_circle(s / 2.0, s.x * 0.42, Color(0.86, 0.66, 0.3))
 			draw_arc(s / 2.0, s.x * 0.3, 0.0, TAU, 24, Color(0.6, 0.42, 0.15), maxf(1.0, s.x * 0.06))
+		Kind.ARMOUR:
+			var shield: PackedVector2Array = PackedVector2Array([Vector2(0.5, 0.06), Vector2(0.88, 0.2), Vector2(0.84, 0.56), Vector2(0.5, 0.94),
+					Vector2(0.16, 0.56), Vector2(0.12, 0.2)])
+			_polygon(shield, s, shadow, color)
+			draw_line(Vector2(s.x * 0.5, s.y * 0.2), Vector2(s.x * 0.5, s.y * 0.78), Color(0, 0, 0, 0.35), maxf(1.0, s.x * 0.06))
 
 
 ## A shape given in 0..1 of the icon, with a drop shadow.

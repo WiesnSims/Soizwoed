@@ -522,3 +522,116 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - **Notration:** only when the killer is nearly out – every gun they carry has at most 4 pistol rounds / 1 shell left (magazine plus spare) – a killed creature drops a small ammo box for the gun in their hand: 5 pistol rounds or 2 shells. With ammo left nothing extra drops.
   - Numbers in `balance.tres` (`hand_ammo_*`, `notration_*`).
 - Branch `m7` merged into `main` at the owner's request; M7 itself (the Fundstück loop) continues on `m7`.
+
+## 2026-10-30 – M7 the Fundstück loop (chosen by Claude unless marked, change any time)
+
+### The run (DESIGN.md §2)
+- **The money quota is gone.** A run is a chain of shifts (`RunState.shift_index`, 0-based); each one wants its Fundstück.
+  - Delivered: the crew keeps its job and the next shift is harder.
+  - Not delivered – the Rückweg-timer ran out, everyone is dead, or the crew gave up: the crew is fired and the run is over.
+  - Loot that rode up is still sold either way; the Fundstück's bonus is only paid on delivery.
+- **Score:** shifts survived, then total money earned (cheat money does not count), plus the Ehrenzeichen earned.
+- **Ehrenzeichen** are already counted per run and shown in the results, but not saved yet (the profile and the Knappenbrief are M9): 1, +1 every 3 shifts, +1 Salzsee / +2 Die Tiefe, +1 with a boss.
+- **The Fundstück's bonus:** 150 S + 40 S per shift, times the section's loot multiplier.
+
+### The Auftrag and the Fundstück
+- **Five Fundstücke** (DESIGN §5):
+  - Oberer Stollen: Goldener Grubenkompass, Kaiserliche Grubenuhr;
+  - Salzsee: Seekristall;
+  - Die Tiefe: Keltische Goldmaske, and the Herz vom Salzmann (the only heavy one).
+  The medium ones carry at normal speed, but with both hands full.
+- **The notice board** shows the Auftrag for the next shift: which Fundstück, from which section, the boss chance ("Bewacht? Vielleicht (35 %)") and the till. The host rolls it in the Gasthaus; picking another section on the Grubnplan rolls a new one.
+- **Fundort chunk:** one per section, at the end of the main path. It is a 10–14 m hall with:
+  - cover: crates, rubble piles, salt columns or standing stones;
+  - the Fundstück on a plinth at the back;
+  - a spot for the boss and five cover points for him.
+  The generator keeps it a dead end: no branches, loops or salt walls touch it. A section without a Fundort chunk falls back to its deepest loot spot.
+- **Taking it** sounds the alarm: picking it up, loading it, or knocking it more than 1.5 m off its place.
+- **While a boss lives** the Fundstück sits in a translucent shell of rock salt and cannot be taken or loaded ("In Soiz eigschlossn – da Kini muass weg!"). The shell bursts when the boss dies.
+- **Bergmandl never steal the Fundstück** – from the floor, from hands or off a barrow. A stolen Fundstück carried off while the timer runs would make the shift a coin flip, not a fight.
+- **The carrier:**
+  - cannot shoot (both hands full, as before), but a click shoves with the elbow (6 damage);
+  - hands it over by dropping it (G); the teammate picks it up;
+  - carrying it together works as for every heavy item;
+  - the rail cart and the Schubkarre take it too.
+- **The Seekristall glows** (a cyan light on it): Grubenhunde and the Percht see its carrier as if their lamp were on.
+
+### Alarm, Rückweg and waves
+- **Rückweg-timer:** (90 s + 1.25 s per metre of the waypoint path from the Fundort to the cage) × a shrink of 4 % per shift (down to 65 %) × the crew bonus (+40 % solo, +15 % for two).
+  - First shift, about 90 m: about 3 min 20 s for four miners, 4 min 40 s solo.
+  - `tests/test_balance.gd` checks it always leaves at least 1.5× the time it takes to carry a heavy Fundstück back alone at half speed, in every section, for 20 shifts.
+- **The alarm:**
+  - the lift's bell rings twice, from the direction of the cage wherever you are;
+  - "Alarm! … in 4:12 zruck zum Korb";
+  - a red timer at the top of the screen, blinking in the last 30 s.
+- **Waves:** the first after 8 s, then every 30 s.
+  - Each spends 3 + 0.5 per shift of enemy budget (times the crew factor, at least one creature) on the section's creatures allowed in that shift.
+  - They come out of sight of every miner, at least 14 m away and within 40 m of the Fundstück: half the groups ahead (closer to the lift), half behind on the crew's tracks.
+  - No new wave while 5 / 7 / 9 / 10 creatures (1–4 miners) are alive.
+  - Spawn holes: for now waves come from waypoints out of sight; holes in the rock as props can come with M10.
+- **Carrier focus:**
+  - every 3 s every creature within 45 m hears where the Fundstück is (the Herz vom Salzmann: 1.6× as far);
+  - Grubenhunde rate its carrier 15 m closer than anyone else, and a dog chasing someone out of sight turns to the pulse;
+  - Bergmandl throw their stones at the carrier first, Da Bergkini his dynamite.
+- **The normal trickle of creatures stops** with the alarm; the waves replace it.
+
+### The lift
+- **The mine lever only sends the cage up with the Fundstück on board:** lying in the cage, held by someone in it, or in a cart that is in it or pushed by someone in it.
+- **Giving up (DESIGN's "aufgeben"):** without the Fundstück the first pull says so; a second pull within 6 s gives up, and the crew is fired. The host sees the prompt "Aufgebn (ohne Fundstück)"; clients see the normal prompt and the host decides.
+- **Timer out:** the cage goes up empty, everyone is left behind, fired.
+- **The Grubenpfeife no longer ends the shift.** After the whistle the Schichtmeister comes, as before (12 s later, once per shift); he also comes when 30 s of the Rückweg are left.
+
+### Difficulty per shift (DESIGN.md §8)
+- **Creatures by shift** (`CreatureSpawnRule.min_shift`): Grubenhund and Bergmandl from shift 1, Tatzelwurm and Kasermandl from 2, Salzweibl from 3, Percht from 6.
+- **Sections** (`BiomeRule.unlock_shift`): the Salzsee opens for shift 4 (after shift 3), Die Tiefe for shift 7.
+- **Creatures**, on top of the crew factors:
+  - enemy budget 9 + 1.5 per shift;
+  - health +5 % per shift (at most ×2);
+  - damage +4 % per shift (at most ×1.6).
+  The solo enemy budget is now 0.45 as in DESIGN §8 (was 0.5).
+- **Bosses:** chance 0 % / 35 % / 70 % for shifts 1–3, always from shift 4; health ×0.5 / 0.7 / 0.85 / 1.0 for 1–4 miners, +12 % per shift.
+- **Mine size:** the main path (lift to Fundort) grows by half a cell per shift (7 to 14 cells), the branches likewise.
+- **Ammo found:** 3.5 boxes per miner × 1.2 / 1.0 / 0.9 / 0.8 (crew size), 5 % fewer per shift (down to half).
+- **Loot:** 16 + 0.7 pieces per shift. **Firedamp:** +2 % of chunks per shift.
+- **`tools/balance_report.gd`** now prints per shift and crew size: enemy budget, health factor, boss chance and ammo boxes; and per section the loot value, the Fundstück bonus, the way back and its timer against the carrying time.
+
+### Waffenkammer: run upgrades and armour (DESIGN.md §7)
+- **Upgrades are for the whole crew,** bought with the crew's money and held until the run ends. A new shelf "Aufrüstn" in the shop has a card per upgrade: picture, level, what it does, the next price.
+  - Dienstpistole: Hartkern +20 % damage (120 / 220 S), long magazine +4 rounds (150), gschmiert −20 % reload time (100 / 180), Kimme gfeilt −30 % spread (110).
+  - Flinte: grobes Soiz +20 % damage (180 / 300), Patronengurt −20 % reload time (150 / 250), Würger −25 % spread (160).
+  - Patronentaschn +16 pistol rounds carried (80 / 140), Schrotgürtel +8 shells (100 / 160).
+  - Lederschurz 40 armour (180), Grubenhelm 30 armour (140).
+  - Reflektor +20 % lamp reach (90 / 160).
+- Upgrades are `RunUpgrade` resources in `balance.tres`. Every peer applies them to an upgraded copy of each gun's `WeaponData`; the original stays untouched.
+- **Armour:** half of every hit goes into the armour's points instead of health until they are used up. It is refilled before every shift and right after buying. Its bar (grey, with a shield) shows under health when the crew has any.
+- **Not yet:**
+  - the extra pocket slot (it needs a 10th key; it comes with the Knappenbrief in M9);
+  - a battery upgrade for the Stirnlampe;
+  - upgrades for the M8 guns.
+
+### Da Bergkini (DESIGN.md §6 bosses)
+- **The Bergmandl king:** 1.7× the size of a Bergmandl, with a gold crown, speaking the Bergmandl's lines, deeper. 420 health before the boss factors (solo in shift 2: 210).
+- **Dozes** at the back of his hall until a miner comes within 16 m in his sight, makes a noise nearby (a shot) or hits him; then "Da Bergkini is aufgwacht!".
+- **Fights from cover:** he runs between the hall's cover points, picking ones the miners cannot see into and far from them – every ~7 s, or after 60 damage.
+- **Dynamite:**
+  - every ~3.6 s, at the miner he sees (the carrier first), up to 18 m away, lobbed a little ahead of them;
+  - it bounces, lies there hissing with a sparking fuse for 2.2 s, then goes off;
+  - up to 45 damage within 4 m (rock shields), to creatures too – him and his Bergmandl included;
+  - it sets off firedamp and shakes the view.
+- **Summons** two Bergmandl every 16 s while fewer than four are around.
+- **Slaps** whoever comes within 1.9 m (20 damage), then moves to other cover. Shouting does not scare him.
+- **For now he guards the Fundstück in all three sections.** D'Seemuada (Salzsee) and the Schiachpercht (Die Tiefe) replace him there in M8 (`ChunkSet.boss`).
+
+### Version and tests
+- **Version 0.7.0.**
+- **New tests:**
+  - the run (delivery, firing, upgrades);
+  - difficulty curves, the boss chance, the armour split, the upgrade maths;
+  - the Rückweg check;
+  - creatures and sections by shift;
+  - the Fundort in the generator.
+- **New headless checks:**
+  - `smoke_fundstueck`: lever refused, alarm, a wave, delivery, then a timeout;
+  - `smoke_giveup`, `smoke_boss`, `smoke_upgrades`;
+  - `tools/mp_test.ps1 -Boss`: clients see the salt shell and the alarm.
+- Every `--auto-shift` and the old scenarios now deliver the Fundstück before riding up (`Game.dev_deliver`).

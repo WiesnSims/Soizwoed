@@ -1,7 +1,7 @@
 class_name EnemyData
 extends Resource
 ## One creature type. New creatures = a new .tres of this type plus its behaviour scene, and a
-## CreatureSpawnRule in balance.tres (how often, how many, from which cycle).
+## CreatureSpawnRule in balance.tres (how often, how many, from which shift).
 
 @export var id: StringName = &""
 ## Translation key of the shown name.

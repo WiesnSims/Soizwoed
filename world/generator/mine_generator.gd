@@ -4,11 +4,13 @@ extends RefCounted
 ## the same seed, params and chunk set.
 ##
 ## 1. The Förderkorb station sits at the start cell and opens south only.
-## 2. A self-avoiding random walk from it makes the main path.
+## 2. A self-avoiding random walk from it makes the main path. Its last cell is the Fundort
+##    (DESIGN.md §4): a dead end that stays one – no branches, loops or salt walls there.
 ## 3. Branches grow off random cells (dead ends).
 ## 4. Some neighbouring cells get joined to make loops (to escape creatures).
 ## 5. Some loop passages and dead-end entrances get a salt wall (Spitzhacke shortcuts, niches).
-## 6. Each cell gets a chunk whose openings cover the cell's open sides.
+## 6. Each cell gets a chunk whose openings cover the cell's open sides; the Fundort gets a
+##    Fundort chunk when the set has one.
 
 const WALK_ATTEMPTS: int = 64
 ## A straight step is this many times as likely as a turn: long corridors, not zig-zag.
@@ -21,6 +23,7 @@ static func generate(seed_value: int, params: MineParams, chunks: ChunkSet) -> M
 	var layout: MineLayout = MineLayout.new()
 	layout.add_cell(layout.start)
 	_carve_main_path(layout, rng, params.main_length)
+	layout.fundort = layout.main_path[-1]
 	for _i: int in params.branch_count:
 		_carve_branch(layout, rng, params.branch_max_length)
 	_add_loops(layout, rng, params)
@@ -71,7 +74,7 @@ static func _random_walk(rng: RandomNumberGenerator, from: Vector2i, first_dir: 
 static func _carve_branch(layout: MineLayout, rng: RandomNumberGenerator, max_length: int) -> void:
 	var origins: Array[Vector2i] = []
 	for cell: Vector2i in layout.cells:
-		if cell != layout.start:
+		if cell != layout.start and not layout.is_fundort(cell):
 			origins.append(cell)
 	if origins.is_empty():
 		return
@@ -91,11 +94,11 @@ static func _carve_branch(layout: MineLayout, rng: RandomNumberGenerator, max_le
 static func _add_loops(layout: MineLayout, rng: RandomNumberGenerator, params: MineParams) -> void:
 	var candidates: Array[Array] = []
 	for cell: Vector2i in layout.cells:
-		if cell == layout.start:
+		if cell == layout.start or layout.is_fundort(cell):
 			continue
 		for dir: int in [GridDir.E, GridDir.S]:
 			var other: Vector2i = cell + GridDir.offset(dir)
-			if other != layout.start and layout.has_cell(other) and not layout.is_open(cell, dir):
+			if other != layout.start and not layout.is_fundort(other) and layout.has_cell(other) and not layout.is_open(cell, dir):
 				candidates.append([cell, dir])
 	var added: int = 0
 	for i: int in candidates.size():
@@ -121,7 +124,7 @@ static func _add_dead_end_walls(layout: MineLayout, rng: RandomNumberGenerator, 
 		for dir: int in GridDir.ALL:
 			if mask & dir:
 				open.append(dir)
-		if cell == layout.start or open.size() != 1 or int(layout.depth.get(cell, 0)) < 2:
+		if cell == layout.start or layout.is_fundort(cell) or open.size() != 1 or int(layout.depth.get(cell, 0)) < 2:
 			continue
 		if rng.randf() < params.wall_dead_end_chance:
 			var into: Vector2i = cell + GridDir.offset(open[0])
@@ -130,14 +133,20 @@ static func _add_dead_end_walls(layout: MineLayout, rng: RandomNumberGenerator, 
 
 static func _pick_chunks(layout: MineLayout, rng: RandomNumberGenerator, chunks: ChunkSet) -> void:
 	var placed: Dictionary = {}  # entry index -> how many so far
+	var has_fundort: bool = false
+	for entry: ChunkEntry in chunks.entries:
+		has_fundort = has_fundort or entry.is_fundort
 	for cell: Vector2i in layout.cells:
 		var mask: int = layout.cells[cell]
 		var is_start: bool = cell == layout.start
+		var is_fundort: bool = has_fundort and layout.is_fundort(cell)
 		var options: Array[Vector2i] = []  # (entry index, rotation)
 		var weights: PackedFloat32Array = []
 		for index: int in chunks.entries.size():
 			var entry: ChunkEntry = chunks.entries[index]
-			if entry.is_station != is_start or int(layout.depth.get(cell, 0)) < entry.min_depth:
+			if entry.is_station != is_start or entry.is_fundort != is_fundort:
+				continue
+			if not is_fundort and int(layout.depth.get(cell, 0)) < entry.min_depth:
 				continue
 			if entry.max_count > 0 and int(placed.get(index, 0)) >= entry.max_count:
 				continue

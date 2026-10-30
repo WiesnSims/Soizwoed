@@ -21,9 +21,9 @@ func test_bergmandl_come_in_gangs() -> void:
 
 func test_max_alive_limits_spawning() -> void:
 	var rule: CreatureSpawnRule = config.spawn_rule(&"tatzelwurm")
-	assert_true(rule.allowed(0, 0, 10.0))
-	assert_false(rule.allowed(0, 1, 10.0), "only one Tatzelwurm at a time")
-	assert_false(rule.allowed(0, 0, rule.budget_cost - 0.1), "not enough budget left")
+	assert_true(rule.allowed(1, 0, 10.0))
+	assert_false(rule.allowed(1, 1, 10.0), "only one Tatzelwurm at a time")
+	assert_false(rule.allowed(1, 0, rule.budget_cost - 0.1), "not enough budget left")
 
 
 func test_schichtmeister_is_never_budget_spawned() -> void:
@@ -32,16 +32,16 @@ func test_schichtmeister_is_never_budget_spawned() -> void:
 	assert_eq(rule.group_size(1, 0, 100.0), 1, "zero cost does not divide by zero")
 
 
-func test_min_cycle_holds_creatures_back() -> void:
+func test_min_shift_holds_creatures_back() -> void:
 	var rule: CreatureSpawnRule = CreatureSpawnRule.new()
-	rule.min_cycle = 2
+	rule.min_shift = 2
 	assert_false(rule.allowed(1, 0, 10.0))
 	assert_true(rule.allowed(2, 0, 10.0))
 
 
 func test_salzsee_is_richer_and_unlocks_later() -> void:
 	var salzsee: BiomeRule = config.biome_rule(&"salzsee")
-	assert_gt(salzsee.unlock_cycle, 0)
+	assert_gt(salzsee.unlock_shift, 0)
 	assert_gt(salzsee.loot_value_mult, 1.0)
 
 
@@ -52,6 +52,18 @@ func test_explosion_damage_falls_off() -> void:
 
 
 func test_gas_share_grows_but_is_capped() -> void:
-	assert_almost_eq(config.gas_share_for_cycle(0), config.gas_share, 0.0001)
-	assert_gt(config.gas_share_for_cycle(3), config.gas_share_for_cycle(0))
-	assert_lte(config.gas_share_for_cycle(100), 0.8)
+	assert_almost_eq(config.gas_share_for_shift(0), config.gas_share, 0.0001)
+	assert_gt(config.gas_share_for_shift(3), config.gas_share_for_shift(0))
+	assert_lte(config.gas_share_for_shift(100), 0.8)
+
+
+## DESIGN.md §8: which creatures from which shift, and when the sections open.
+func test_creatures_and_sections_come_in_by_shift() -> void:
+	assert_eq(config.spawn_rule(&"grubenhund").min_shift, 0)
+	assert_eq(config.spawn_rule(&"bergmandl").min_shift, 0)
+	assert_eq(config.spawn_rule(&"tatzelwurm").min_shift, 1)
+	assert_eq(config.spawn_rule(&"kasermandl").min_shift, 1)
+	assert_eq(config.spawn_rule(&"salzweibl").min_shift, 2)
+	assert_eq(config.spawn_rule(&"percht").min_shift, 5)
+	assert_eq(config.biome_rule(&"salzsee").unlock_shift, 3, "after shift 3")
+	assert_eq(config.biome_rule(&"die_tiefe").unlock_shift, 6, "after shift 6")

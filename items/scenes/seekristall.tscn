@@ -1,0 +1,82 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/fundstueck_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="mat_crystal"]
+transparency = 1
+albedo_color = Color(0.55, 0.9, 1.0, 0.78)
+roughness = 0.08
+emission_enabled = true
+emission = Color(0.3, 0.85, 1.0, 1)
+emission_energy_multiplier = 2.2
+
+[sub_resource type="StandardMaterial3D" id="mat_salt"]
+albedo_color = Color(0.78, 0.66, 0.6, 1)
+roughness = 0.75
+
+[sub_resource type="CylinderMesh" id="mesh_0"]
+top_radius = 0.12
+bottom_radius = 0.14
+height = 0.1
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_1"]
+top_radius = 0.0
+bottom_radius = 0.09
+height = 0.42
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_2"]
+top_radius = 0.0
+bottom_radius = 0.045
+height = 0.24
+radial_segments = 6
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_3"]
+top_radius = 0.0
+bottom_radius = 0.04
+height = 0.2
+radial_segments = 6
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.32, 0.55, 0.32)
+
+[node name="Seekristall" type="RigidBody3D"]
+mass = 7.0
+script = ExtResource("1_item")
+
+[node name="Base" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+mesh = SubResource("mesh_0")
+surface_material_override/0 = SubResource("mat_salt")
+
+[node name="Crystal" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.31, 0)
+mesh = SubResource("mesh_1")
+surface_material_override/0 = SubResource("mat_crystal")
+
+[node name="Shard1" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, -0.34, 0, 0.34, 0.94, 0, 0, 0, 1, 0.1, 0.2, 0.02)
+mesh = SubResource("mesh_2")
+surface_material_override/0 = SubResource("mat_crystal")
+
+[node name="Shard2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0.34, 0, -0.34, 0.94, 0, 0, 0, 1, -0.08, 0.18, -0.05)
+mesh = SubResource("mesh_3")
+surface_material_override/0 = SubResource("mat_crystal")
+
+[node name="Glow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+light_color = Color(0.45, 0.85, 1, 1)
+light_energy = 1.4
+omni_range = 7.0
+omni_attenuation = 2.0
+shadow_enabled = false
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.27, 0)
+shape = SubResource("shape")

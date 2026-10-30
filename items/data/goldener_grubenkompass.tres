@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/goldenergrubenkompass.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"goldener_grubenkompass"
+name_key = "ITEM_GRUBENKOMPASS"
+kind = 0
+weight_class = 1
+spawn_weight = 0.0
+scene = ExtResource("2_scene")
+biomes = Array[StringName]([&"oberer_stollen"])
+fundstueck = true
+pulse_mult = 1.0

@@ -1,6 +1,6 @@
 class_name MineParams
 extends RefCounted
-## How big and tangled a mine gets. Built from balance.tres for a cycle and player count.
+## How big and tangled a mine gets. Built from balance.tres for a shift.
 
 var main_length: int = 8
 var branch_count: int = 3
@@ -12,10 +12,10 @@ var wall_loop_chance: float = 0.5
 var wall_dead_end_chance: float = 0.25
 
 
-static func from_balance(config: BalanceConfig, cycle: int) -> MineParams:
+static func from_balance(config: BalanceConfig, shift: int) -> MineParams:
 	var params: MineParams = MineParams.new()
-	params.main_length = mini(config.mine_main_length_base + cycle * config.mine_main_length_per_cycle, config.mine_main_length_max)
-	params.branch_count = mini(config.mine_branches_base + cycle, config.mine_branches_max)
+	params.main_length = mini(config.mine_main_length_base + floori(shift * config.mine_main_length_per_shift), config.mine_main_length_max)
+	params.branch_count = mini(config.mine_branches_base + floori(shift * config.mine_branches_per_shift), config.mine_branches_max)
 	params.branch_max_length = config.mine_branch_max_length
 	params.loop_chance = config.mine_loop_chance
 	params.max_loops = config.mine_max_loops

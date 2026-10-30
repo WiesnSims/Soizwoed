@@ -85,7 +85,7 @@ func _think(delta: float) -> void:
 	if _strike_left <= 0.0 and global_position.distance_to(_target.global_position) < STRIKE_DISTANCE:
 		_strike_left = _config.kasermandl_strike_cooldown
 		say(VoiceLine.Moment.ACTION, true)
-		Game.instance.host_damage_player(_target, _config.kasermandl_strike_damage)
+		Game.instance.host_damage_player(_target, scaled_damage(_config.kasermandl_strike_damage))
 		_goal_far = far_point(18.0)
 		state = State.RETREAT
 
