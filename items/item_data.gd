@@ -12,6 +12,8 @@ enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFE
 enum SlotKind { WEAPON, THROWABLE, ITEM }
 ## Something the item does by itself in the mine (host, Game._host_tick_specials).
 enum Special { NONE, CUCKOO, CURSED }
+## The shelves of the shop in the Gasthaus (ShopCategory order is the order of the tabs).
+enum ShopCategory { WEAPONS, AMMO, THROWABLES, PROVISIONS, GEAR }
 
 @export var id: StringName = &""
 ## Translation key of the shown name.
@@ -42,6 +44,20 @@ enum Special { NONE, CUCKOO, CURSED }
 ## Ammo boxes (kind AMMO): picking one up adds `ammo_amount` to the counter `ammo_type`.
 @export var ammo_type: StringName = &""
 @export var ammo_amount: int = 0
+
+
+## Which shelf of the shop it is on.
+func shop_category() -> ShopCategory:
+	if kind == Kind.AMMO:
+		return ShopCategory.AMMO
+	match slot_kind():
+		SlotKind.WEAPON:
+			return ShopCategory.WEAPONS
+		SlotKind.THROWABLE:
+			return ShopCategory.THROWABLES
+	if use == Use.DRINK or use == Use.EAT or use == Use.EAT_OLD or use == Use.REVIVE:
+		return ShopCategory.PROVISIONS
+	return ShopCategory.GEAR
 
 
 func slot_kind() -> SlotKind:

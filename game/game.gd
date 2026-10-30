@@ -1002,18 +1002,31 @@ func _to_peer(peer: int, node: Node, method: StringName, args: Array = []) -> vo
 		node.callv(&"rpc_id", [peer, method] + args)
 
 
-## The company's kit before every shift: a Dienstpistole for whoever has no gun, and the
-## ration of pistol rounds (topped up, not added).
+## The company's kit before every shift: a Dienstpistole for whoever has no gun, a Spitzhacke
+## for whoever has none (DESIGN.md §7: everyone has one – the weapon that never runs dry), and
+## the ration of pistol rounds (topped up, not added).
 func _hand_out_kit(player: Player) -> void:
 	_to_peer(player.peer_id, player, &"give_ammo", [&"pistole", _config.ration_pistole, true])
+	var has_gun: bool = false
+	var has_pick: bool = false
 	for item: Object in player.inventory.all_items():
-		if item is WorldItem and (item as WorldItem).data.weapon != null:
-			return
-	var gun: WorldItem = _spawn_item_at(&"dienstpistole", 0, player.global_transform.translated(Vector3.UP * 1.0))
+		if item is WorldItem:
+			has_gun = has_gun or (item as WorldItem).data.weapon != null
+			has_pick = has_pick or (item as WorldItem).data.id == &"spitzhacke"
+	if not has_gun:
+		await _give_kit_item(player, &"dienstpistole")
+	if not has_pick:
+		await _give_kit_item(player, &"spitzhacke")
+
+
+func _give_kit_item(player: Player, id: StringName) -> void:
+	if not is_instance_valid(player):
+		return
+	var kit: WorldItem = _spawn_item_at(id, 0, player.global_transform.translated(Vector3.UP * 1.0))
 	await get_tree().create_timer(0.3).timeout
 	var place: int = player.inventory.place_for(ItemData.WeightClass.LIGHT, ItemData.SlotKind.WEAPON) if is_instance_valid(player) else Inventory.NONE
-	if is_instance_valid(gun) and place != Inventory.NONE and gun.state == WorldItem.State.FREE:
-		gun.host_take(player.peer_id, place)
+	if is_instance_valid(kit) and place != Inventory.NONE and kit.state == WorldItem.State.FREE:
+		kit.host_take(player.peer_id, place)
 
 
 ## E on an ammo box: into the counter (up to the cap), the box is gone.

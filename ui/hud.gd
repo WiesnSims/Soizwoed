@@ -9,8 +9,13 @@ signal leave_requested
 
 const TEXT_COLOR: Color = Color(0.96, 0.9, 0.78)
 const DIM_COLOR: Color = Color(0.7, 0.64, 0.55)
-const PANEL_COLOR: Color = Color(0.08, 0.06, 0.04, 0.88)
+const PANEL_COLOR: Color = Color(0.08, 0.06, 0.04, 0.95)
 const ACCENT: Color = Color(0.86, 0.62, 0.3)
+const PANEL_SIZE: Vector2 = Vector2(520, 0)
+const SHOP_SIZE: Vector2 = Vector2(1000, 620)
+const SHOP_CARD_WIDTH: float = 236.0
+const SHOP_CATEGORY_KEYS: Array[String] = ["SHOP_CAT_WEAPONS", "SHOP_CAT_AMMO", "SHOP_CAT_THROWABLES", "SHOP_CAT_PROVISIONS", "SHOP_CAT_GEAR"]
+const SHOP_CATEGORY_ICONS: Array[HudIcon.Kind] = [HudIcon.Kind.GUN, HudIcon.Kind.BULLET, HudIcon.Kind.BOMB, HudIcon.Kind.BOTTLE, HudIcon.Kind.PICK]
 
 var _root: Control
 var _crosshair: Crosshair
@@ -41,10 +46,14 @@ var _alive_nodes: Array[Control] = []
 var _fade: ColorRect
 var _fade_tween: Tween
 var _panel: PanelContainer
+var _dim: ColorRect
 var _panel_box: VBoxContainer
 var _panel_kind: String = ""
 var _run_info: Dictionary = {}
 var _settings: SettingsPanel
+## The shelf open in the shop, and the item pictures shown there (filled in when rendered).
+var _shop_category: int = ItemData.ShopCategory.WEAPONS
+var _shop_pictures: Dictionary = {}
 
 
 func _ready() -> void:
@@ -56,6 +65,7 @@ func _ready() -> void:
 	_icons = ItemIcons.new()
 	_icons.name = "ItemIcons"
 	add_child(_icons)
+	_icons.icon_ready.connect(_on_icon_ready)
 	_build_center()
 	_build_bottom()
 	_build_ammo()
@@ -77,6 +87,7 @@ func _process(_delta: float) -> void:
 	var game: Game = Game.instance
 	var player: Player = game.local_player() if game != null else null
 	_root.visible = player != null
+	_dim.visible = _panel.visible
 	if player == null:
 		return
 	for node: Control in _alive_nodes:
@@ -162,33 +173,155 @@ func close_panels() -> void:
 	_apply_modal()
 
 
+## The shop at the Wirt's counter: the shelves (categories) on the left, the items of the chosen
+## one as cards on the right – the item's own picture, name, what it does, the price and a buy
+## button. The till is shown on top; what you cannot afford is dimmed.
 func open_shop() -> void:
-	_start_panel("shop", tr("SHOP_TITLE"))
-	_add_text(tr("SHOP_MONEY") % int(_run_info.get("money", 0)), ACCENT)
+	_start_panel("shop", "", SHOP_SIZE)
 	var money: int = int(_run_info.get("money", 0))
-	var scroll: ScrollContainer = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(640, 430)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var list: VBoxContainer = VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 8)
-	scroll.add_child(list)
-	_panel_box.add_child(scroll)
+	var top: HBoxContainer = HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	var title: Label = _label(tr("SHOP_TITLE"), 32)
+	title.add_theme_color_override("font_color", ACCENT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(title)
+	top.add_child(HudIcon.new(HudIcon.Kind.COIN, Color.WHITE, 26))
+	var till: Label = _label(tr("SHOP_MONEY") % money, 24)
+	top.add_child(till)
+	_panel_box.add_child(top)
+	_panel_box.add_child(_rule())
+	var body: HBoxContainer = HBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_panel_box.add_child(body)
+	# The shelves.
+	var shelves: VBoxContainer = VBoxContainer.new()
+	shelves.custom_minimum_size = Vector2(200, 0)
+	shelves.add_theme_constant_override("separation", 6)
+	body.add_child(shelves)
+	var stock: Dictionary = {}  # ShopCategory -> Array[ItemData]
 	for data: ItemData in Game.instance.catalog.shop():
-		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 16)
-		var name_label: Label = _label("%s\n%s" % [tr(data.name_key), tr(data.name_key + "_DESC")], 17)
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name_label)
-		var buy: Button = Button.new()
-		buy.text = tr("SHOP_BUY") % data.price
-		buy.custom_minimum_size = Vector2(150, 0)
-		buy.disabled = data.price > money
-		buy.pressed.connect(_on_buy_pressed.bind(data.id))
-		row.add_child(buy)
-		list.add_child(row)
-	_add_button(tr("PANEL_CLOSE"), close_panels)
+		if not stock.has(data.shop_category()):
+			stock[data.shop_category()] = []
+		(stock[data.shop_category()] as Array).append(data)
+	if not stock.has(_shop_category) and not stock.is_empty():
+		_shop_category = stock.keys().min()
+	for category: int in ItemData.ShopCategory.values():
+		if not stock.has(category):
+			continue
+		var tab: Button = Button.new()
+		tab.text = "        %s  (%d)" % [tr(SHOP_CATEGORY_KEYS[category]), (stock[category] as Array).size()]
+		tab.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		tab.custom_minimum_size = Vector2(0, 46)
+		tab.add_theme_font_size_override("font_size", 20)
+		tab.toggle_mode = true
+		tab.button_pressed = category == _shop_category
+		var chosen: bool = category == _shop_category
+		tab.add_theme_stylebox_override("normal", _tab_box(chosen))
+		tab.add_theme_stylebox_override("hover", _tab_box(true, 0.6))
+		tab.add_theme_stylebox_override("pressed", _tab_box(true))
+		tab.add_theme_color_override("font_color", ACCENT if chosen else TEXT_COLOR)
+		tab.add_theme_color_override("font_pressed_color", ACCENT)
+		tab.pressed.connect(_on_shop_category.bind(category))
+		var icon: HudIcon = HudIcon.new(SHOP_CATEGORY_ICONS[category], ACCENT if chosen else DIM_COLOR, 24)
+		icon.position = Vector2(10, 11)
+		tab.add_child(icon)
+		shelves.add_child(tab)
+	# The cards of the chosen shelf.
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(scroll)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	scroll.add_child(grid)
+	_shop_pictures.clear()
+	for data: ItemData in stock.get(_shop_category, []):
+		grid.add_child(_shop_card(data, money))
+	_panel_box.add_child(_rule())
+	var close: Button = Button.new()
+	close.text = tr("PANEL_CLOSE")
+	close.custom_minimum_size = Vector2(200, 40)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.pressed.connect(close_panels)
+	_panel_box.add_child(close)
 	_apply_modal()
+
+
+func _shop_card(data: ItemData, money: int) -> Control:
+	var affordable: bool = data.price <= money
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(SHOP_CARD_WIDTH, 0)
+	var frame: StyleBoxFlat = _stylebox(Color(1, 1, 1, 0.05), 12)
+	frame.border_color = Color(1, 1, 1, 0.12)
+	frame.set_border_width_all(1)
+	card.add_theme_stylebox_override("panel", frame)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	card.add_child(box)
+	var picture_back: PanelContainer = PanelContainer.new()
+	picture_back.add_theme_stylebox_override("panel", _stylebox(Color(0, 0, 0, 0.35), 4))
+	var picture: TextureRect = TextureRect.new()
+	picture.custom_minimum_size = Vector2(0, 104)
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.texture = _icons.icon(data)
+	picture_back.add_child(picture)
+	box.add_child(picture_back)
+	_shop_pictures[data.id] = picture
+	var name_label: Label = _label(tr(data.name_key), 21)
+	name_label.add_theme_color_override("font_color", TEXT_COLOR if affordable else DIM_COLOR)
+	box.add_child(name_label)
+	var description: Label = _label(tr(data.name_key + "_DESC"), 15)
+	description.add_theme_color_override("font_color", DIM_COLOR)
+	description.add_theme_constant_override("outline_size", 0)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.custom_minimum_size = Vector2(SHOP_CARD_WIDTH - 24, 64)
+	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(description)
+	var buy: Button = Button.new()
+	buy.text = tr("SHOP_BUY") % data.price
+	buy.custom_minimum_size = Vector2(0, 38)
+	buy.add_theme_font_size_override("font_size", 18)
+	buy.disabled = not affordable
+	if affordable:
+		buy.add_theme_color_override("font_color", ACCENT)
+	buy.pressed.connect(_on_buy_pressed.bind(data.id))
+	box.add_child(buy)
+	if not affordable:
+		card.modulate = Color(1, 1, 1, 0.65)
+	return card
+
+
+func _on_shop_category(category: int) -> void:
+	Audio.play_ui("ui_click")
+	_shop_category = category
+	open_shop()
+
+
+## An item picture finished rendering: put it into the open shop.
+func _on_icon_ready(id: StringName) -> void:
+	var picture: TextureRect = _shop_pictures.get(id) as TextureRect
+	if picture != null and is_instance_valid(picture):
+		picture.texture = _icons.icon(Game.instance.catalog.by_id(id))
+
+
+func _tab_box(chosen: bool, strength: float = 1.0) -> StyleBoxFlat:
+	var box: StyleBoxFlat = _stylebox(Color(ACCENT, 0.16 * strength) if chosen else Color(1, 1, 1, 0.04), 8)
+	box.border_color = Color(ACCENT, strength) if chosen else Color(1, 1, 1, 0.0)
+	box.border_width_left = 3
+	return box
+
+
+func _rule() -> ColorRect:
+	var line: ColorRect = ColorRect.new()
+	line.color = Color(1, 1, 1, 0.1)
+	line.custom_minimum_size = Vector2(0, 1)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return line
 
 
 ## The Grubnplan: pick the mine section for the next shift (later ones unlock with the cycles).
@@ -354,12 +487,16 @@ func _on_buy_pressed(id: StringName) -> void:
 	Game.instance.request_buy.rpc_id(1, id)
 
 
-func _start_panel(kind: String, title: String) -> void:
+func _start_panel(kind: String, title: String, min_size: Vector2 = PANEL_SIZE) -> void:
 	_panel_kind = kind
 	for child: Node in _panel_box.get_children():
 		_panel_box.remove_child(child)
 		child.queue_free()
-	_add_text(title, ACCENT, 30)
+	_panel.custom_minimum_size = min_size
+	_panel.reset_size()
+	_center_panel.call_deferred()
+	if title != "":
+		_add_text(title, ACCENT, 30)
 	_panel.show()
 
 
@@ -590,10 +727,20 @@ func _build_top() -> void:
 
 
 func _build_panel() -> void:
+	# Behind an open panel the game is dimmed, so the panel stands out from the HUD.
+	_dim = ColorRect.new()
+	_dim.color = Color(0, 0, 0, 0.55)
+	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dim.hide()
+	_root.add_child(_dim)
 	_panel = PanelContainer.new()
-	_panel.add_theme_stylebox_override("panel", _stylebox(PANEL_COLOR, 24))
+	var panel_box: StyleBoxFlat = _stylebox(PANEL_COLOR, 24)
+	panel_box.border_color = Color(ACCENT, 0.35)
+	panel_box.set_border_width_all(1)
+	_panel.add_theme_stylebox_override("panel", panel_box)
 	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.custom_minimum_size = Vector2(520, 0)
+	_panel.custom_minimum_size = PANEL_SIZE
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.hide()
@@ -601,6 +748,12 @@ func _build_panel() -> void:
 	_panel_box = VBoxContainer.new()
 	_panel_box.add_theme_constant_override("separation", 10)
 	_panel.add_child(_panel_box)
+	_panel.resized.connect(_center_panel)
+
+
+## Keeps the panel in the middle of the screen whatever its size.
+func _center_panel() -> void:
+	_panel.position = ((_root.size - _panel.size) / 2.0).round()
 
 
 func _bar(color: Color) -> ProgressBar:

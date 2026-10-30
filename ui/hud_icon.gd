@@ -1,9 +1,10 @@
 class_name HudIcon
 extends Control
 ## Small vector icons for the HUD, drawn in code (no image files): a cross for health, a flame
-## for the lamp, chevrons for breath, a cartridge and a shotgun shell for ammo.
+## for the lamp, chevrons for breath, a cartridge and a shotgun shell for ammo; for the shop's
+## shelves a pistol, a cartridge, a bomb, a bottle and a pick; a coin for money.
 
-enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL }
+enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN }
 
 @export var kind: Kind = Kind.HEALTH
 @export var color: Color = Color.WHITE:
@@ -54,3 +55,41 @@ func _draw() -> void:
 			var x1: float = (s.x - w2) / 2.0
 			draw_rect(Rect2(Vector2(x1, s.y * 0.08), Vector2(w2, s.y * 0.66)), Color(0.7, 0.12, 0.1))
 			draw_rect(Rect2(Vector2(x1 - 1.0, s.y * 0.72), Vector2(w2 + 2.0, s.y * 0.2)), Color(0.85, 0.65, 0.3))
+		Kind.GUN:
+			# A pistol from the side, muzzle left.
+			var gun: PackedVector2Array = PackedVector2Array([Vector2(0.06, 0.28), Vector2(0.92, 0.28), Vector2(0.92, 0.46), Vector2(0.8, 0.46),
+					Vector2(0.9, 0.86), Vector2(0.66, 0.9), Vector2(0.58, 0.56), Vector2(0.46, 0.56), Vector2(0.4, 0.68), Vector2(0.32, 0.68),
+					Vector2(0.34, 0.46), Vector2(0.06, 0.46)])
+			_polygon(gun, s, shadow, color)
+		Kind.BOMB:
+			for offset: Vector2 in [Vector2(1.5, 1.5), Vector2.ZERO]:
+				draw_circle(Vector2(s.x * 0.44, s.y * 0.6) + offset, s.x * 0.32, shadow if offset != Vector2.ZERO else color)
+			draw_line(Vector2(s.x * 0.62, s.y * 0.34), Vector2(s.x * 0.78, s.y * 0.16), color, maxf(2.0, s.x * 0.07))
+			draw_circle(Vector2(s.x * 0.82, s.y * 0.12), s.x * 0.08, Color(1.0, 0.75, 0.3))
+		Kind.BOTTLE:
+			var bottle: PackedVector2Array = PackedVector2Array([Vector2(0.42, 0.06), Vector2(0.58, 0.06), Vector2(0.58, 0.32), Vector2(0.72, 0.44),
+					Vector2(0.72, 0.94), Vector2(0.28, 0.94), Vector2(0.28, 0.44), Vector2(0.42, 0.32)])
+			_polygon(bottle, s, shadow, color)
+		Kind.PICK:
+			var width: float = maxf(2.0, s.x * 0.1)
+			for offset: Vector2 in [Vector2(1.5, 1.5), Vector2.ZERO]:
+				var tint: Color = shadow if offset != Vector2.ZERO else color
+				draw_line(Vector2(s.x * 0.18, s.y * 0.9) + offset, Vector2(s.x * 0.64, s.y * 0.3) + offset, tint, width)
+				draw_polyline(PackedVector2Array([Vector2(s.x * 0.22, s.y * 0.22), Vector2(s.x * 0.48, s.y * 0.12), Vector2(s.x * 0.66, s.y * 0.2),
+						Vector2(s.x * 0.84, s.y * 0.38), Vector2(s.x * 0.92, s.y * 0.66)]), tint, width * 0.9)
+		Kind.COIN:
+			draw_circle(s / 2.0 + Vector2(1.5, 1.5), s.x * 0.42, shadow)
+			draw_circle(s / 2.0, s.x * 0.42, Color(0.86, 0.66, 0.3))
+			draw_arc(s / 2.0, s.x * 0.3, 0.0, TAU, 24, Color(0.6, 0.42, 0.15), maxf(1.0, s.x * 0.06))
+
+
+## A shape given in 0..1 of the icon, with a drop shadow.
+func _polygon(points: PackedVector2Array, s: Vector2, shadow: Color, tint: Color) -> void:
+	var scaled: PackedVector2Array = []
+	for point: Vector2 in points:
+		scaled.append(point * s)
+	var moved: PackedVector2Array = []
+	for point: Vector2 in scaled:
+		moved.append(point + Vector2(1.5, 1.5))
+	draw_colored_polygon(moved, shadow)
+	draw_colored_polygon(scaled, tint)

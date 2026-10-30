@@ -51,6 +51,12 @@ height = 0.0056
 radial_segments = 8
 rings = 4
 
+[sub_resource type="BoxMesh" id="mag"]
+size = Vector3(0.02, 0.09, 0.03)
+
+[sub_resource type="BoxMesh" id="magbase"]
+size = Vector3(0.027, 0.008, 0.04)
+
 [node name="Dienstpistole" type="RigidBody3D"]
 mass = 1.0
 script = ExtResource("1_item")
@@ -94,6 +100,16 @@ surface_material_override/0 = SubResource("sightmat")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0255, -0.112)
 mesh = SubResource("bead")
 surface_material_override/0 = SubResource("beadmat")
+
+[node name="Magazine" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.96593, -0.25882, 0, 0.25882, 0.96593, 0, -0.068, 0.062)
+mesh = SubResource("mag")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Base" type="MeshInstance3D" parent="Magazine"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.047, 0)
+mesh = SubResource("magbase")
+surface_material_override/0 = SubResource("wood")
 
 [node name="Shape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)

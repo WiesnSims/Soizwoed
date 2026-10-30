@@ -46,15 +46,25 @@ func weapon_item() -> WorldItem:
 	return item
 
 
+## What the view shows in the hands: the gun, or the Spitzhacke held as a melee weapon.
+func view_item() -> WorldItem:
+	var item: WorldItem = weapon_item()
+	if item != null or player.inventory.hands_busy() or player.downed:
+		return item
+	var selected: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
+	return selected if GunView.is_melee(selected) else null
+
+
 func _process(delta: float) -> void:
 	if not player.is_local():
 		return
 	_cooldown = maxf(0.0, _cooldown - delta)
 	var item: WorldItem = weapon_item()
+	var held: WorldItem = view_item()
 	var can_aim: bool = item != null and player.input_enabled and player.alive and not reloading
-	_set_aiming(can_aim and Input.is_action_pressed(&"aim"), item)
-	view.update(delta, item, aiming)
+	_set_aiming(can_aim and Input.is_action_pressed(&"aim"), held)
 	_tick_reload(delta, item)
+	view.update(delta, held, aiming, reloading, reload_progress)
 	_tick_recoil(delta)
 	var fov: float = Settings.data.fov * (item.data.weapon.ads_zoom if aiming and item != null else 1.0)
 	player.camera.fov = lerpf(player.camera.fov, fov, clampf(delta * 14.0, 0.0, 1.0))
@@ -66,8 +76,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _set_aiming(on: bool, item: WorldItem) -> void:
-	if item != null and item.state == WorldItem.State.STORED and item.follow != view and not item.worn:
-		item.follow = view
+	if item != null and item.state == WorldItem.State.STORED and not item.worn:
+		var point: Node3D = view.melee_point if GunView.is_melee(item) else view
+		if item.follow != point:
+			item.follow = point
 	aiming = on
 
 

@@ -992,6 +992,15 @@ func _use_active() -> void:
 			if damage <= 0:
 				return
 			_use_cooldown = 0.6
+			if gunner != null and GunView.is_melee(item) and gunner.view_item() == item:
+				# The Spitzhacke is swung: the point strikes a moment later.
+				_use_cooldown = GunView.SWING_SECONDS
+				gunner.view.swing()
+				game().play_sound_everywhere.rpc("swing", camera.global_position, -6.0, 10.0)
+				get_tree().create_timer(GunView.SWING_STRIKE).timeout.connect(func() -> void:
+					if is_instance_valid(self) and alive:
+						_melee(damage, false, item.data.breaks_rock, false))
+				return
 			_melee(damage, item == null, item != null and item.data.breaks_rock)
 
 
@@ -1058,7 +1067,7 @@ func _place_rope(item: WorldItem) -> void:
 	game().request_rope.rpc_id(1, item.get_path(), ray.get_collision_point(), flat.normalized())
 
 
-func _melee(damage: int, bare_hand: bool, breaks_rock: bool) -> void:
+func _melee(damage: int, bare_hand: bool, breaks_rock: bool, swish: bool = true) -> void:
 	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
 	var from: Vector3 = camera.global_position
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * MELEE_DISTANCE, 1 | 8)
@@ -1071,12 +1080,13 @@ func _melee(damage: int, bare_hand: bool, breaks_rock: bool) -> void:
 		rock = hit.collider as Breakable
 		while creature != null and not creature.is_in_group(&"creatures"):
 			creature = creature.get_parent()
-	var sound: String = "swing"
+	var sound: String = "swing" if swish else ""
 	if creature != null:
 		sound = "watschn" if bare_hand else "pick_hit"
 	elif rock != null and breaks_rock:
 		sound = "pick_hit"
-	game().play_sound_everywhere.rpc(sound, camera.global_position - camera.global_basis.z * 1.0)
+	if sound != "":
+		game().play_sound_everywhere.rpc(sound, camera.global_position - camera.global_basis.z * 1.0)
 	if creature != null:
 		game().request_hit.rpc_id(1, creature.get_path(), damage, global_position)
 	elif rock != null and breaks_rock:

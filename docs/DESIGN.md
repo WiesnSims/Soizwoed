@@ -133,7 +133,7 @@ Creature voices (unchanged rules): audio only, no text; lines per creature in it
 ### Weapons (bought in the Waffenkammer, lost when the run ends)
 | Weapon | Ammo | Role |
 |---|---|---|
-| **Spitzhacke** | – | Melee, breaks salt walls. Everyone starts with one. |
+| **Spitzhacke** | – | Melee (2 hits for a Grubenhund), breaks salt walls. Everyone gets one with the kit before each shift: the weapon that never runs out of ammo. |
 | **Dienstpistole** (old k.u.k. service pistol) | Pistolenpatronen | Starting gun. 8 rounds, accurate, weak. |
 | **Salzschrot-Flinte** | Salzschrot | Double-barrel shotgun with rock-salt shells: huge damage close up, knocks back, slow reload. |
 | **Mannlicher-Stutzen** | Gewehrpatronen | Bolt-action rifle: very high damage, weak spots, slow; for elites and bosses. |
@@ -193,9 +193,10 @@ New: teammates' health/ammo shown small next to their names; "downed" teammates 
 
 Visuals and audio as in v1 (realistic PBR, very dark, lighting as the main tool, no music in the mine). Additions:
 - **Smooth movement:** physics interpolation, the camera placed every rendered frame (no stutter at any frame rate); no frame cap by default (VSync follows the screen).
-- **Weapon feel (modelled on Berghittn):** gloved hands on the gun, kick and muzzle climb per shot, slide blowback and ejected casings, a visible muzzle flash that lights the tunnel for an instant (and gives you away), figure-8 bob when walking, a lowered sprint pose, lag behind mouse turns, a lean when strafing – nearly all gone while aiming. Shotgun shots shake the view. Reload animations come in M10.
+- **Weapon feel (modelled on Berghittn):** gloved hands on the gun, kick and muzzle climb per shot, slide blowback and ejected casings, a visible muzzle flash that lights the tunnel for an instant (and gives you away), figure-8 bob when walking, a lowered sprint pose, lag behind mouse turns, a lean when strafing – nearly all gone while aiming. Shotgun shots shake the view. Reloads are animated (the pistol's magazine drops out and a new one goes in; the Flinte breaks open, throws out its hulls, takes shell after shell and snaps shut). Close to a wall the gun is pulled back and lowered instead of going into the rock. Aimed, the eye looks over the sights and the stock sits low under the cheek, out of view – nothing comes through the camera. The Spitzhacke is held in both hands and swung (the point strikes a moment into the swing).
 - **Hits:** blood spraying out of a creature, its flinch and cry and a wet thud; salt dust on rock. No hit markers.
 - **Audio:** guns use **real recordings** (CC0 "Free Firearm Sound Library", the same takes as Berghittn) plus the mine's own long rolling echo after every shot; gunfire is audible (and audible to creatures) far through the mine; the alarm bell; boss music stings are allowed (the only music in the mine). Footsteps are kept quiet.
+- **Shop (Waffenkammer):** shelves as tabs with icons (Waffn, Munition, Zum Schmeißn, Jausn & Schnaps, Ausrüstung), the items as cards with their rendered picture, name, what they do and the price; the till on top, what you can't afford dimmed.
 - **HUD (like other shooters):** a hotbar 1–9 with icons rendered from the items' own models and magazine counts, icon bars for health/lamp/breath, a large ammo counter, a crosshair that opens with the spread (hidden while aiming), a condensed modern font (Barlow Condensed).
 - UI text in German dialect with English translation (both exist since M5).
 

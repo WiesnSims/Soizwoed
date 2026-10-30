@@ -31,12 +31,12 @@ kick_back = 0.09
 kick_angle = 16.0
 kick_time = 0.22
 shake = 0.35
-grip = Vector3(0, -0.05, 0.13)
-support = Vector3(0, -0.045, -0.15)
-muzzle = Vector3(0, 0, -0.58)
+grip = Vector3(0, -0.068, 0.13)
+support = Vector3(0, -0.068, -0.15)
+muzzle = Vector3(0, 0, -0.63)
 flash_size = 1.6
-sight_height = 0.022
-aim_distance = 0.24
+sight_height = 0.023
+aim_distance = 0.3
 
 [resource]
 script = ExtResource("1_data")

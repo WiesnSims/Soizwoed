@@ -495,3 +495,22 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - Typing **`zaster`** anywhere in the game (hub or mine, solo or co-op, any player) gives the run **+1000** money, so weapons and upgrades can be bought quickly while testing. The host adds it and everyone sees the new amount and a message.
 - Claude's choices: a typed word rather than a key chord (no clash with the bound keys, hard to hit by accident); the amount is a constant in `game.gd`, not in `balance.tres`, because it is not a balance value; cheat money does not count towards the score.
 - It is in every build for now; before a public release (M10) it should be limited to dev builds.
+
+## 2026-10-30 – M7 branch: gun look, reloads, Spitzhacke, shop (owner playtest)
+
+### Asked for by the owner, done by Claude
+- **The "grey box" in front of the Flinte** was its stock: it came up to the camera at the hip and went straight through the eye when aiming (cut off by the camera, filling the screen). The Flinte is rebuilt as a proper side-by-side: two barrels with a rib and bead on a hinge, an action, a slim wrist and a stock that drops well below the sight line (the eye looks over the sights, the stock is under the cheek and out of view, like in other shooters). Aim distance 0.3 m.
+- **Arms like in other shooters:** rounder fists (fingers, thumb), the forearms run back to the lower corners of the view on their side (a V framing the gun) instead of hanging straight down under it.
+- **Gun and wall:** close to rock the gun is pulled back and lowered (like Tarkov/Insurgency) instead of poking into it.
+- **Reload animations (planned for M10, done now):** pistol tipped, magazine slides out, left hand drops and returns with a new one, pushes it in, racks the slide if it was empty. Flinte: barrels swing down on the hinge, the fired hulls fly over the shoulder, the left hand fetches each shell from the belt and pushes it into the chamber (loaded shells show in the open chambers), it snaps shut when done or cut short.
+- **Spitzhacke:** a real miner's pick now (a long curved point and a flat chisel on the other side). Held in both hands; a click swings it: wind back, strike, the hit lands 0.17 s into the 0.55 s swing (miss: just the swish).
+- **Shop:** shelves as tabs with icons, item cards with the item's own rendered picture, name, description and price, the till with a coin on top, unaffordable items dimmed; panels get a dimmed background.
+
+### Item check for the v2 design (Claude, owner asked)
+- Every current shop item still has a job in the action game: guns/ammo (fight), Böller and Rauchbombe (distract, break contact – creatures avoid smoke), Obstler and Leberkässemmel (the only healing), Stirnlampe and Karbidpatrone (light still matters), Seil/Pfeiferl/Schubkarre/Funkgerät/Alphorn (moving the Fundstück and loot, the crew, crowd control). Nothing is removed.
+- **Spitzhacke:** now part of the free kit before every shift (DESIGN §7 says everyone starts with one; until now it had to be bought). In the shop only as a replacement, 60 S (was 150).
+- Still missing per DESIGN and planned: armour (Lederschurz, Grubenhelm), run upgrades, an Erste-Hilfe-Tascherl (M7 Waffenkammer); Leuchtpistole, Dynamit, Mannlicher-Stutzen (M8).
+
+### Out of ammo while chased (owner question) – current answer and proposals
+- Now: the Spitzhacke (34 damage, a Grubenhund in 2 hits) is always there; the Watschn (bare hand) shoves; Rauchbombe breaks contact; running to the crew; ammo boxes and lockers in the mine; killing a Bergmandl gets stolen ammo back.
+- Proposed for M7 (owner to decide): teammates can hand ammo over (G on a teammate: half of your rounds of their gun's type); a creature killed by a miner who is completely out of ammo drops a few rounds ("Notration"); later (M9) a kick/shove that knocks creatures back for everyone.

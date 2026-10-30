@@ -11,6 +11,7 @@ extends Node
 ##   coop   – host with one ENet client (`--wait-peers=1`): drops a crystal from above, carries
 ##            a salt block together with the client, hands it over, then the client dies.
 ##   coopclient – the client side of coop: logs what it sees of all that.
+##   shoplook – the shop, every shelf (screenshots).
 ##   cheat  – in the Gasthaus: types the money cheat word, logs the money before and after.
 
 var _game: Game
@@ -24,6 +25,18 @@ func run(game: Game, scenario: String) -> void:
 		await get_tree().process_frame
 	if scenario == "cart":
 		await _cart()
+		return
+	if scenario == "shoplook":
+		# The shop with money for some of it, every shelf in turn (screenshots).
+		DisplayServer.window_set_size(Vector2i(1280, 720))
+		GameState.run.add_cheat_money(250)
+		_game._broadcast_run()
+		for category: int in ItemData.ShopCategory.values():
+			_game.hud._shop_category = category
+			_game.hud.open_shop()
+			await get_tree().create_timer(1.5).timeout
+			await _snap("shop_%d" % category)
+		print("[scenario] shoplook done")
 		return
 	if scenario == "cheat":
 		await _cheat()
@@ -130,6 +143,8 @@ func run(game: Game, scenario: String) -> void:
 					miner.inventory.select(slot)
 			await get_tree().create_timer(4.0).timeout
 			Input.action_press(&"aim")  # then down the sights
+		"gunlook":
+			await _gun_look()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -268,6 +283,78 @@ func _cheat() -> void:
 	for i: int in 10:
 		await get_tree().process_frame
 	print("[scenario] cheat: money %d -> %d, shown %d" % [before, GameState.run.money, int(_game.run_info.money)])
+
+
+## For screenshots: each weapon at the hip, aimed, reloading (several moments), against a
+## wall, and the Spitzhacke swung. Saves named pictures into the --shots folder.
+func _gun_look() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	DisplayServer.window_set_size(Vector2i(960, 540))
+	var miner: Player = _game.local_player()
+	var station: Transform3D = Transform3D(_game.mine_cage.global_basis, _out_of_station(6.0))
+	miner.teleport(station)
+	await _give(&"salzschrot_flinte")
+	await _give(&"spitzhacke")
+	miner.ammo[&"schrot"] = 20
+	miner.head.rotation.x = -0.05
+	# A work light at the eye, so the pictures show the shapes.
+	var work_light: OmniLight3D = OmniLight3D.new()
+	work_light.light_energy = 1.5
+	work_light.omni_range = 3.0
+	work_light.position = Vector3(0.3, 0.3, 0.2)
+	miner.camera.add_child(work_light)
+	for id: StringName in [&"dienstpistole", &"salzschrot_flinte"]:
+		_select(miner, id)
+		await get_tree().create_timer(1.5).timeout
+		await _snap("%s_hip" % id)
+		Input.action_press(&"aim")
+		await get_tree().create_timer(1.0).timeout
+		await _snap("%s_aimed" % id)
+		Input.action_release(&"aim")
+		await get_tree().create_timer(0.6).timeout
+		miner.gunner.fire()
+		await get_tree().create_timer(0.5).timeout
+		miner.gunner.start_reload()
+		var reload: float = miner.gunner.view_item().data.weapon.reload_seconds
+		for share: float in [0.15, 0.3, 0.45, 0.6, 0.75]:
+			await get_tree().create_timer(reload * 0.15).timeout
+			await _snap("%s_reload_%02d" % [id, int(share * 100)])
+		await get_tree().create_timer(2.5).timeout
+	# Against a wall: turned to the nearest rock.
+	_select(miner, &"salzschrot_flinte")
+	miner.rotate_y(PI / 2.0)
+	for i: int in 30:
+		miner.teleport(miner.global_transform.translated(-miner.global_basis.z * 0.1))
+		await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	await _snap("flinte_wall")
+	miner.teleport(station)
+	_select(miner, &"spitzhacke")
+	await get_tree().create_timer(1.5).timeout
+	await _snap("spitzhacke_rest")
+	miner.gunner.view.swing()
+	for t: String in ["a", "b", "c", "d"]:
+		await get_tree().create_timer(0.08).timeout
+		await _snap("spitzhacke_swing_" + t)
+	print("[scenario] gunlook done")
+
+
+func _select(miner: Player, id: StringName) -> void:
+	for slot: int in miner.inventory.slots.size():
+		if miner.inventory.slots[slot] != null and (miner.inventory.slots[slot] as WorldItem).data.id == id:
+			miner.inventory.select(slot)
+
+
+func _snap(picture: String) -> void:
+	var dir: String = ""
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(Game.SHOTS_ARG):
+			dir = arg.trim_prefix(Game.SHOTS_ARG)
+	if dir == "":
+		return
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(dir.path_join(picture + ".png"))
 
 
 func _look() -> void:
