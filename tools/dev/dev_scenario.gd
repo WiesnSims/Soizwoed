@@ -102,6 +102,8 @@ func run(game: Game, scenario: String) -> void:
 			await _weibl()
 		"combat":
 			await _combat()
+		"smooth":
+			await _smooth()
 		"combatlook":
 			# For screenshots: the pistol in hand, a Grubenhund held still in the lamp light.
 			for creature: Creature in _game.creatures():
@@ -590,7 +592,7 @@ func _combat() -> void:
 			item.host_vanish()
 	var mandl: Creature = _game.spawn_creature(&"bergmandl", Transform3D(Basis.IDENTITY, _out_of_station(12.0) + Vector3.UP * 0.3))
 	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(4.0)))
-	await get_tree().create_timer(9.0).timeout
+	await get_tree().create_timer(14.0).timeout
 	print("[scenario] stones: player health %d, bergmandl alive %s" % [player.health, is_instance_valid(mandl)])
 	if is_instance_valid(mandl):
 		mandl.queue_free()
@@ -611,6 +613,53 @@ func _combat() -> void:
 	await get_tree().create_timer(config.second_wind_seconds + 0.5).timeout
 	_game.host_damage_player(player, 50)
 	print("[scenario] second wind: health %d, still %d, then alive %s" % [after_wind, while_invulnerable, player.alive])
+
+
+## Walks forward for a few seconds and measures how evenly the camera and a held gun move from
+## one rendered frame to the next (stutter = uneven steps).
+func _smooth() -> void:
+	if "--no-interp" in OS.get_cmdline_user_args():
+		get_tree().physics_interpolation = false  # the old behaviour, for comparison
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(3.0)))
+	await get_tree().create_timer(1.0).timeout
+	for slot: int in player.inventory.slots.size():
+		if player.inventory.slots[slot] != null:
+			player.inventory.select(slot)
+	Input.action_press(&"move_forward")
+	await get_tree().create_timer(0.8).timeout
+	var probe: SmoothProbe = SmoothProbe.new()
+	probe.gun = player.gunner.weapon_item() if player.gunner != null else null
+	add_child(probe)
+	await get_tree().create_timer(0.3).timeout
+	probe.camera = player.camera
+	var speeds: Array[float] = []
+	var wobble: float = 0.0
+	var last: Vector3 = player.camera.global_position
+	var last_time: int = Time.get_ticks_usec()
+	var gun: WorldItem = player.gunner.weapon_item() if player.gunner != null else null
+	for i: int in 180:
+		await get_tree().process_frame
+		var now: Vector3 = player.camera.global_position
+		var time: int = Time.get_ticks_usec()
+		speeds.append(Vector2(now.x - last.x, now.z - last.z).length() / maxf(0.000001, get_process_delta_time()))
+		last = now
+		last_time = time
+		if gun != null and gun.follow != null:
+			wobble = maxf(wobble, gun.global_position.distance_to(gun.follow.global_position))
+	Input.action_release(&"move_forward")
+	var mean: float = 0.0
+	for speed: float in speeds:
+		mean += speed
+	mean /= speeds.size()
+	var variance: float = 0.0
+	for speed: float in speeds:
+		variance += (speed - mean) * (speed - mean)
+	print("[scenario] smooth: %d frames at %d fps, speed %.2f m/s, uneven %.0f %%, gun off its point at draw time %.3f m, uneven at draw time %.0f %%" % [speeds.size(),
+			Engine.get_frames_per_second(), mean, sqrt(variance / speeds.size()) / maxf(mean, 0.0001) * 100.0, probe.worst, probe.unevenness()])
+	probe.queue_free()
 
 
 ## Gives the local player a fresh `id` in the selected pocket slot.
@@ -1089,3 +1138,36 @@ func _track_when_thrown() -> void:
 	me._drop_active()
 	await get_tree().create_timer(0.4).timeout
 	Input.action_release(&"move_forward")
+
+
+## Measures, after every other node has processed (just before drawing), how far a held gun is
+## from the point it should sit at.
+class SmoothProbe:
+	extends Node
+	var gun: WorldItem
+	var camera: Camera3D
+	var worst: float = 0.0
+	var speeds: Array[float] = []
+	var _last: Vector3 = Vector3.INF
+
+	func _ready() -> void:
+		process_priority = 1000
+
+	func _process(_delta: float) -> void:
+		if gun != null and is_instance_valid(gun) and gun.follow != null:
+			worst = maxf(worst, gun.global_position.distance_to(gun.follow.global_position))
+		if camera != null:
+			var now: Vector3 = camera.global_position
+			if _last != Vector3.INF:
+				speeds.append(Vector2(now.x - _last.x, now.z - _last.z).length() / maxf(0.000001, _delta))
+			_last = now
+
+	func unevenness() -> float:
+		var mean: float = 0.0
+		for speed: float in speeds:
+			mean += speed
+		mean /= maxf(1.0, speeds.size())
+		var variance: float = 0.0
+		for speed: float in speeds:
+			variance += (speed - mean) * (speed - mean)
+		return sqrt(variance / maxf(1.0, speeds.size())) / maxf(mean, 0.0001) * 100.0

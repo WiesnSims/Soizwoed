@@ -48,6 +48,7 @@ func _ready() -> void:
 	_net.delay = sync.replication_interval * 2.0
 	if not multiplayer.is_server():
 		sync.synchronized.connect(_on_synchronized)
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 
 func _physics_process(delta: float) -> void:

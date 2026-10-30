@@ -206,3 +206,7 @@ environment/ssao/quality=3
 environment/ssil/quality=2
 environment/screen_space_reflection/roughness_quality=2
 
+[physics]
+
+common/physics_interpolation=true
+common/physics_jitter_fix=0.0

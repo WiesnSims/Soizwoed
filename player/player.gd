@@ -126,6 +126,9 @@ var _shake: float = 0.0
 ## Seconds climbing a rotten ladder with a heavy load, and until the next creak.
 var _rotten_strain: float = 0.0
 var _creak_left: float = 0.0
+## The Obstler's sway and the death tilt, applied on top of the view (the camera is placed
+## every frame, see _place_camera).
+var _view_tilt: Vector3 = Vector3.ZERO
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
@@ -162,6 +165,16 @@ func _ready() -> void:
 	ray.add_exception(self)
 	_carbide_color = lamp.light_color
 	var local: bool = is_local()
+	# Smooth movement at any frame rate (DESIGN.md §10): the body moves in physics steps and is
+	# drawn interpolated between them; the camera is set every rendered frame from that drawn
+	# position plus the current look direction, so mouse look never waits for a physics step.
+	# Process before the held items, which follow points on the camera.
+	process_priority = -10
+	camera.top_level = true
+	camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	if not local:
+		# Moved every frame from network snapshots: nothing to interpolate.
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	camera.current = local
 	body_mesh.visible = not local
 	if local and not Game.dev_quiet:
@@ -287,13 +300,24 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	if is_local():
+		_place_camera()
 		return
 	if _net.sample(Time.get_ticks_msec() / 1000.0):
 		global_position = _net.position
 		rotation.y = Basis(_net.rotation).get_euler().y
 		head.rotation.x = _net.aux
 		velocity = _net.velocity
+	_place_camera()
 	_update_nameplate()
+
+
+## Puts the camera at the eyes of the body as drawn this frame (interpolated), looking where
+## the mouse points right now.
+func _place_camera() -> void:
+	var body: Transform3D = get_global_transform_interpolated() if is_local() else global_transform
+	var eyes: Vector3 = body.origin + Vector3.UP * head.position.y
+	var look: Basis = Basis(Vector3.UP, rotation.y) * Basis.from_euler(Vector3(head.rotation.x, _view_tilt.y, head.rotation.z + _view_tilt.z))
+	camera.global_transform = Transform3D(look, eyes)
 
 
 ## A new snapshot of a remote player arrived.
@@ -531,6 +555,7 @@ func teleport(to: Transform3D) -> void:
 	net_position = to.origin
 	net_angles = Vector2(rotation.y, 0.0)
 	_net.clear()
+	reset_physics_interpolation()  # no smear across the mine
 	_teleported_to = to.origin
 	_teleport_ignore_until = Time.get_ticks_msec() / 1000.0 + 0.5
 
@@ -1003,13 +1028,13 @@ func _stop_eating() -> void:
 ## After an Obstler the view sways and rolls a little, fading out at the end.
 func _tick_wobble(delta: float) -> void:
 	if _wobble_left <= 0.0:
-		camera.rotation.z = 0.0
+		_view_tilt = Vector3.ZERO
 		return
 	_wobble_left -= delta
 	_wobble_time += delta
 	var strength: float = clampf(_wobble_left / 4.0, 0.0, 1.0)
-	camera.rotation.z = sin(_wobble_time * 1.1) * 0.07 * strength
-	camera.rotation.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
+	_view_tilt.z = sin(_wobble_time * 1.1) * 0.07 * strength
+	_view_tilt.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
 
 
 ## A jolt from a blast or a rockfall nearby (mount 0..1).
