@@ -1,6 +1,7 @@
 class_name SettingsPanel
 extends Control
-## The settings page (main menu and Esc menu): tabs for sound, display, graphics and gameplay.
+## The settings page (main menu and Esc menu): tabs for sound, display, graphics, gameplay
+## (with the language) and keys.
 ## Every change is applied and saved right away (Settings autoload). Built in code; all texts
 ## go through tr(). Covers the whole screen and keeps its panel in the middle, whatever the
 ## window size or mode.
@@ -13,6 +14,8 @@ const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _tabs: TabContainer
 var _panel: PanelContainer
+## Keys tab: the action waiting for its new key.
+var _waiting_action: StringName = &""
 
 
 func _ready() -> void:
@@ -44,6 +47,24 @@ func close() -> void:
 	closed.emit()
 
 
+## While waiting for a new key, the next key or mouse button goes to that action (Esc cancels).
+func _input(event: InputEvent) -> void:
+	if _waiting_action == &"" or not visible or not event.is_pressed() or event.is_echo():
+		return
+	var key: InputEventKey = event as InputEventKey
+	if key == null and not event is InputEventMouseButton:
+		return
+	get_viewport().set_input_as_handled()
+	var action: StringName = _waiting_action
+	_waiting_action = &""
+	if key != null and key.keycode == KEY_ESCAPE:
+		_rebuild.call_deferred()
+		return
+	Settings.data.bind(action, SettingsData.event_code(event), Settings.current_codes())
+	Settings.apply()
+	_rebuild.call_deferred()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# In the main menu nobody else closes it on Esc (the HUD does it during a session).
 	if visible and event.is_action_pressed(&"pause") and (Game.instance == null or Game.instance.local_player() == null):
@@ -70,6 +91,7 @@ func _rebuild() -> void:
 	_build_display(_tab("SETTINGS_DISPLAY"))
 	_build_graphics(_tab("SETTINGS_GRAPHICS"))
 	_build_gameplay(_tab("SETTINGS_GAMEPLAY"))
+	_build_controls(_tab("SETTINGS_CONTROLS", true))
 	_tabs.current_tab = clampi(current_tab, 0, _tabs.get_tab_count() - 1)
 	var buttons: HBoxContainer = HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -81,7 +103,7 @@ func _rebuild() -> void:
 	buttons.add_child(_button(tr("PANEL_CLOSE"), close))
 
 
-func _tab(title_key: String) -> GridContainer:
+func _tab(title_key: String, scrolling: bool = false) -> GridContainer:
 	var margin: MarginContainer = MarginContainer.new()
 	for side: String in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 14)
@@ -89,7 +111,15 @@ func _tab(title_key: String) -> GridContainer:
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 10)
-	margin.add_child(grid)
+	if scrolling:
+		var scroll: ScrollContainer = ScrollContainer.new()
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.custom_minimum_size = Vector2(0, 300)
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(grid)
+		margin.add_child(scroll)
+	else:
+		margin.add_child(grid)
 	_tabs.add_child(margin)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, tr(title_key))
 	return grid
@@ -142,6 +172,27 @@ func _build_gameplay(grid: GridContainer) -> void:
 			func(v: float) -> void: data.mouse_sensitivity = v)
 	_check(grid, "SET_INVERT_Y", data.invert_y, func(on: bool) -> void: data.invert_y = on)
 	_check(grid, "SET_HEAD_BOB", data.head_bob, func(on: bool) -> void: data.head_bob = on)
+	_option(grid, "SET_LANGUAGE", ["SET_LANG_AUTO", "SET_LANG_DE", "SET_LANG_EN"], SettingsData.LANGUAGES.find(data.language),
+			func(i: int) -> void:
+				data.language = SettingsData.LANGUAGES[i]
+				_rebuild.call_deferred())
+
+
+func _build_controls(grid: GridContainer) -> void:
+	for action: StringName in SettingsData.REBINDABLE:
+		grid.add_child(_label(tr("ACTION_" + String(action).to_upper()), 17))
+		var button: Button = Button.new()
+		button.text = Settings.key_label(action)
+		button.custom_minimum_size = Vector2(200, 32)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(func() -> void:
+			_waiting_action = action
+			button.text = tr("SET_PRESS_KEY"))
+		grid.add_child(button)
+	grid.add_child(Control.new())
+	grid.add_child(_button(tr("SET_KEYS_RESET"), func() -> void:
+		Settings.reset_keys()
+		_rebuild.call_deferred()))
 
 
 # --- rows -------------------------------------------------------------------------------------------

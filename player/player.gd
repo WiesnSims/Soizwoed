@@ -168,6 +168,7 @@ func _ready() -> void:
 		add_child(voice_chat)
 	if not local:
 		_build_nameplate()
+		_right_arm()  # both arms, for others to see
 		sync.synchronized.connect(_on_synchronized)
 		inventory.select(net_slot)
 	_update_lamp()
@@ -227,6 +228,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		_use_active()
 	elif event.is_action_pressed(&"shout"):
 		_shout()
+	elif event.is_action_pressed(&"emote_jodler"):
+		game().request_emote.rpc_id(1, Emote.JODLER)
+	elif event.is_action_pressed(&"emote_wave"):
+		game().request_emote.rpc_id(1, Emote.WAVE)
+	elif event.is_action_pressed(&"emote_point"):
+		game().request_emote.rpc_id(1, Emote.POINT)
 	elif event.is_action_pressed(&"slot_next"):
 		inventory.select(inventory.selected + 1)
 	elif event.is_action_pressed(&"slot_prev"):
@@ -996,6 +1003,51 @@ func voice_shout() -> void:
 		return
 	_shout_cooldown = _config.shout_cooldown
 	game().request_shout.rpc_id(1, peer_id, global_position, false)
+
+
+## Emotes (DESIGN.md §9): wave, point, and the Jodler, which carries far – creatures too.
+enum Emote { JODLER, WAVE, POINT }
+
+
+## Shows an emote on every peer: the yodel is heard, the arm moves on the body others see.
+func play_emote(kind: Emote) -> void:
+	if kind == Emote.JODLER:
+		Audio.play_on(voice, "jodler", 0.04)
+		return
+	var arm: Node3D = _right_arm()
+	var tween: Tween = arm.create_tween()
+	if kind == Emote.WAVE:
+		tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 150), 0.25)
+		for i: int in 3:
+			tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 125), 0.18)
+			tween.tween_property(arm, "rotation_degrees", Vector3(0, 0, 165), 0.18)
+	else:
+		tween.tween_property(arm, "rotation_degrees", Vector3(80, 0, 0), 0.2)
+		tween.tween_interval(1.4)
+	tween.tween_property(arm, "rotation_degrees", Vector3.ZERO, 0.3)
+
+
+## The arms on the body other players see (made on first use; the right one does the emotes).
+func _right_arm() -> Node3D:
+	var arm: Node3D = body_mesh.get_node_or_null(^"ArmR") as Node3D
+	if arm != null:
+		return arm
+	var jacket: Material = (body_mesh.get_node(^"Torso") as MeshInstance3D).get_surface_override_material(0)
+	for side: float in [-1.0, 1.0]:
+		var pivot: Node3D = Node3D.new()
+		pivot.name = "ArmR" if side > 0.0 else "ArmL"
+		pivot.position = Vector3(side * 0.34, 1.4, 0.0)
+		body_mesh.add_child(pivot)
+		BodyParts.add(pivot, BodyParts.capsule(0.07, 0.65), jacket, Vector3(0.0, -0.3, 0.0))
+		BodyParts.add(pivot, BodyParts.sphere(0.06, 10), _hand_material(), Vector3(0.0, -0.63, 0.0))
+	return body_mesh.get_node(^"ArmR") as Node3D
+
+
+static func _hand_material() -> StandardMaterial3D:
+	var glove: StandardMaterial3D = StandardMaterial3D.new()
+	glove.albedo_color = Color(0.3, 0.22, 0.14)
+	glove.roughness = 0.9
+	return glove
 
 
 func play_shout() -> void:

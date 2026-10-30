@@ -40,6 +40,9 @@ const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "
 ## ride up again. With `--wait-peers=<n>` the host first waits for n clients.
 const AUTO_SHIFT_ARG: String = "--auto-shift"
 const WAIT_PEERS_ARG: String = "--wait-peers="
+## With --auto-shift: ride into mine section n (unlocked or not) and spawn one of each of its
+## creatures right away (multiplayer checks of new creatures).
+const SECTION_ARG: String = "--section="
 ## How often the host sends the transforms of moving free items to the clients.
 const ITEM_SYNC_SECONDS: float = 0.05
 ## Floats per item in an item transform batch: position (3) + rotation quaternion (4).
@@ -89,6 +92,8 @@ var _voice_quiet_until: float = 0.0
 var _item_sync_left: float = 0.0
 ## Seconds since the last living player died in this shift (host).
 var _all_dead_time: float = 0.0
+## Dev (--section): one of each creature of the section at the start of the shift.
+var _force_creatures: bool = false
 ## Host: food poisoning (Speckbrot), peer -> [seconds left, damage per second, fraction carried over].
 var _poisoned: Dictionary = {}
 ## Host: seconds until each special loot item (Kuckucksuhr, Mann im Salz) acts next, and how
@@ -437,6 +442,12 @@ func _descend() -> void:
 	_poisoned.clear()
 	_meister_came = false
 	_spawn_creatures_up_to(_config.enemy_start_share)
+	if _force_creatures:
+		for id: StringName in mine.chunk_set.creatures:
+			if alive_count(id) == 0:
+				var spot: Array = mine.markers_with_depth(&"enemy_spawn").back()
+				spawn_creature(id, Transform3D(Basis.IDENTITY, (spot[0] as Marker3D).global_position + Vector3.UP * 0.3))
+				print("[game] dev: %s spawned" % id)
 	_trickle_left = _config.enemy_trickle_seconds
 	_start_shift.rpc(_config.shift_seconds(run.player_count))
 
@@ -575,6 +586,9 @@ func _auto_shift() -> void:
 	while _ready_peers.size() < wait_peers + 1:
 		await get_tree().process_frame
 	await get_tree().create_timer(1.0).timeout
+	if _arg_value(SECTION_ARG) != "":
+		biome_index = clampi(_arg_value(SECTION_ARG).to_int(), 0, biomes.size() - 1)
+		_force_creatures = true
 	request_lift()
 	while phase != Phase.SHIFT:
 		await get_tree().process_frame
@@ -1397,6 +1411,32 @@ func request_shout(peer: int, where: Vector3, with_sound: bool = true) -> void:
 	for creature: Creature in creatures():
 		if creature.global_position.distance_to(where) <= _config.shout_radius:
 			creature.host_shouted_at(where)
+
+
+## An emote (DESIGN.md §9). The Jodler is heard far through the mine and draws creatures.
+@rpc("any_peer", "call_local", "reliable")
+func request_emote(kind: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive or kind < 0 or kind >= Player.Emote.size():
+		return
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if now < float(player.get_meta(&"emote_until", 0.0)):
+		return
+	var yodel: bool = kind == Player.Emote.JODLER
+	player.set_meta(&"emote_until", now + (_config.jodler_cooldown if yodel else 1.5))
+	_play_emote.rpc(player.peer_id, kind)
+	if yodel:
+		host_noise(player.global_position, _config.noise_jodler)
+		print("[game] P%d yodels" % player.peer_id)
+
+
+@rpc("authority", "call_local", "reliable")
+func _play_emote(peer: int, kind: int) -> void:
+	var player: Player = player_by_peer(peer)
+	if player != null:
+		player.play_emote(kind as Player.Emote)
 
 
 @rpc("authority", "call_local", "reliable")

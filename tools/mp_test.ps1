@@ -7,7 +7,9 @@
 #   physics sync, carrying together, hand-over, death and spectating.
 # -Tools: one client uses the M4 tools (tools/dev/dev_scenario.gd "mptools"); the host must see
 #   every use arrive and the client must see the results.
-param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop, [switch]$Tools)
+# -Section <n>: the default shift in mine section n (0 Oberer Stollen, 1 Salzsee, 2 Die Tiefe),
+#   with the section's creatures forced in, so clients see e.g. the Percht.
+param([int]$Clients = 1, [int]$Port = 24760, [switch]$HostLeavesFirst, [switch]$Coop, [switch]$Tools, [int]$Section = 0)
 . "$PSScriptRoot/godot_run.ps1"
 
 if ($Coop -or $Tools) { $Clients = 1 }
@@ -36,9 +38,10 @@ if ($HostLeavesFirst) {
 } else {
     $hostSeconds = 26
     $clientSeconds = 19
-    $hostArgs += @("--auto-shift=6", "--wait-peers=$Clients")
+    $hostArgs += @("--auto-shift=6", "--wait-peers=$Clients", "--section=$Section")
     $hostExpect = @("\[game\] shift ended")
     $clientExpect = @("\[game\] shift started", "\[game\] shift ended")
+    if ($Section -eq 2) { $hostExpect += @("(dev: percht spawned|spawned [0-9]+ percht)", "(dev: salzweibl spawned|spawned [0-9]+ salzweibl)", "relic mann_im_salz worth") }
 }
 
 $hostProc = Start-Godot "mp_host" ($hostArgs + @("--smoke=$hostSeconds"))
@@ -109,6 +112,6 @@ if ($Coop) {
         }
     }
 }
-$mode = if ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } elseif ($Tools) { ", tools scenario" } else { ", shift played" }
+$mode = if ($Section -gt 0) { ", shift played in section $Section" } elseif ($HostLeavesFirst) { ", host left first" } elseif ($Coop) { ", co-op scenario" } elseif ($Tools) { ", tools scenario" } else { ", shift played" }
 if (-not ($allOk -and $hostOk)) { Write-Host "MP TEST FAILED (logs: build/logs/)" -ForegroundColor Red; exit 1 }
 Write-Host "MP TEST OK ($Clients client(s)$mode)" -ForegroundColor Green

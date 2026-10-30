@@ -99,6 +99,9 @@ extends Resource
 @export_group("Shout (Plärren)")
 @export var shout_radius: float = 14.0
 @export var shout_cooldown: float = 3.0
+## The Jodler emote carries this far (m) and can only be sung every this many seconds.
+@export var noise_jodler: float = 60.0
+@export var jodler_cooldown: float = 8.0
 
 @export_group("Voice chat")
 ## Proximity voice: full volume up close, silent beyond this distance (m).

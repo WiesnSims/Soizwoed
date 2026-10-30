@@ -14,9 +14,19 @@ func _ready() -> void:
 	skin.clearcoat_roughness = 0.5
 	var cloth: StandardMaterial3D = BodyParts.rough(Color(0.27, 0.22, 0.15), 1.0, 0.8, 0.2)
 	# The wall of salt he is stuck in, crystals catching the lamp light.
-	BodyParts.add(self, BodyParts.box(Vector3(2.6, 3.0, 0.9)), salt, Vector3(0.0, 1.5, 0.35))
-	for crystal: Vector3 in [Vector3(-1.0, 0.4, -0.15), Vector3(0.9, 2.3, -0.12), Vector3(1.05, 0.7, -0.1), Vector3(-0.85, 2.5, -0.12)]:
-		BodyParts.add(self, BodyParts.box(Vector3(0.35, 0.5, 0.35)), salt, crystal, Vector3(20.0, 35.0, 15.0))
+	# A rough mass of overlapping, tilted blocks rather than one slab; it grows over his legs.
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 1734  # the year he was found
+	BodyParts.add(self, BodyParts.box(Vector3(2.4, 2.8, 0.7)), salt, Vector3(0.0, 1.4, 0.5))
+	for i: int in 16:
+		var at: Vector3 = Vector3(rng.randf_range(-1.3, 1.3), rng.randf_range(0.1, 2.8), rng.randf_range(0.0, 0.45))
+		if absf(at.x) < 0.45 and at.y > 0.9:
+			at.x = signf(at.x if at.x != 0.0 else 1.0) * rng.randf_range(0.5, 1.3)  # leave him visible
+		var size: Vector3 = Vector3(rng.randf_range(0.4, 0.9), rng.randf_range(0.4, 1.0), rng.randf_range(0.3, 0.6))
+		BodyParts.add(self, BodyParts.box(size), salt, at, Vector3(rng.randf_range(-25, 25), rng.randf_range(-40, 40), rng.randf_range(-25, 25)))
+	for i: int in 4:
+		BodyParts.add(self, BodyParts.box(Vector3(0.45, 0.5, 0.4)), salt, Vector3(rng.randf_range(-0.3, 0.3), rng.randf_range(0.1, 0.6), -0.2),
+				Vector3(rng.randf_range(-20, 20), rng.randf_range(0, 90), rng.randf_range(-20, 20)))
 	# Him: leaning back into the salt, head bowed.
 	var body: Node3D = Node3D.new()
 	body.position = Vector3(0.0, 0.0, -0.12)

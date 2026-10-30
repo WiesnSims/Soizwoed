@@ -32,7 +32,9 @@ def stick_slip(length: float, rate, bodies, level: float = 1.0):
     out = np.zeros_like(p)
     for f, q, g in bodies:
         out += g * d.resonator(impulses, f, q)
-    return out * level
+    # The resonators ring at about 1 % of the impulse: bring it to full scale first (build.py
+    # only ever turns sounds down), or every creak ends up at -60 dB.
+    return d.normalize(out, 1.0) * level
 
 
 WOOD = [(310, 12, 1.0), (720, 14, 0.7), (1330, 16, 0.45), (2250, 18, 0.25)]
@@ -514,7 +516,7 @@ def curse_whisper(v):
     breath = d.bandpass(d.noise(s), 600, 4500)
     words = np.maximum(0, d.smooth_noise(s, 9.0)) ** 2
     shaped = d.vowel_morph(breath, [(0.0, "u"), (0.7, "a"), (1.4, "i"), (2.2, "o")], 0.9)
-    return cave(shaped * words * d.env_points(s, [(0, 0), (0.3, 1), (1.9, 1), (2.2, 0)]), 1.8, 0.45)
+    return d.normalize(cave(shaped * words * d.env_points(s, [(0, 0), (0.3, 1), (1.9, 1), (2.2, 0)]), 1.8, 0.45), 0.6)
 
 
 def jodler(v):
@@ -551,7 +553,7 @@ def stone_settle(v):
     """A few pebbles trickling somewhere in the dark."""
     s = 1.6
     pebbles = d.mix(*[(0.1 + i * d.rng.uniform(0.08, 0.25), click(2200 + d.rng.uniform(-800, 800), 0.012, d.rng.uniform(0.2, 0.6))) for i in range(6)])
-    return cave(pebbles, 2.0, 0.5)
+    return d.normalize(cave(pebbles, 2.0, 0.5), 0.7)
 
 
 def water_lap(v):

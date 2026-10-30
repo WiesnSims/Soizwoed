@@ -36,6 +36,8 @@ The full game design is here and must be followed:
   - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients playing a short shift
   - `tools/mp_test.ps1 -Coop` – headless co-op scenario: item sync, carrying together, death and spectating
   - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, the host must see each use arrive
+  - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl)
+  - `godot --headless -s tools/balance_report.gd` – loot value per shift and the share needed for the quota, per cycle, crew and section
   - `tools/steam_test.ps1` – needs the Steam client running: headless host creates a public lobby, a second instance must find it via the game/ver filter
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it
   - Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`

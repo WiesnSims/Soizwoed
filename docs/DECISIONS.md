@@ -312,3 +312,57 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 
 ### Chosen by Claude
 - **Mine sections load at runtime** (`Game.BIOME_PATHS` → `biomes`), like the item catalog. Preloading them made the export fail with a cyclic script reference.
+
+## 2026-10-30 – M5 Content 2 & polish (chosen by Claude unless marked, change any time)
+
+### Die Tiefe (§4)
+- **Third mine section**, on the Grubnplan from quota cycle 3 (`unlock_cycle = 2`). 14 m cells, low hand-hewn galleries (4 × 3.5 m), no rails, no lanterns except at the shaft bottom.
+- **Chunks:** station, straight, corner, T, cross, the "Knochenkammer" (a dead end full of bones), the "Heidenhalle" (a 10 × 6 × 10 m hall with four Celtic standing stones), and the "Salzmann" shrine.
+- **The Mann im Salz:** the shrine (a dead end, 3+ steps deep, at most one per mine, in about 85 % of mines) holds his body in a wall of rock salt, one arm missing. That arm is the loot "Stück vom Mann im Salz" lying in front of him (a `relic_spawn` marker); it never spawns anywhere else.
+- **Balance:** loot ×1.45, enemy budget ×1.4, brine in 6 % of chunks, firedamp 1.8× as common as in the other sections (`BiomeRule.gas_mult`). The shrine has no gas, so the relic can be carried out with a burning lamp.
+- **Creatures:** Bergmandl, Tatzelwurm, Kasermandl, Salzweibl, Percht.
+
+### Percht (§6)
+- **Patrols** the tunnels at 1.6 m/s; its cowbells jingle with every step (heard ~50 m, muffled through rock), faster and louder while it hunts.
+- **Sight (its learnable rule):** a burning lamp from 18 m, a miner in the dark from 6 m, crouching multiplies both by 0.4 (so 2.4 m in the dark). It sees in a 140° cone in front, anything within 2.5 m all around.
+- **Hunting:** 4.0 m/s – faster than walking (3.4), slower than sprinting (5.8). A hit is 60 damage, every 2.5 s. Out of sight for 4 s, it goes to where it last saw you and searches for 8 s, then goes back on its rounds.
+- **Noise draws it** (the same noises as the Tatzelwurm): a Böller, a bell, the Alphorn or a Jodler sends it the wrong way.
+- **Near-unkillable:** 800 health; when that is gone it does not die, it goes back into the dark. The Alphorn stuns it, it avoids the Bierzelt cloud, it never enters the Förderkorb.
+- Spawn rule: budget cost 4, at most one alive; only Die Tiefe lists it.
+
+### Salzweibl (§6, §8)
+- **Voice lure:** the host keeps the last 6 things each miner said in the voice chat (0.6–4 s each, a pause of 0.45 s ends one). The Salzweibl plays one of them, preferably of someone other than the miner it is luring, as raw Steam voice packets that every peer decodes and plays from its position on the Voice bus.
+- **Opt-out (setting, on by default):** "Salzweibl derf mei Stimm nochmochn". Off, the host keeps nothing of yours and forgets what it had. In solo, over ENet, or when nobody allows it, it calls with its own lines ("Hilfe! Do herüben!", "Kumpl? Bist du des?", …). The snippets live only in memory and are dropped when the session ends.
+- **Its rule:** it waits at a waypoint 10–25 m from the loneliest miner (the one furthest from any teammate), out of their sight, preferably in a dead end, and calls every 8–14 s. Whoever reaches it **alone** (no teammate within 7 m) is taken: 50 damage. Two miners together, or a pair shining a lamp on it from up to 9 m, and it shrieks and is gone. A hit drives it off too. Then it is gone for 25 s and waits somewhere new.
+- It does not walk; it appears and vanishes. Spawn rule: budget cost 2.5, at most one; the Salzsee and Die Tiefe list it.
+
+### Loot (§5)
+- **Keltisches Bronzeschwert** (medium, 90–150 S, Die Tiefe only): carried in both hands, click strikes for 18 (the Spitzhacke does 34).
+- **Goldene Haube** (medium, 220–340 S, rare, Salzsee and Die Tiefe, 3+ steps deep).
+- **Kuckucksuhr** (medium, 70–120 S, fragile): cuckoos every 25–60 s on its own, a noise of 30 m – Tatzelwurm and Percht come.
+- **Gamsbart-Hut** (light, 15–35 S): click puts it on your head (others see it) or takes it off; it stays in its pocket slot and is sold like any loot.
+- **Stück vom Mann im Salz** (heavy, 240–340 S before multipliers, ~550 S in practice): while carried or wheeled, every 3 s the creatures that listen sense it, from 15 m at first and 0.4 m further for every second it has been carried (at most 50 m). Whoever carries it hears it whisper.
+- **Alte Jausenbox:** click opens it once; half the time there is a Speckbrot inside (into a free pocket). **Speckbrot:** 2.5 s to eat, +15 health, and a 35 % chance of food poisoning: 20 health over 10 s and a swaying view. Food poisoning never takes the last point of health.
+- The **Wunderheilerin-Salbe** (revive) is still left out (§14 open question; the owner decides).
+
+### Emotes (§9)
+- **J jodeln** (heard everywhere around, 60 m of noise for the creatures, every 8 s at most), **H winken**, **B zeigen** (the arm of your miner, as others see it). Others' miners now have arms.
+
+### Audio pass
+- New: cowbells, Percht steps and roar, the Salzweibl's shriek and hum, cuckoo, the relic's whisper, the Jodler, salt-crunch footsteps (Salzsee and Die Tiefe), and ambience per section (`ChunkSet.ambience`: the Salzsee laps, Die Tiefe groans and trickles).
+- **Fixed:** the wood creaks (ambience, rotten ladders and bridges, the ferry's oars) were rendered at about −62 dB, practically silent: `build.py` only ever turns sounds down, and the creak recipe peaked at 1 %. Now about −30 dB like the other ambience – so a rotten bridge creaks audibly before it breaks.
+- **Voices:** Percht and Salzweibl use variant A until the owner picks one from the sample pack (`build/samples/percht_*`, `build/samples/salzweibl_*`).
+
+### Translations, language, keys (deferred from M4)
+- **English** for every text (`i18n/strings.csv` column `en`, written by `tools/i18n_en.py`). Creatures, places and most item names stay Austrian on purpose, with an English gloss where it helps ("Salzsee (brine lake)").
+- **Language** (Spü tab): Automatisch (German on a German system, English otherwise), Deutsch, English.
+- **Keys** ("Tastn" tab): every action can go on another key or mouse button; a key that is taken swaps with the action that had it. Saved in `user://settings.cfg` under `[keys]`. Every key shown in the game (prompts, the Esc-menu list, "Redn: V drucka") follows the bindings and the keyboard layout.
+
+### Balancing
+- `tools/balance_report.gd` prints, per cycle, crew size and section, the loot value of a shift and the share of it a crew must sell to make the quota. `tests/test_balance.gd` keeps each section between 25 % and 65 % in the cycle it unlocks, and deeper sections richer.
+- Result: a section asks ~40–55 % of its loot when it unlocks (solo 29–42 %), and the shallow sections stop paying off two to three cycles later – the run pushes you deeper. The quota curve itself (base 1500, ×1.4) is unchanged until playtests say otherwise.
+
+### Version and tests
+- **Version 0.5.0.**
+- New headless checks: `smoke_tiefe`, `smoke_percht`, `smoke_weibl`; the co-op check makes a Salzweibl flee from two miners; `tools/mp_test.ps1 -Section 2` plays a shift in Die Tiefe with two clients and every Tiefe creature.
+- Known flake: `smoke_hazards`' rope climb sometimes fails under load (the whole suite in a row); it passes on its own.

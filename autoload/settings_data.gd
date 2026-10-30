@@ -20,6 +20,12 @@ const FOV_MIN: float = 60.0
 const FOV_MAX: float = 100.0
 const SENSITIVITY_MIN: float = 0.2
 const SENSITIVITY_MAX: float = 3.0
+## Languages offered ("" = follow the system: German if it is German, else English).
+const LANGUAGES: Array[String] = ["", "de", "en"]
+## Input actions the player may put on other keys (Tastn tab), in the order shown.
+const REBINDABLE: Array[StringName] = [&"move_forward", &"move_back", &"move_left", &"move_right", &"jump", &"sprint",
+		&"crouch", &"interact", &"drop", &"use", &"lamp", &"shout", &"voice_talk", &"watch", &"emote_jodler",
+		&"emote_wave", &"emote_point", &"slot_1", &"slot_2", &"slot_3", &"slot_4"]
 
 # Audio (volumes 0–1, linear)
 var master_volume: float = 1.0
@@ -52,6 +58,10 @@ var anti_aliasing: AntiAliasing = AntiAliasing.TAA
 var mouse_sensitivity: float = 1.0
 var invert_y: bool = false
 var head_bob: bool = true
+var language: String = ""
+## Rebound keys: action name -> a key's physical keycode (> 0) or a mouse button (-index).
+## Actions not in here keep the keys from project.godot.
+var key_bindings: Dictionary = {}
 
 
 ## Brings every value into its allowed range (e.g. after loading a hand-edited file).
@@ -69,6 +79,11 @@ func clamp_all() -> void:
 	render_scale = clampf(render_scale, 0.5, 1.0)
 	anti_aliasing = clampi(anti_aliasing, 0, AntiAliasing.size() - 1) as AntiAliasing
 	mouse_sensitivity = clampf(mouse_sensitivity, SENSITIVITY_MIN, SENSITIVITY_MAX)
+	if not language in LANGUAGES:
+		language = ""
+	for action: Variant in key_bindings.keys():
+		if not StringName(str(action)) in REBINDABLE or int(key_bindings[action]) == 0:
+			key_bindings.erase(action)
 
 
 func save_to(file: ConfigFile) -> void:
@@ -93,6 +108,11 @@ func save_to(file: ConfigFile) -> void:
 	file.set_value("gameplay", "mouse_sensitivity", mouse_sensitivity)
 	file.set_value("gameplay", "invert_y", invert_y)
 	file.set_value("gameplay", "head_bob", head_bob)
+	file.set_value("gameplay", "language", language)
+	if file.has_section("keys"):
+		file.erase_section("keys")
+	for action: Variant in key_bindings:
+		file.set_value("keys", str(action), int(key_bindings[action]))
 
 
 ## Missing keys keep their defaults, so old settings files still load.
@@ -117,6 +137,11 @@ func load_from(file: ConfigFile) -> void:
 	mouse_sensitivity = float(file.get_value("gameplay", "mouse_sensitivity", mouse_sensitivity))
 	invert_y = bool(file.get_value("gameplay", "invert_y", invert_y))
 	head_bob = bool(file.get_value("gameplay", "head_bob", head_bob))
+	language = str(file.get_value("gameplay", "language", language))
+	key_bindings = {}
+	if file.has_section("keys"):
+		for action: String in file.get_section_keys("keys"):
+			key_bindings[action] = int(file.get_value("keys", action, 0))
 	# Files from before version 2 saved the old, heavy defaults (uncapped frame rate, MSAA on top
 	# of TAA) whether or not the player chose them: move those to the new defaults.
 	var version: int = int(file.get_value("meta", "version", 1))
@@ -155,3 +180,34 @@ static func quality_values(preset: Quality) -> Dictionary:
 ## Linear volume 0–1 as bus decibels (silent at 0).
 static func volume_db(linear: float) -> float:
 	return -80.0 if linear <= 0.001 else linear_to_db(linear)
+
+
+## What is saved for an input event: a key's physical keycode, or minus a mouse button (0 = neither).
+static func event_code(event: InputEvent) -> int:
+	var key: InputEventKey = event as InputEventKey
+	if key != null:
+		return int(key.physical_keycode) if key.physical_keycode != KEY_NONE else int(key.keycode)
+	var button: InputEventMouseButton = event as InputEventMouseButton
+	if button != null:
+		return -int(button.button_index)
+	return 0
+
+
+static func event_for(code: int) -> InputEvent:
+	if code < 0:
+		var button: InputEventMouseButton = InputEventMouseButton.new()
+		button.button_index = -code as MouseButton
+		return button
+	var key: InputEventKey = InputEventKey.new()
+	key.physical_keycode = code as Key
+	return key
+
+
+## Puts `code` on `action`; an action that had it gets this action's old key instead (a swap,
+## so no key ever does two things). `current` is the code each action has right now.
+func bind(action: StringName, code: int, current: Dictionary) -> void:
+	var old: int = int(current.get(action, 0))
+	for other: StringName in REBINDABLE:
+		if other != action and int(current.get(other, 0)) == code:
+			key_bindings[String(other)] = old
+	key_bindings[String(action)] = code

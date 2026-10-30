@@ -427,8 +427,10 @@ func _tiefe_look() -> void:
 			print("[scenario] at the Mann im Salz")
 			break
 	await get_tree().create_timer(4.0).timeout
-	var percht: Creature = _game.spawn_creature(&"percht", Transform3D(Basis.IDENTITY, player.global_position - player.global_basis.z * 4.0 + Vector3.UP * 0.2))
-	percht.look_at(player.global_position, Vector3.UP)
+	var percht: Creature = _game.spawn_creature(&"percht", Transform3D(Basis.IDENTITY, player.global_position + player.global_basis.z * 4.0 + Vector3.UP * 0.2))
+	percht.look_at(Vector3(player.global_position.x, percht.global_position.y, player.global_position.z), Vector3.UP)
+	percht.host_stun(60.0)  # stands for its portrait
+	player.rotate_y(PI)
 
 
 ## The Percht: sees a lit lamp from afar, a crouching miner in the dark not at all; hunts,
