@@ -22,12 +22,12 @@ if ($HostLeavesFirst) {
     $clientSeconds = 12
     $clientExpect = @("\[net\] host left")
 } elseif ($Coop) {
-    $hostSeconds = 36
-    $clientSeconds = 32
+    $hostSeconds = 39
+    $clientSeconds = 35
     $hostArgs += @("--scenario=coop", "--wait-peers=1")
     $clientExtra = @("--scenario=coopclient")
-    $hostExpect = @("host: ITestFall fell [1-9]", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "\[game\] shift ended")
-    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client carrying together with P1, speed 0\.95", "client took the block over", "client dead, spectating P1", "\[game\] shift ended")
+    $hostExpect = @("host: ITestFall fell [1-9]", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
+    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client carrying together with P1, speed 0\.95", "client took the block over", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
 } elseif ($Tools) {
     $hostSeconds = 36
     $clientSeconds = 32

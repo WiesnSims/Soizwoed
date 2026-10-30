@@ -267,8 +267,8 @@ SALZWEIBL_LINES = {
 
 # The voice the game uses until the user picks one in the sample check.
 # Bergmandl A (2026-10-29), Kasermandl A and Schichtmeister A (2026-10-30) are approved;
-# Percht and Salzweibl wait for the check.
-CHOICE = {"bergmandl": "A", "kasermandl": "A", "schichtmeister": "A", "percht": "A", "salzweibl": "A"}
+# Percht B and Salzweibl B (2026-10-30) too.
+CHOICE = {"bergmandl": "A", "kasermandl": "A", "schichtmeister": "A", "percht": "B", "salzweibl": "B"}
 
 
 def giggle(fn):

@@ -343,7 +343,7 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Gamsbart-Hut** (light, 15–35 S): click puts it on your head (others see it) or takes it off; it stays in its pocket slot and is sold like any loot.
 - **Stück vom Mann im Salz** (heavy, 240–340 S before multipliers, ~550 S in practice): while carried or wheeled, every 3 s the creatures that listen sense it, from 15 m at first and 0.4 m further for every second it has been carried (at most 50 m). Whoever carries it hears it whisper.
 - **Alte Jausenbox:** click opens it once; half the time there is a Speckbrot inside (into a free pocket). **Speckbrot:** 2.5 s to eat, +15 health, and a 35 % chance of food poisoning: 20 health over 10 s and a swaying view. Food poisoning never takes the last point of health.
-- The **Wunderheilerin-Salbe** (revive) is still left out (§14 open question; the owner decides).
+- The **Wunderheilerin-Salbe**: see "M5 playtest decisions" below.
 
 ### Emotes (§9)
 - **J jodeln** (heard everywhere around, 60 m of noise for the creatures, every 8 s at most), **H winken**, **B zeigen** (the arm of your miner, as others see it). Others' miners now have arms.
@@ -351,7 +351,7 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 ### Audio pass
 - New: cowbells, Percht steps and roar, the Salzweibl's shriek and hum, cuckoo, the relic's whisper, the Jodler, salt-crunch footsteps (Salzsee and Die Tiefe), and ambience per section (`ChunkSet.ambience`: the Salzsee laps, Die Tiefe groans and trickles).
 - **Fixed:** the wood creaks (ambience, rotten ladders and bridges, the ferry's oars) were rendered at about −62 dB, practically silent: `build.py` only ever turns sounds down, and the creak recipe peaked at 1 %. Now about −30 dB like the other ambience – so a rotten bridge creaks audibly before it breaks.
-- **Voices:** Percht and Salzweibl use variant A until the owner picks one from the sample pack (`build/samples/percht_*`, `build/samples/salzweibl_*`).
+- **Voices:** see "M5 playtest decisions" below.
 
 ### Translations, language, keys (deferred from M4)
 - **English** for every text (`i18n/strings.csv` column `en`, written by `tools/i18n_en.py`). Creatures, places and most item names stay Austrian on purpose, with an English gloss where it helps ("Salzsee (brine lake)").
@@ -366,3 +366,12 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Version 0.5.0.**
 - New headless checks: `smoke_tiefe`, `smoke_percht`, `smoke_weibl`; the co-op check makes a Salzweibl flee from two miners; `tools/mp_test.ps1 -Section 2` plays a shift in Die Tiefe with two clients and every Tiefe creature.
 - Known flake: `smoke_hazards`' rope climb sometimes fails under load (the whole suite in a row); it passes on its own.
+
+## 2026-10-30 – M5 decisions after the sample pack
+
+### Confirmed by the owner
+- **Voices:** variant **B** for the Percht ("Maske": spoken from behind the carved wooden mask) and **B** for the Salzweibl ("Weibl": a woman's voice, sweet, a little too close, slightly out of tune).
+- **The revive item stays in** (DESIGN.md §3 and §14 updated).
+
+### Chosen by Claude (change any time)
+- **Wunderheilerin-Salbe:** rare loot (spawn weight 0.15, 3+ steps deep, any section, 60–90 S if sold instead). Select it in a pocket, look at a dead teammate's body and click: within 30 s of their death they stand up where the body lay with 40 health; the body and the salve are gone. Later: "Z'spät". In solo it can only be sold (nobody is left to use it on you).

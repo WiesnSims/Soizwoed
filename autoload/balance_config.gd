@@ -199,6 +199,10 @@ extends Resource
 @export var speckbrot_poison_chance: float = 0.35
 @export var speckbrot_poison_damage: int = 20
 @export var speckbrot_poison_seconds: float = 10.0
+## Wunderheilerin-Salbe: brings a miner back if used on their body within this many seconds of
+## their death (DESIGN.md §3), with this much health.
+@export var revive_window_seconds: float = 30.0
+@export var revive_health: int = 40
 
 @export_group("Hazards")
 ## Share of hazard spots that hold a firedamp pocket, plus this much per cycle.

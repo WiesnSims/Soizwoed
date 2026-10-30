@@ -285,6 +285,15 @@ func _coop() -> void:
 	for item: WorldItem in _game._items():
 		corpses += 1 if item.data.id == &"leiche" else 0
 	print("[scenario] host: %d corpse(s), client alive %s" % [corpses, client.alive])
+	# The Wunderheilerin-Salbe on the body, well within the 30 s: the client is back.
+	var salve: WorldItem = await _give(&"wunderheilerin_salbe")
+	for item: WorldItem in _game._items():
+		if item.data.id == &"leiche":
+			host.teleport(Transform3D(Basis.IDENTITY, item.global_position + Vector3(1.0, 0.2, 0.0)))
+			await get_tree().create_timer(0.3).timeout
+			_game.request_revive(salve.get_path(), item.get_path())
+	await get_tree().create_timer(1.0).timeout
+	print("[scenario] host: client alive after the salve %s, health %d" % [client.alive, client.health])
 	host.teleport(cage.player_spot(0))
 	await get_tree().create_timer(0.5).timeout
 	_game.request_lift()
@@ -485,6 +494,7 @@ func _weibl() -> void:
 	var player: Player = _game.local_player()
 	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(5.0)))
 	await get_tree().create_timer(0.5).timeout
+	player.lamp_on = false  # it never calls while a lamp is on it
 	var weibl: Salzweibl = _game.spawn_creature(&"salzweibl", Transform3D(Basis.IDENTITY, _out_of_station(18.0) + Vector3.UP * 0.2)) as Salzweibl
 	await get_tree().create_timer(6.0).timeout
 	print("[scenario] salzweibl waits %.0f m away, shown %s" % [weibl.global_position.distance_to(player.global_position), weibl.net_shown])
@@ -871,7 +881,7 @@ func _coop_client() -> void:
 	var seen: Dictionary = {}
 	_track_when_thrown()
 	var fall_start: float = INF
-	for i: int in 80:
+	for i: int in 140:
 		await get_tree().create_timer(0.25).timeout
 		if _game.phase != Game.Phase.SHIFT:
 			break
@@ -892,6 +902,9 @@ func _coop_client() -> void:
 		if not me.alive and me.spectating != null and not seen.has("dead"):
 			seen.dead = true
 			print("[scenario] client dead, spectating P%d" % me.spectating.peer_id)
+		if seen.has("dead") and me.alive and me.health < Balance.config.player_max_health and not seen.has("revived"):
+			seen.revived = true
+			print("[scenario] client revived, health %d, own camera %s" % [me.health, me.camera.current])
 
 
 ## Logs where a thrown item flies, every 0.1 s from the moment it is let go (host and client).

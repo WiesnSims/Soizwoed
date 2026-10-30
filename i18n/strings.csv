@@ -250,3 +250,9 @@ ACTION_SLOT_1,Fach 1,Pocket 1
 ACTION_SLOT_2,Fach 2,Pocket 2
 ACTION_SLOT_3,Fach 3,Pocket 3
 ACTION_SLOT_4,Fach 4,Pocket 4
+ITEM_WUNDERHEILERIN_SALBE,Wunderheilerin-Salbe,Wise woman's salve
+USE_REVIVE,Auf an hinign Kumpl: aufwecken,On a dead mate: bring them back
+MSG_REVIVE_AIM,Schau auf an hinign Kumpl.,Look at a dead mate.
+MSG_REVIVE_TOO_LATE,Z'spät – do hilft ka Salbn mehr.,Too late – no salve helps now.
+MSG_REVIVED,%s is wieder do!,%s is back!
+MSG_YOU_REVIVED,De Salbn wirkt – du bist wieder do!,The salve works – you're back!

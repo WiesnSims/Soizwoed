@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="clay"]
+albedo_color = Color(0.55, 0.36, 0.22, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="cloth"]
+albedo_color = Color(0.82, 0.78, 0.66, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="herb"]
+albedo_color = Color(0.25, 0.42, 0.2, 1)
+roughness = 0.9
+emission_enabled = true
+emission = Color(0.3, 0.6, 0.25, 1)
+emission_energy_multiplier = 0.25
+
+[sub_resource type="CylinderMesh" id="pot"]
+top_radius = 0.045
+bottom_radius = 0.04
+height = 0.07
+radial_segments = 14
+rings = 1
+
+[sub_resource type="CylinderMesh" id="lid"]
+top_radius = 0.035
+bottom_radius = 0.052
+height = 0.025
+radial_segments = 14
+rings = 1
+
+[sub_resource type="BoxMesh" id="sprig"]
+size = Vector3(0.012, 0.06, 0.03)
+
+[sub_resource type="CylinderShape3D" id="shape"]
+radius = 0.05
+height = 0.1
+
+[node name="WunderheilerinSalbe" type="RigidBody3D"]
+mass = 0.3
+script = ExtResource("1_item")
+
+[node name="Pot" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, 0)
+mesh = SubResource("pot")
+surface_material_override/0 = SubResource("clay")
+
+[node name="Lid" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 0)
+mesh = SubResource("lid")
+surface_material_override/0 = SubResource("cloth")
+
+[node name="Sprig" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.94, 0.34, 0, -0.34, 0.94, 0, 0, 0, 1, 0.01, 0.11, 0)
+mesh = SubResource("sprig")
+surface_material_override/0 = SubResource("herb")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+shape = SubResource("shape")

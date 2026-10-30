@@ -100,6 +100,8 @@ var _poisoned: Dictionary = {}
 ## long the cursed piece has been carried, by item name.
 var _special_left: Dictionary = {}
 var _cursed_for: Dictionary = {}
+## Host: bodies of miners who died this shift, item name -> [peer id, time of death (s)].
+var _corpses: Dictionary = {}
 
 @onready var hub: Gasthaus = $Hub
 @onready var hub_cage: Foerderkorb = $Hub/Foerderkorb
@@ -440,6 +442,7 @@ func _descend() -> void:
 	_special_left.clear()
 	_cursed_for.clear()
 	_poisoned.clear()
+	_corpses.clear()
 	_meister_came = false
 	_spawn_creatures_up_to(_config.enemy_start_share)
 	if _force_creatures:
@@ -937,6 +940,38 @@ func request_open(item_path: NodePath) -> void:
 		bread.host_take(player.peer_id, place)
 
 
+## The Wunderheilerin-Salbe on a dead miner's body: back on their feet, if it is not too late
+## (DESIGN.md §3). The body goes, the miner stands where it lay.
+@rpc("any_peer", "call_local", "reliable")
+func request_revive(salve_path: NodePath, corpse_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var salve: WorldItem = get_node_or_null(salve_path) as WorldItem
+	var corpse: WorldItem = get_node_or_null(corpse_path) as WorldItem
+	var healer: Player = player_by_peer(_sender())
+	if salve == null or corpse == null or healer == null or not healer.alive or salve.holder_peer != healer.peer_id or salve.data.use != ItemData.Use.REVIVE:
+		return
+	if not _corpses.has(String(corpse.name)) or healer.global_position.distance_to(corpse.global_position) > _config.interact_distance + 1.5:
+		return
+	var record: Array = _corpses[String(corpse.name)]
+	var dead: Player = player_by_peer(int(record[0]))
+	if dead == null or dead.alive:
+		return
+	if Time.get_ticks_msec() / 1000.0 - float(record[1]) > _config.revive_window_seconds:
+		message_to(healer.peer_id, "MSG_REVIVE_TOO_LATE")
+		return
+	var stand: Transform3D = Transform3D(Basis(Vector3.UP, corpse.global_rotation.y), corpse.global_position + Vector3.UP * 0.2)
+	_corpses.erase(String(corpse.name))
+	corpse.host_vanish()
+	salve.host_vanish()
+	dead.revive.rpc()
+	dead.teleport.rpc(stand)
+	dead.set_health.rpc(_config.revive_health)
+	play_sound_everywhere.rpc("drink", stand.origin)
+	_player_message.rpc("MSG_REVIVED", dead.player_number, dead.peer_id)
+	print("[game] P%d revived by P%d" % [dead.peer_id, healer.peer_id])
+
+
 ## The Gamsbart-Hut on or off the head (it stays in its pocket slot).
 @rpc("any_peer", "call_local", "reliable")
 func request_wear(item_path: NodePath) -> void:
@@ -1383,7 +1418,8 @@ func _kill_player(player: Player) -> void:
 	_drop_everything(player)
 	# The body stays down there as heavy loot: carried to the lift, it pays Sterbegeld (§3).
 	var at: Transform3D = Transform3D(Basis(Vector3.UP, player.rotation.y), player.global_position + Vector3.UP * 0.3)
-	_spawn_item_at(&"leiche", _config.sterbegeld, at)
+	var corpse: WorldItem = _spawn_item_at(&"leiche", _config.sterbegeld, at)
+	_corpses[String(corpse.name)] = [player.peer_id, Time.get_ticks_msec() / 1000.0]
 	player.die.rpc()
 	_player_message.rpc("MSG_PLAYER_DIED", player.player_number, player.peer_id)
 	print("[game] P%d died, corpse spawned" % player.peer_id)
@@ -1460,7 +1496,7 @@ func _show_message_key(key: String) -> void:
 @rpc("authority", "call_local", "reliable")
 func _player_message(key: String, number: int, about_peer: int) -> void:
 	if about_peer == multiplayer.get_unique_id():
-		show_message(tr("MSG_YOU_DIED"), 5.0)
+		show_message(tr("MSG_YOU_REVIVED") if key == "MSG_REVIVED" else tr("MSG_YOU_DIED"), 5.0)
 		return
 	var about: Player = player_by_peer(about_peer)
 	show_message(tr(key) % (about.display_name() if about != null else tr("PLAYER_NAME") % number), 4.0)

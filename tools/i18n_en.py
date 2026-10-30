@@ -265,6 +265,12 @@ EN = {
     "ACTION_SLOT_2": "Pocket 2",
     "ACTION_SLOT_3": "Pocket 3",
     "ACTION_SLOT_4": "Pocket 4",
+    "ITEM_WUNDERHEILERIN_SALBE": "Wise woman's salve",
+    "USE_REVIVE": "On a dead mate: bring them back",
+    "MSG_REVIVE_AIM": "Look at a dead mate.",
+    "MSG_REVIVE_TOO_LATE": "Too late – no salve helps now.",
+    "MSG_REVIVED": "%s is back!",
+    "MSG_YOU_REVIVED": "The salve works – you're back!",
 }
 
 

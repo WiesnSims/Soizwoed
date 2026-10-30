@@ -883,6 +883,13 @@ func _use_active() -> void:
 		ItemData.Use.OPEN:
 			_use_cooldown = 1.0
 			game().request_open.rpc_id(1, item.get_path())
+		ItemData.Use.REVIVE:
+			_use_cooldown = 1.0
+			var body: WorldItem = focus as WorldItem
+			if body == null or body.data.id != &"leiche":
+				game().show_message(tr("MSG_REVIVE_AIM"))
+				return
+			game().request_revive.rpc_id(1, item.get_path(), body.get_path())
 		ItemData.Use.ROPE:
 			_use_cooldown = 1.0
 			_place_rope(item)

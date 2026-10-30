@@ -7,7 +7,7 @@ enum Kind { LOOT, TOOL, CONSUMABLE }
 enum WeightClass { LIGHT, MEDIUM, HEAVY }
 ## What the use key (left click) does with it in the hand (Player._use_active). The numbers
 ## behind each use live in balance.tres.
-enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO, WEAR, OPEN, EAT_OLD }
+enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO, WEAR, OPEN, EAT_OLD, REVIVE }
 ## Something the item does by itself in the mine (host, Game._host_tick_specials).
 enum Special { NONE, CUCKOO, CURSED }
 
