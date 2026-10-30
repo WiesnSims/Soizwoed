@@ -36,9 +36,25 @@ extends Resource
 ## Field of view while aiming, as a share of the normal one.
 @export var ads_zoom: float = 0.8
 ## Name of the shot sound (assets/audio/sfx).
-@export var sound: String = "pistol_shot"
-@export var reload_sound: String = "reload_pistol"
+@export var sound: String = "shot_pistole"
+## Played at the start of a reload, and `reload_sound_late` at that share of it (magazine in).
+@export var reload_sound: String = "mag_out"
+@export var reload_sound_late: String = ""
+@export var reload_late_share: float = 0.6
 ## Can be fired while downed (the pistol).
 @export var usable_downed: bool = false
+## The gun in hand (GunView): kick back (m) and muzzle climb (degrees) per shot, and how long
+## it takes to settle; camera shake per shot (0..1).
+@export var kick_back: float = 0.05
+@export var kick_angle: float = 9.0
+@export var kick_time: float = 0.12
+@export var shake: float = 0.0
+## Where the hands hold it and where the muzzle is (the gun's own space).
+@export var grip: Vector3 = Vector3(0.0, -0.06, 0.06)
+@export var support: Vector3 = Vector3(-0.02, -0.075, 0.04)
+@export var muzzle: Vector3 = Vector3(0.0, 0.0, -0.13)
+@export var flash_size: float = 1.0
+## Throws out a casing per shot (the pistol; the break-action shotgun does not).
+@export var ejects_casing: bool = false
 ## Pushes a creature back (m/s) per pellet that hits.
 @export var knockback: float = 0.0

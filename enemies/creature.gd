@@ -330,6 +330,8 @@ func host_die(sound: String = "") -> void:
 
 @rpc("authority", "call_local", "unreliable")
 func _flinch(from: Vector3) -> void:
+	# Heard on every peer even when the creature's own cry is on cooldown: the shot went in.
+	Audio.play_at("flesh_hit", global_position + Vector3.UP * 0.6, &"Creatures", 0.0, 25.0, randf_range(0.9, 1.1))
 	var body: Node3D = get_node_or_null(^"Body") as Node3D
 	if body == null:
 		return

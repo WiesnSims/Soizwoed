@@ -544,7 +544,7 @@ func _surface() -> Surface:
 @rpc("authority", "call_local", "unreliable")
 func _play_footstep(surface: Surface) -> void:
 	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade", "footstep_salt"][surface], 0.06)
-	footsteps.volume_db = -14.0 if crouching else -6.0
+	footsteps.volume_db = -21.0 if crouching else -13.0
 
 
 @rpc("any_peer", "call_local", "reliable")

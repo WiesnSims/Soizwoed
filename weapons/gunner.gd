@@ -11,38 +11,28 @@ const RAY_MASK: int = 1 | 2 | 8  # rock, players, creatures
 ## How quickly the view comes back down after the kick (share per second).
 const RECOIL_RECOVERY: float = 7.0
 const RECOIL_RECOVER_SHARE: float = 0.65
-const HIT_MARKER_SECONDS: float = 0.18
-## Where a gun sits from the hip: low on the right, pointing where you look.
-const HIP: Vector3 = Vector3(0.17, -0.17, -0.46)
-## How fast the gun comes up to the eye and back down (higher = snappier).
-const ADS_SHARPNESS: float = 16.0
 
 var player: Player
 var aiming: bool = false
 var reloading: bool = false
 ## 0..1 of the current reload step (HUD bar).
 var reload_progress: float = 0.0
-## Seconds the hit marker still shows; `marker_kill` when the hit killed.
-var hit_marker_left: float = 0.0
-var marker_kill: bool = false
+## The gun in hand: hands, motion, kick, flash, casings (purely visual).
+var view: GunView
 
 var _cooldown: float = 0.0
 var _reload_left: float = 0.0
 var _reload_item: WorldItem
 var _recoil_left: float = 0.0
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
-## The point the gun in hand follows: it glides between the hip and the sights.
-var _gun_point: Node3D
-var _base_fov: float = 78.0
+var _late_sound_played: bool = false
 
 
 func _ready() -> void:
 	player = get_parent() as Player
 	_rng.randomize()
-	_gun_point = Node3D.new()
-	_gun_point.name = "GunPoint"
-	_gun_point.position = HIP
-	player.camera.add_child(_gun_point)
+	view = GunView.new()
+	view.setup(player)
 
 
 ## The gun in the selected pocket, if the hands are free for it (or the miner is downed –
@@ -60,11 +50,10 @@ func _process(delta: float) -> void:
 	if not player.is_local():
 		return
 	_cooldown = maxf(0.0, _cooldown - delta)
-	hit_marker_left = maxf(0.0, hit_marker_left - delta)
 	var item: WorldItem = weapon_item()
 	var can_aim: bool = item != null and player.input_enabled and player.alive and not reloading
 	_set_aiming(can_aim and Input.is_action_pressed(&"aim"), item)
-	_move_gun(delta, item)
+	view.update(delta, item, aiming)
 	_tick_reload(delta, item)
 	_tick_recoil(delta)
 	var fov: float = Settings.data.fov * (item.data.weapon.ads_zoom if aiming and item != null else 1.0)
@@ -77,18 +66,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _set_aiming(on: bool, item: WorldItem) -> void:
-	if item != null and item.state == WorldItem.State.STORED and item.follow != _gun_point and not item.worn:
-		item.follow = _gun_point
+	if item != null and item.state == WorldItem.State.STORED and item.follow != view and not item.worn:
+		item.follow = view
 	aiming = on
-
-
-## Glides the gun between the hip and the eye. Aiming, its sight line sits exactly on the
-## screen centre (where the shots go), the notch and bead lined up.
-func _move_gun(delta: float, item: WorldItem) -> void:
-	var target: Vector3 = HIP
-	if aiming and item != null:
-		target = Vector3(0.0, -item.data.weapon.sight_height, -item.data.weapon.aim_distance)
-	_gun_point.position = _gun_point.position.lerp(target, 1.0 - exp(-ADS_SHARPNESS * delta))
 
 
 ## Pulls the trigger. True when a shot went off.
@@ -105,7 +85,7 @@ func fire() -> bool:
 			return false
 	if item.rounds <= 0:
 		_cooldown = 0.3
-		Audio.play_at("dry_fire", player.camera.global_position, &"SFX", -6.0, 8.0)
+		Audio.play_at("dry_click", player.camera.global_position, &"SFX", -4.0, 8.0)
 		start_reload()
 		return false
 	item.rounds -= 1
@@ -138,18 +118,18 @@ func fire() -> bool:
 		elif other != null and other != player:
 			player_damage[other.peer_id] = int(player_damage.get(other.peer_id, 0)) + damage
 	var game: Game = player.game()
+	# No hit marker (owner decision): a hit shows as blood on the creature and its cry.
 	for creature: Creature in creature_damage:
 		game.request_hit.rpc_id(1, creature.get_path(), int(creature_damage[creature]), player.global_position)
-		hit_marker_left = HIT_MARKER_SECONDS
-		marker_kill = creature.health <= int(creature_damage[creature])
 	for peer: int in player_damage:
 		game.request_shoot_player.rpc_id(1, peer, int(player_damage[peer]))
-	var muzzle: Vector3 = item.global_position - player.camera.global_basis.z * 0.25
-	ShotFx.play(muzzle, ends, flesh, weapon.sound)
+	var muzzle: Vector3 = item.global_transform * weapon.muzzle
+	ShotFx.play(muzzle, ends, flesh, weapon.sound, false)  # the gun in hand shows its own flash
 	game.request_fire.rpc_id(1, item.get_path(), item.rounds, muzzle, ends, flesh)
 	_kick(weapon.recoil)
-	if not creature_damage.is_empty():
-		Audio.play_ui("hit_tick")
+	view.fire(item)
+	if weapon.shake > 0.0:
+		player.shake(weapon.shake)
 	return true
 
 
@@ -170,6 +150,7 @@ func start_reload() -> void:
 	_reload_item = item
 	_reload_left = weapon.reload_seconds
 	reload_progress = 0.0
+	_late_sound_played = false
 	Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
 
 
@@ -183,6 +164,9 @@ func _tick_reload(delta: float, item: WorldItem) -> void:
 	var weapon: WeaponData = item.data.weapon
 	_reload_left -= delta
 	reload_progress = 1.0 - _reload_left / weapon.reload_seconds
+	if not _late_sound_played and weapon.reload_sound_late != "" and reload_progress >= weapon.reload_late_share:
+		_late_sound_played = true
+		Audio.play_at(weapon.reload_sound_late, player.camera.global_position, &"SFX", -4.0, 12.0)
 	if _reload_left > 0.0:
 		return
 	var loaded: int = WeaponMath.rounds_to_load(weapon, item.rounds, player.ammo_count(weapon.ammo_type))

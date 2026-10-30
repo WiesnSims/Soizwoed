@@ -582,6 +582,23 @@ def shotgun_shot(v):
     return gunshot(1800, 70, 0.09, 2.8)
 
 
+def shot_echo(v):
+    """The mine answering a shot: no crack of its own, only the rock throwing the boom back –
+    a few late slaps off far walls and a long, dark roll down the galleries."""
+    s = 3.2
+    boom = d.lowpass(d.noise(s), 700) * d.env_points(s, [(0, 0), (0.06, 1.0), (0.5, 0.45), (3.2, 0)])
+    slaps = d.mix(*[(t, d.lowpass(d.noise(0.25), 1600) * d.env_exp(0.25, 0.05) * g) for t, g in [(0.09, 0.7), (0.21, 0.5), (0.38, 0.35), (0.6, 0.25)]])
+    roll = d.lowpass(d.brown(s), 160) * d.env_points(s, [(0, 0), (0.3, 1.0), (3.2, 0)])
+    return cave(d.mix(boom * 0.6, slaps, roll * 0.7), 3.0, 0.6)
+
+
+def flesh_hit(v):
+    """A shot going into a creature: a short wet slap and a dull thump."""
+    s = 0.3
+    slap = d.bandpass(d.noise(s), 500 + 150 * v, 2600) * d.env_exp(s, 0.025)
+    return cave(d.mix(thud(130 + 25 * v, 0.03, 0.9), slap * 0.7), 0.8, 0.2)
+
+
 def dry_fire(v):
     """The hammer falling on an empty chamber."""
     return d.mix(click(2600, 0.004, 0.8, ring=0.3), (0.05, click(1400, 0.006, 0.4)))
@@ -603,11 +620,6 @@ def ammo_pickup(v):
     """A box of cartridges rattling into a pocket."""
     rattle = d.mix(*[(i * 0.025 + d.rng.uniform(0, 0.01), click(3500 + d.rng.uniform(-800, 800), 0.004, 0.5, ring=0.3)) for i in range(9)])
     return d.mix(rattle, thud(200, 0.02, 0.3))
-
-
-def hit_tick(v):
-    """The shooter's own hit confirmation: a short dull tick."""
-    return d.mix(thud(900, 0.006, 0.7), click(3000, 0.002, 0.4))
 
 
 def dog_growl(v):
@@ -660,13 +672,14 @@ def stone_hit(v):
 
 
 SOUNDS = {
+    "shot_echo": (shot_echo, 2),
+    "flesh_hit": (flesh_hit, 3),
     "pistol_shot": (pistol_shot, 1),
     "shotgun_shot": (shotgun_shot, 1),
     "dry_fire": (dry_fire, 1),
     "reload_pistol": (reload_pistol, 1),
     "reload_shell": (reload_shell, 1),
     "ammo_pickup": (ammo_pickup, 1),
-    "hit_tick": (hit_tick, 1),
     "dog_growl": (dog_growl, 2),
     "dog_bark": (dog_bark, 3),
     "dog_bite": (dog_bite, 1),

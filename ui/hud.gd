@@ -13,7 +13,7 @@ const PANEL_COLOR: Color = Color(0.08, 0.06, 0.04, 0.88)
 const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _root: Control
-var _crosshair: ColorRect
+var _crosshair: Crosshair
 var _icons: ItemIcons
 var _hotbar: Hotbar
 ## Bottom right: the gun in hand.
@@ -428,12 +428,7 @@ func _update_slots(player: Player) -> void:
 # --- building --------------------------------------------------------------------------------------
 
 func _build_center() -> void:
-	_crosshair = ColorRect.new()
-	_crosshair.color = Color(1, 1, 1, 0.55)
-	_crosshair.size = Vector2(4, 4)
-	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
-	_crosshair.position = Vector2(-2, -2)
-	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_crosshair = Crosshair.new()
 	_root.add_child(_crosshair)
 	_alive_nodes.append(_crosshair)
 	_spectate_label = _label("", 22)
@@ -485,21 +480,21 @@ func _build_ammo() -> void:
 	_ammo_icon = HudIcon.new(HudIcon.Kind.BULLET, Color.WHITE, 30.0)
 	_ammo_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_ammo_icon)
-	_ammo_magazine = _label("", 46)
+	_ammo_magazine = _label("", 54)
 	_ammo_magazine.add_theme_color_override("font_color", Color(1.0, 0.92, 0.72))
 	row.add_child(_ammo_magazine)
-	_ammo_spare = _label("", 22)
+	_ammo_spare = _label("", 26)
 	_ammo_spare.size_flags_vertical = Control.SIZE_SHRINK_END
 	_ammo_spare.add_theme_color_override("font_color", DIM_COLOR)
 	row.add_child(_ammo_spare)
 
 
-## Ammo, crosshair (wider with the spread, lit for a hit, gone while aiming) and the reload bar.
+## Ammo, crosshair (opening with the spread, gone while aiming) and the reload bar.
 func _update_gun(player: Player) -> void:
 	var gunner: Gunner = player.gunner
 	var item: WorldItem = gunner.weapon_item() if gunner != null else null
 	_ammo_box.visible = item != null
-	var size: float = 4.0
+	var gap: float = 6.0
 	if item != null:
 		var weapon: WeaponData = item.data.weapon
 		var spare: int = player.ammo_count(weapon.ammo_type)
@@ -510,15 +505,11 @@ func _update_gun(player: Player) -> void:
 		_ammo_icon.kind = HudIcon.Kind.SHELL if weapon.ammo_type == &"schrot" else HudIcon.Kind.BULLET
 		_ammo_icon.queue_redraw()
 		var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
-		size = clampf(WeaponMath.spread(weapon, gunner.aiming, moving, player.crouching) * 3.0, 3.0, 26.0)
-	var marker: bool = gunner != null and gunner.hit_marker_left > 0.0
-	if marker:
-		size = 10.0
-	_crosshair.color = (Color(1.0, 0.25, 0.2, 0.9) if gunner.marker_kill else Color(1.0, 1.0, 1.0, 0.95)) if marker else Color(1, 1, 1, 0.55)
-	# Aiming down the sights, the notch and bead are the crosshair (a hit still flashes).
-	_crosshair.visible = not (gunner != null and gunner.aiming and item != null) or marker
-	_crosshair.size = Vector2(size, size)
-	_crosshair.position = Vector2(-size / 2.0, -size / 2.0)
+		gap = clampf(WeaponMath.spread(weapon, gunner.aiming, moving, player.crouching) * 3.5, 4.0, 40.0)
+	_crosshair.gap = gap
+	_crosshair.dot_only = item == null
+	# Aiming down the sights, the notch and bead are the crosshair.
+	_crosshair.visible = not (gunner != null and gunner.aiming and item != null)
 	if gunner != null and gunner.reloading:
 		_hold_bar.visible = true
 		_hold_bar.value = gunner.reload_progress
@@ -536,7 +527,7 @@ func _build_bottom() -> void:
 	_root.add_child(bars)
 	_alive_nodes.append(bars)
 	_health_bar = _status_row(bars, HudIcon.Kind.HEALTH, Color(0.85, 0.22, 0.17), 14.0, 26.0)
-	_health_value = _label("", 20)
+	_health_value = _label("", 26)
 	(_health_bar.get_parent() as HBoxContainer).add_child(_health_value)
 	_lamp_bar = _status_row(bars, HudIcon.Kind.LAMP, Color(0.98, 0.76, 0.35), 8.0, 20.0)
 	_stamina_bar = _status_row(bars, HudIcon.Kind.STAMINA, Color(0.85, 0.85, 0.8), 6.0, 18.0)
@@ -577,7 +568,7 @@ func _status_row(parent: Container, kind: HudIcon.Kind, color: Color, height: fl
 
 
 func _build_top() -> void:
-	_message = _label("", 26)
+	_message = _label("", 30)
 	_message.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_message.position = Vector2(-450, 70)
 	_message.size = Vector2(900, 40)
@@ -618,8 +609,14 @@ func _bar(color: Color) -> ProgressBar:
 	bar.max_value = 1.0
 	bar.show_percentage = false
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_theme_stylebox_override("background", _stylebox(Color(0, 0, 0, 0.55), 0))
-	bar.add_theme_stylebox_override("fill", _stylebox(color, 0))
+	var back: StyleBoxFlat = _stylebox(Color(0, 0, 0, 0.45), 0)
+	back.border_color = Color(1, 1, 1, 0.14)
+	back.set_border_width_all(1)
+	back.set_corner_radius_all(2)
+	var fill: StyleBoxFlat = _stylebox(color, 0)
+	fill.set_corner_radius_all(2)
+	bar.add_theme_stylebox_override("background", back)
+	bar.add_theme_stylebox_override("fill", fill)
 	return bar
 
 

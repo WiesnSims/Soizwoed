@@ -23,6 +23,7 @@ func _ready() -> void:
 			AudioServer.set_bus_name(index, bus_name)
 			AudioServer.set_bus_send(index, "Master")
 	_add_voice_reverb()
+	_add_voice_echo_bus()
 	_add_radio_bus()
 
 
@@ -66,6 +67,28 @@ func _add_radio_bus() -> void:
 	crunch.drive = 0.35
 	crunch.post_gain = -3.0
 	AudioServer.add_bus_effect(index, crunch)
+
+
+## Voices from further down the tunnel come back from the rock (owner request): a long, dark,
+## slightly delayed echo, sent into the Voice bus so the voice volume setting still applies.
+func _add_voice_echo_bus() -> void:
+	if AudioServer.get_bus_index(&"VoiceEcho") != -1:
+		return
+	var index: int = AudioServer.bus_count
+	AudioServer.add_bus(index)
+	AudioServer.set_bus_name(index, "VoiceEcho")
+	AudioServer.set_bus_send(index, "Voice")
+	var dark: AudioEffectLowPassFilter = AudioEffectLowPassFilter.new()
+	dark.cutoff_hz = 2600.0
+	AudioServer.add_bus_effect(index, dark)
+	var echo: AudioEffectReverb = AudioEffectReverb.new()
+	echo.room_size = 0.92
+	echo.damping = 0.45
+	echo.predelay_msec = 140.0
+	echo.predelay_feedback = 0.45
+	echo.wet = 0.9
+	echo.dry = 0.0
+	AudioServer.add_bus_effect(index, echo)
 
 
 ## A little cave reverb on the voice chat (DESIGN.md §9).

@@ -25,6 +25,8 @@ const TALK_HOLD_SECONDS: float = 0.3
 ## Open mic: louder than this (peak, 0–1) counts as speaking; it stays open this long after.
 const OPEN_MIC_GATE: float = 0.05
 const OPEN_MIC_HOLD: float = 0.5
+## The mine's echo on a voice: none right next to you, full from this share of the voice range.
+const ECHO_FULL_SHARE: float = 0.6
 ## A pause this long ends a snippet.
 const SNIPPET_GAP_SECONDS: float = 0.45
 
@@ -46,6 +48,9 @@ var _gate_open_until: float = -100.0
 var _speaker: MuffledAudio
 var _speaker_flat: AudioStreamPlayer
 var _speaker_radio: AudioStreamPlayer
+## The same voice, sent into the echo bus from the speaker's position (louder further away).
+var _speaker_echo: MuffledAudio
+var _playback_echo: AudioStreamGeneratorPlayback
 var _playback: AudioStreamGeneratorPlayback
 var _playback_flat: AudioStreamGeneratorPlayback
 var _playback_radio: AudioStreamGeneratorPlayback
@@ -126,6 +131,14 @@ func _ready() -> void:
 	_speaker.volume_db = _config.voice_chat_volume_db
 	_speaker.stream = _generator()
 	_player.head.add_child(_speaker)
+	_speaker_echo = MuffledAudio.new()
+	_speaker_echo.name = "VoiceEcho"
+	_speaker_echo.bus = &"VoiceEcho"
+	_speaker_echo.max_distance = _config.voice_chat_range * 1.4
+	_speaker_echo.unit_size = 12.0
+	_speaker_echo.volume_db = -80.0
+	_speaker_echo.stream = _generator()
+	_player.head.add_child(_speaker_echo)
 	_speaker_flat = AudioStreamPlayer.new()
 	_speaker_flat.name = "VoiceFlat"
 	_speaker_flat.bus = &"Voice"
@@ -220,6 +233,8 @@ func _play(packet: PackedByteArray, how: Hearing) -> void:
 		return
 	var frames: PackedVector2Array = packet_frames(packet)
 	var playback: AudioStreamGeneratorPlayback = _positional_playback()
+	if how != Hearing.FLAT:
+		_push_echo(frames)
 	if how == Hearing.FLAT:
 		playback = _flat_playback()
 	elif how == Hearing.RADIO:
@@ -229,6 +244,20 @@ func _play(packet: PackedByteArray, how: Hearing) -> void:
 		playback = _radio_playback()
 	if playback != null and playback.can_push_buffer(frames.size()):
 		playback.push_buffer(frames)
+
+
+## Sends the voice into the mine's echo, the more the further away the speaker stands.
+func _push_echo(frames: PackedVector2Array) -> void:
+	var listener: Camera3D = get_viewport().get_camera_3d()
+	if listener == null:
+		return
+	var share: float = clampf(listener.global_position.distance_to(_player.head.global_position) / (_config.voice_chat_range * ECHO_FULL_SHARE), 0.0, 1.0)
+	_speaker_echo.volume_db = linear_to_db(maxf(0.001, share * share)) + 2.0
+	if not _speaker_echo.playing:
+		_speaker_echo.play()
+		_playback_echo = _speaker_echo.get_stream_playback() as AudioStreamGeneratorPlayback
+	if _playback_echo != null and _playback_echo.can_push_buffer(frames.size()):
+		_playback_echo.push_buffer(frames)
 
 
 func _radio_playback() -> AudioStreamGeneratorPlayback:

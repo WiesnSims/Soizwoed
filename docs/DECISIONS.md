@@ -448,3 +448,27 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Settings → Ton:** "Lautsprecher / Kopfhörer" (output device) and "Mikrofon" (input device), both "Standard vom System" by default, and a live mic level meter. A device that is unplugged falls back to the default.
 - The Salzweibl's snippets now keep these packets, so its voice lure no longer needs Steam either.
 - `mp_test.ps1 -Coop` checks that a client's voice reaches the host and is kept as a snippet.
+
+## 2026-10-30 – M6 playtest, round 2
+
+### Confirmed by the owner
+- Smooth movement, aiming, the hotbar 1–9 and the microphone are fine now; ammo amounts are OK.
+- **No hit markers:** you see a hit on the creature (blood, flinch, cry); in the dark you may not know whether you hit. The hit flash and the hit sound are gone.
+
+### Asked for by the owner, done by Claude
+- **Gun feel like Berghittn** (its viewmodel and weapon-motion code were the model; owner request):
+  - gloved hands on the gun;
+  - every shot kicks it back with the muzzle climbing (pistol 5 cm / 10°, shotgun 9 cm / 16° plus a view shake);
+  - the pistol's slide blows back and a casing flies out;
+  - a visible muzzle flash;
+  - walking bobs the gun in a figure 8, sprinting lowers and turns it, it trails mouse turns and leans when strafing – nearly all of it gone while aiming.
+- **Aimed view like other shooters:** the gun in the middle with its sights on the target, the hands below, the forearms going down out of view.
+- **Real gun sounds:** the CC0 recordings Berghittn uses (copied, see ASSETS.md), plus the mine's own rolling echo after every shot. Magazine out/in and a dry click for the pistol.
+- **Hits:** a bigger spray of dark blood out of the creature, blood dripping down, a wet thud on every peer (`flesh_hit`) on top of the creature's own cry.
+- **Footsteps 7 dB quieter** (walking −13 dB, crouching −21 dB).
+- **Voice chat echo:** it was already proximity voice (3D, from the speaker's head, muffled through rock). Now the voice is also sent into a "VoiceEcho" bus – a long, dark, slightly delayed mine echo – the more the further away the speaker is: none close by, full from 60 % of the voice range (18 m).
+- **HUD more modern:**
+  - the condensed font Barlow Condensed (OFL) for all UI;
+  - a crosshair of four ticks that open with the spread around a small dot (hidden while aiming);
+  - framed bars, larger numbers.
+- **Docs:** DESIGN.md now describes the slots, the no-hit-marker rule, the voice pipeline, gun feel and the HUD; CLAUDE.md tells every session to read this file first.

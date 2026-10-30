@@ -64,8 +64,9 @@ Fail (timer runs out, or the whole crew is dead) → Kündigung: run over
 - **Health:** 100 base (+ permanent upgrades). No regen; heal with consumables (Obstler, Leberkässemmel, Speckbrot) and the Erste-Hilfe-Tascherl.
 - **Armour (new):** the Lederschurz / Grubenhelm upgrades absorb part of incoming damage until worn through; refreshed in the hub (bought per run).
 - **Light:** carbide lamp (flame, ignites firedamp) or electric Stirnlampe. Lights still matter: the Kasermandl, darkness hiding enemies, muzzle flashes and flares.
-- **Inventory:** 4 slots for weapons and tools, hands for medium/heavy things (loot, the Fundstück). **Ammo does not take slots**: each ammo type is a counter with a carry cap (upgradable).
-- **Shooting:** aim with the mouse, left click fires, right click aims down the sights (less spread, slower move), R reloads (magazine by magazine, interruptible). Weapons have spread, recoil, damage falloff and a noise radius (gunfire draws listening creatures).
+- **Inventory (owner decision, M6 playtest):** keys **1–3 weapons** (guns, the Spitzhacke), **4 a throwable** (Böller, Rauchbombe, dynamite; a second one goes into a pocket), **5–9 everything else**; plus both hands for medium/heavy things (loot, the Fundstück). The mouse wheel skips empty slots. **Ammo does not take slots**: each ammo type is a counter with a carry cap (upgradable).
+- **Shooting:** aim with the mouse, left click fires, right click aims down the sights (the gun comes up so notch and bead sit exactly on the screen centre, where the shots go; less spread, slower move), R reloads (magazine by magazine, or shell by shell for the shotgun, interruptible). Weapons have spread, recoil, damage falloff and a noise radius (gunfire draws listening creatures).
+- **No hit markers (owner decision):** a hit shows on the creature – blood spraying, a flinch, its cry and a wet thud – not on the crosshair. In the dark you may not know whether you hit.
 - **Friendly fire is on**, at 33 % of the damage to start with (owner decision 2026-10-30; `balance.tres`): watch where you shoot.
 - **Downed and dead:** at 0 health a miner is **downed** for 20 s (crawls slowly, can shoot the pistol only). A teammate holding E for 3 s gets them up with 30 health. Downed again within the shift or bled out → **dead**: drops everything (weapons too – teammates can pick them up), spectates, comes back next shift with the starting kit and their permanent upgrades. The **Wunderheilerin-Salbe** still revives the dead (within 30 s of death).
 - **Solo:** no downed state (nobody to help) – instead one free "Zweite Luft" per shift: at 0 health you stay at 1 and get 3 s of invulnerability.
@@ -180,7 +181,9 @@ Solo extras: no downed state but one "Zweite Luft" per shift; Salzweibl uses gen
 
 ## 9. Multiplayer & Social Features
 
-Unchanged from v1: Steam lobbies (friends-only by default), invites and in-game friends list, late join only in the hub, proximity voice (muffled through rock, cave reverb, dead talk to the dead), Funkgerät, emotes (Jodler, wave, point), host leaving ends the session.
+Unchanged from v1: Steam lobbies (friends-only by default), invites and in-game friends list, late join only in the hub, Funkgerät, emotes (Jodler, wave, point), host leaving ends the session.
+
+**Proximity voice (reworked after the M6 playtest):** the game records the microphone itself (input and output devices chosen in the settings, with a level meter) and sends the voice over its own connection – it works over Steam and ENet alike. You hear a teammate from where they stand (3D), muffled through rock, and the further away they are, the more the mine throws their voice back as a long echo. Push-to-talk (V) or open mic. Dead talk only to the dead.
 
 New: teammates' health/ammo shown small next to their names; "downed" teammates marked through walls; pings (middle mouse: "do!" marks a spot or enemy for 5 s).
 
@@ -189,8 +192,11 @@ New: teammates' health/ammo shown small next to their names; "downed" teammates 
 ## 10. Presentation
 
 Visuals and audio as in v1 (realistic PBR, very dark, lighting as the main tool, no music in the mine). Additions:
-- **Weapon feel:** first-person weapon models with recoil, muzzle flash (lights the tunnel for a frame – and gives you away), shell ejection, reload animations, hit markers and hit sounds, blood/salt-dust impacts, enemy hit reactions and death animations/ragdolls.
-- **Audio:** every weapon has a distinct, loud, echoing report; gunfire is audible (and audible to creatures) far through the mine; the alarm bell; boss music stings are allowed (the only music in the mine).
+- **Smooth movement:** physics interpolation, the camera placed every rendered frame (no stutter at any frame rate); no frame cap by default (VSync follows the screen).
+- **Weapon feel (modelled on Berghittn):** gloved hands on the gun, kick and muzzle climb per shot, slide blowback and ejected casings, a visible muzzle flash that lights the tunnel for an instant (and gives you away), figure-8 bob when walking, a lowered sprint pose, lag behind mouse turns, a lean when strafing – nearly all gone while aiming. Shotgun shots shake the view. Reload animations come in M10.
+- **Hits:** blood spraying out of a creature, its flinch and cry and a wet thud; salt dust on rock. No hit markers.
+- **Audio:** guns use **real recordings** (CC0 "Free Firearm Sound Library", the same takes as Berghittn) plus the mine's own long rolling echo after every shot; gunfire is audible (and audible to creatures) far through the mine; the alarm bell; boss music stings are allowed (the only music in the mine). Footsteps are kept quiet.
+- **HUD (like other shooters):** a hotbar 1–9 with icons rendered from the items' own models and magazine counts, icon bars for health/lamp/breath, a large ammo counter, a crosshair that opens with the spread (hidden while aiming), a condensed modern font (Barlow Condensed).
 - UI text in German dialect with English translation (both exist since M5).
 
 ---
@@ -198,6 +204,8 @@ Visuals and audio as in v1 (realistic PBR, very dark, lighting as the main tool,
 ## 11. Technology
 
 Unchanged: Godot 4 + GDScript (static typing), Forward+, Windows desktop export, GodotSteam with App ID 480 and `game=soizwoed` / `ver=<version>` lobby tags, ENet backend for testing, `NetworkManager` autoload, host-authoritative world, client-authoritative movement.
+
+Voice chat: recorded by the game (`Mic` autoload: `AudioStreamMicrophone` on a muted bus with `AudioEffectCapture`, the input device from the settings), 16 kHz mono, μ-law coded, sent in 40 ms packets as unreliable RPCs – the same for the Steam and the ENet backend. Played on an `AudioStreamPlayer3D` at the speaker's head, plus a distance-weighted send into a mine-echo bus.
 
 Combat networking:
 - The shooter's client decides what it hit (raycast/spread on its own screen, zero latency feel – co-op among friends, cheating is not a concern) and sends `request_hit(target, damage, hit_point, weak_spot)` to the host; the host applies damage (sanity-checked: range, rate of fire, ammo) and replicates health, staggers and deaths.
