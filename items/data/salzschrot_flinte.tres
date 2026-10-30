@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/salzschrotflinte.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://weapons/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="weapon"]
+script = ExtResource("3_weapon")
+ammo_type = &"schrot"
+damage = 7
+pellets = 8
+fire_interval = 0.35
+magazine = 2
+reload_seconds = 1.1
+reload_per_round = true
+spread_hip = 7.0
+spread_ads = 5.0
+range = 25.0
+falloff_start = 6.0
+falloff_min = 0.3
+recoil = 7.0
+noise = 45.0
+ads_zoom = 0.9
+sound = "shot_jagdflinte"
+reload_sound = "reload_shell"
+knockback = 0.6
+kick_back = 0.09
+kick_angle = 16.0
+kick_time = 0.22
+shake = 0.35
+grip = Vector3(0, -0.05, 0.13)
+support = Vector3(0, -0.045, -0.15)
+muzzle = Vector3(0, 0, -0.58)
+flash_size = 1.6
+sight_height = 0.022
+aim_distance = 0.24
+
+[resource]
+script = ExtResource("1_data")
+id = &"salzschrot_flinte"
+name_key = "ITEM_SALZSCHROT_FLINTE"
+kind = 1
+weight_class = 0
+price = 320
+spawn_weight = 0.0
+scene = ExtResource("2_scene")
+use = 14
+weapon = SubResource("weapon")

@@ -33,6 +33,14 @@ budget_cost = 0.0
 weight = 0.0
 max_alive = 1
 
+[sub_resource type="Resource" id="spawn_grubenhund"]
+script = ExtResource("2_spawn")
+id = &"grubenhund"
+budget_cost = 1.0
+weight = 4.0
+group_min = 2
+group_max = 3
+
 [sub_resource type="Resource" id="spawn_salzweibl"]
 script = ExtResource("2_spawn")
 id = &"salzweibl"
@@ -93,13 +101,12 @@ loot_density_by_players = Array[float]([0.6, 0.75, 0.9, 1.0])
 loot_count_base = 16.0
 loot_count_per_cycle = 2.0
 loot_value_per_depth = 0.05
-enemy_budget_base = 6.0
-enemy_budget_per_cycle = 2.0
+enemy_budget_base = 9.0
+enemy_budget_per_cycle = 3.0
 enemy_min_depth = 2
 enemy_start_share = 0.5
 enemy_trickle_seconds = 90.0
 player_max_health = 100
-inventory_slots = 4
 solo_free_schubkarre = true
 walk_speed = 3.4
 sprint_speed = 5.8
@@ -141,5 +148,5 @@ voice_cooldown_per_creature = 10.0
 voice_global_gap = 2.0
 voice_max_distance = 25.0
 voice_idle_chance = 0.04
-creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht")])
+creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht"), SubResource("spawn_grubenhund")])
 biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee"), SubResource("biome_die_tiefe")])

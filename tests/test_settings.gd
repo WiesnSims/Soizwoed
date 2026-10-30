@@ -6,7 +6,7 @@ func test_defaults_are_the_tuned_look_at_a_sane_cost() -> void:
 	var data: SettingsData = SettingsData.new()
 	assert_eq(data.quality, SettingsData.Quality.HIGH)
 	assert_eq(data.anti_aliasing, SettingsData.AntiAliasing.TAA)
-	assert_eq(data.fps_limit, 60)
+	assert_eq(data.fps_limit, 0, "no cap: VSync follows the screen (a 60 cap stuttered on 144 Hz)")
 	assert_false(data.auto_resolution, "native 3D resolution unless FSR 2 is chosen")
 	assert_eq(data.fov, 78.0)
 	assert_true(data.creature_lines, "Gegner reden is on by default (DESIGN.md §6)")
@@ -160,3 +160,15 @@ func test_event_codes() -> void:
 	assert_eq(button.button_index, MOUSE_BUTTON_RIGHT)
 	assert_eq(SettingsData.event_code(button), -2)
 	assert_eq(SettingsData.event_code(key), int(KEY_Q))
+
+
+func test_old_60_fps_default_moves_to_no_cap() -> void:
+	var file: ConfigFile = ConfigFile.new()
+	file.set_value("meta", "version", 3)
+	file.set_value("display", "fps_limit", 60)
+	var data: SettingsData = SettingsData.new()
+	data.load_from(file)
+	assert_eq(data.fps_limit, 0)
+	file.set_value("display", "fps_limit", 144)
+	data.load_from(file)
+	assert_eq(data.fps_limit, 144, "a chosen cap stays")

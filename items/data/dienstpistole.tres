@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/dienstpistole.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://weapons/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="weapon"]
+script = ExtResource("3_weapon")
+ammo_type = &"pistole"
+damage = 14
+pellets = 1
+fire_interval = 0.22
+magazine = 8
+reload_seconds = 1.6
+spread_hip = 2.5
+spread_ads = 0.7
+range = 45.0
+falloff_start = 15.0
+falloff_min = 0.6
+recoil = 2.5
+noise = 30.0
+ads_zoom = 0.82
+usable_downed = true
+sight_height = 0.025
+aim_distance = 0.36
+sound = "shot_pistole"
+reload_sound = "mag_out"
+reload_sound_late = "mag_in"
+reload_late_share = 0.55
+kick_back = 0.05
+kick_angle = 10.0
+kick_time = 0.13
+grip = Vector3(0, -0.07, 0.07)
+support = Vector3(-0.022, -0.085, 0.05)
+muzzle = Vector3(0, 0, -0.14)
+ejects_casing = true
+
+[resource]
+script = ExtResource("1_data")
+id = &"dienstpistole"
+name_key = "ITEM_DIENSTPISTOLE"
+kind = 1
+weight_class = 0
+price = 150
+spawn_weight = 0.0
+scene = ExtResource("2_scene")
+use = 14
+weapon = SubResource("weapon")

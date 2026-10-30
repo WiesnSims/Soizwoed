@@ -375,3 +375,100 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 
 ### Chosen by Claude (change any time)
 - **Wunderheilerin-Salbe:** rare loot (spawn weight 0.15, 3+ steps deep, any section, 60–90 S if sold instead). Select it in a pocket, look at a dead teammate's body and click: within 30 s of their death they stand up where the body lay with 40 health; the body and the salve are gone. Later: "Z'spät". In solo it can only be sold (nobody is left to use it on you).
+
+## 2026-10-30 – DESIGN v2 (action redesign)
+
+### Confirmed by the owner
+- **v1 played as boring;** DESIGN.md is rewritten as v2: Lethal-Company pace with guns and scarce ammo, a Fundstück per shift (often boss-guarded; alarm, Rückweg-timer, carry it to the lift) instead of the money quota, attacking and killable creatures (all v1 creatures kept), roguelite run upgrades plus permanent upgrades, co-op first with solo scaled down. Only the gameplay layer is rebuilt; networking, generator, sections, hub, settings, audio and tests stay.
+- **Friendly fire on, 33 %** of the damage to start with.
+- **The Fundstück is handed over, not thrown;** creatures focus its carrier.
+- DESIGN v2 approved; milestones M6–M10.
+
+## 2026-10-30 – M6 combat prototype (chosen by Claude unless marked, change any time)
+
+### Guns (DESIGN.md §3, §7)
+- **Weapons are data:** `WeaponData` (damage per pellet, pellets, fire interval, magazine, reload, spread from the hip and aimed, falloff, recoil, noise, zoom) on the gun's `ItemData`. Guns are light pocket items; the selected one is fired with the use click.
+- **Controls:** left click shoots, right click (hold) aims down the sights (narrower cone, 82–90 % FOV, 60 % walking speed), R reloads. Moving widens the cone 1.6×, crouching narrows it to 0.8×. Recoil kicks the view up; about two thirds of the kick comes back down by itself.
+- **Dienstpistole** (start, 150 S spare): 14 damage, 8 rounds, 1.6 s reload, accurate (0.7° aimed), falls to 60 % beyond 15 m, works lying down.
+- **Salzschrot-Flinte** (320 S): 8 pellets × 7, two shells loaded one by one (1.1 s each; firing cuts the reload short), useless beyond 25 m.
+- **Ammo:** counters per type, no pocket slots (cap 48 pistol rounds, 20 shells). Boxes: "Schachtl Pistoln-Patronen" (10, 40 S) and "Schachtl Salzschrot" (5, 55 S), in the shop and lying in the mine (2.5 boxes per miner, at least one). E on a box adds it; at the cap the box stays.
+- **The company's kit before every shift:** a Dienstpistole for whoever has no gun, and pistol rounds topped up to 16. So nobody is ever completely unarmed, but spare ammo beyond 16 must be found or bought.
+- **Shooting over the network:** the shooter's own screen decides hits (no delay); the host applies the damage, keeps every magazine count in sync, makes the noise (pistol 30 m, shotgun 45 m – the Tatzelwurm comes) and shows the flash, tracer and impact on the other peers. **The muzzle flash is a flame:** shooting inside firedamp sets it off.
+- **Friendly fire (owner decision):** on, 33 % of the damage ("Au! Pass auf, wo'st hinschiaßt!").
+
+### Creatures fight
+- Every creature can now die through one path (`Creature.host_damage`): a flinch on every peer, and at 0 health the body falls over and sinks into the floor.
+- **Creature health scales with the crew** (§8): ×0.7 solo, 0.85, 0.95, 1.0.
+- **Grubenhund (new, the basic enemy):** packs of 2–3, 55 health (solo 38: three pistol hits), 5.2 m/s (a sprint still gets away), sees a lit lamp from 22 m and the dark from 10 m (half when crouching), hears shots and noise. Bites for 12, springs back to the side and comes again (1.3 s). One that finds a miner calls the pack. Below 30 % it runs off yelping once for 3 s. Prefers standing miners over downed ones.
+- **Bergmandl:** dies for real (30 health, scaled), still steals – now ammo boxes too – and with nothing to steal it throws stones from 4–14 m every ~3.5 s (8 damage, a lobbed arc every peer sees; the host decides hits).
+- **Spawning:** the Grubenhund is in every section (weight 4, cost 1). The enemy budget is raised for the action pace: 9 + 3 per cycle (was 6 + 2). The other creatures still behave as in v1 until M8.
+
+### Downed, helped up, second wind (§3)
+- **Co-op:** the first time a miner's health hits 0 in a shift (and someone else is still standing), they go down: dropping what is in their hands, crawling at 0.8 m/s, eyes at floor level, only the pistol works. A teammate holds E on them for 3 s → back up with 30 health. After 20 s, or any further hit while down, they die. Downed a second time in the same shift = dead.
+- **Solo:** no downed state; once per shift a killing blow leaves 1 health and 3 s of invulnerability ("Zweite Luft").
+- The Wunderheilerin-Salbe still brings back the dead.
+
+### Not yet (M7+)
+- The money quota is still the run's goal in M6; the Fundstück, alarm and Rückweg-timer replace it in M7.
+- No per-shift difficulty curve yet (M7), no weapon upgrades (M7/M9), other creatures unchanged (M8).
+
+### Tests
+- `tests/test_weapons.gd` (spread, cone, falloff, reload, friendly fire, gun data).
+- `smoke_combat`: the kit, a dog pack shot down with aimed pistol fire, the shotgun's shell reload, Bergmandl stones, a dog bite, the solo second wind.
+- `mp_test.ps1 -Coop` adds friendly fire (30 → 10), downed, helped up (30 health), down for good; `-Tools` adds a client shooting a Grubenhund dead with the host applying it.
+- Version **0.6.0**.
+
+## 2026-10-30 – M6 playtest feedback
+
+### Asked for by the owner
+- **Movement stutter and wriggling held items – fixed.** Cause: movement ran in 60 Hz physics steps while the screen draws at its own rate, so the camera jumped unevenly ("physics jitter"); held items were smoothed towards that jumping camera and wriggled. Now:
+  - physics interpolation is on (with Godot's jitter fix off, as recommended for interpolation);
+  - the camera is placed every rendered frame from the interpolated body, with the current mouse look (no input delay);
+  - held items follow their point exactly;
+  - things moved per frame (remote players, clients' creatures and items) opt out of interpolation.
+  - Measured while walking (`--scenario=smooth`): frame-to-frame unevenness 117 % → 0 %.
+- **No 60 fps cap by default any more:** VSync follows the screen. A 60 cap on a 144 Hz screen paces frames unevenly. Settings files that still have the old 60 default move to "no cap" once.
+- **Aiming down the sights:** the gun comes up so its sight line lies exactly on the screen centre, where the shots go (bead 0.07° off in the check). The pistol and the shotgun have a rear notch and a front bead. The crosshair hides while aiming, and the gun glides between hip and eye. A red-dot sight can come later as an upgrade.
+- **Slots:** keys 1–3 weapons (guns and the Spitzhacke), 4 a throwable (Böller, Rauchbombe; a second one goes into a pocket), 5–9 everything else. The owner's message said "4 for items" but "5–9 items"; we went with 5 item slots so every number key has a slot. The mouse wheel skips empty slots.
+- **HUD like other shooters:**
+  - a hotbar of 9 squares with icons rendered from each item's own 3D model, the key number, and the magazine count on guns, in three groups; the selected slot is lit and its name shows briefly when switching;
+  - health (with its number), lamp and breath bars with drawn icons, bottom left;
+  - a large magazine count, the spare rounds and a bullet or shell icon, bottom right.
+- **More ammo** (the misaligned sights wasted a lot of it): ration 24 pistol rounds per shift (was 16), 3.5 boxes per miner in the mine (was 2.5), pistol boxes of 12 (was 10).
+
+### Microphone and audio devices (owner request)
+- **Why the mic seemed dead:**
+  - voice only worked in Steam sessions;
+  - it used Steam's own recorder, so the microphone was whatever the Steam client was set to (Steam → Settings → Voice);
+  - it is push-to-talk on V by default;
+  - solo and ENet games had no voice at all.
+- **Now the game records the microphone itself** (`Mic` autoload): from the input device picked in the settings, 16 kHz mono, μ-law coded (~16 KB/s while talking), sent over the game's own connection. Voice works the same over Steam and ENet, so it can be tested locally.
+  - Push-to-talk V or open mic (open mic now sends only while you are louder than a small gate).
+  - The mic only records while voice chat runs or the sound settings are open, and never in automated runs.
+- **Settings → Ton:** "Lautsprecher / Kopfhörer" (output device) and "Mikrofon" (input device), both "Standard vom System" by default, and a live mic level meter. A device that is unplugged falls back to the default.
+- The Salzweibl's snippets now keep these packets, so its voice lure no longer needs Steam either.
+- `mp_test.ps1 -Coop` checks that a client's voice reaches the host and is kept as a snippet.
+
+## 2026-10-30 – M6 playtest, round 2
+
+### Confirmed by the owner
+- Smooth movement, aiming, the hotbar 1–9 and the microphone are fine now; ammo amounts are OK.
+- **No hit markers:** you see a hit on the creature (blood, flinch, cry); in the dark you may not know whether you hit. The hit flash and the hit sound are gone.
+
+### Asked for by the owner, done by Claude
+- **Gun feel like Berghittn** (its viewmodel and weapon-motion code were the model; owner request):
+  - gloved hands on the gun;
+  - every shot kicks it back with the muzzle climbing (pistol 5 cm / 10°, shotgun 9 cm / 16° plus a view shake);
+  - the pistol's slide blows back and a casing flies out;
+  - a visible muzzle flash;
+  - walking bobs the gun in a figure 8, sprinting lowers and turns it, it trails mouse turns and leans when strafing – nearly all of it gone while aiming.
+- **Aimed view like other shooters:** the gun in the middle with its sights on the target, the hands below, the forearms going down out of view.
+- **Real gun sounds:** the CC0 recordings Berghittn uses (copied, see ASSETS.md), plus the mine's own rolling echo after every shot. Magazine out/in and a dry click for the pistol.
+- **Hits:** a bigger spray of dark blood out of the creature, blood dripping down, a wet thud on every peer (`flesh_hit`) on top of the creature's own cry.
+- **Footsteps 7 dB quieter** (walking −13 dB, crouching −21 dB).
+- **Voice chat echo:** it was already proximity voice (3D, from the speaker's head, muffled through rock). Now the voice is also sent into a "VoiceEcho" bus – a long, dark, slightly delayed mine echo – the more the further away the speaker is: none close by, full from 60 % of the voice range (18 m).
+- **HUD more modern:**
+  - the condensed font Barlow Condensed (OFL) for all UI;
+  - a crosshair of four ticks that open with the spread around a small dot (hidden while aiming);
+  - framed bars, larger numbers.
+- **Docs:** DESIGN.md now describes the slots, the no-hit-marker rule, the voice pipeline, gun feel and the HUD; CLAUDE.md tells every session to read this file first.

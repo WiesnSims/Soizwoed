@@ -14,9 +14,6 @@ signal state_changed
 enum State { FREE, HELD, STORED, CARTED, STOLEN }
 
 const IMPACT_SPEED: float = 4.5
-## How quickly an item in hand catches up with the hand (higher = stiffer). Following happens
-## every rendered frame, so it never lags the camera by a physics step.
-const HAND_SHARPNESS: float = 28.0
 const LAYER_ITEMS: int = 4  # physics layer 3
 ## Held heavy items sit on the interactables layer, so another player can grab the other end.
 const LAYER_INTERACT: int = 16  # physics layer 5
@@ -35,6 +32,8 @@ var follow: Node3D
 var opened: bool = false
 ## Worn on the holder's head (the Gamsbart-Hut), still in its pocket slot.
 var worn: bool = false
+## A gun: rounds in its magazine (the holder changes it, the host tells everyone).
+var rounds: int = 0
 
 var _impact_cooldown: float = 0.0
 ## Clients: the host's transforms of this item while it is free.
@@ -56,6 +55,7 @@ func _ready() -> void:
 	sent_transform = global_transform
 	if not multiplayer.is_server():
 		freeze = true
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 
 func display_name() -> String:
@@ -96,13 +96,7 @@ func _process(delta: float) -> void:
 		var helper: Player = Game.instance.player_by_peer(helper_peer)
 		if helper != null:
 			target.origin = target.origin.lerp(helper.hold_point.global_position, 0.5)
-	if state == State.HELD or state == State.STORED:
-		var weight: float = 1.0 - exp(-HAND_SHARPNESS * delta)
-		if global_position.distance_to(target.origin) > 2.0:
-			weight = 1.0  # teleported: no swoosh across the world
-		global_transform = global_transform.interpolate_with(target, weight)
-	else:
-		global_transform = target
+	global_transform = target
 
 
 func _physics_process(delta: float) -> void:
@@ -184,6 +178,8 @@ func host_send_state_to(peer: int, place: int) -> void:
 		_apply_helper.rpc_id(peer, helper_peer)
 	if opened or worn:
 		_apply_flags.rpc_id(peer, opened, worn)
+	if data.weapon != null:
+		set_rounds.rpc_id(peer, rounds)
 
 
 # --- every peer ------------------------------------------------------------------------------------
@@ -217,6 +213,11 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 			_net.clear()
 			_net.push(Time.get_ticks_msec() / 1000.0, at.origin, at.basis.get_rotation_quaternion())
 	freeze = new_state != State.FREE or not multiplayer.is_server()
+	# Only a free item on the host moves in physics steps (and is drawn interpolated); everything
+	# else is placed every frame.
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_INHERIT if new_state == State.FREE and multiplayer.is_server() \
+			else Node.PHYSICS_INTERPOLATION_MODE_OFF
+	reset_physics_interpolation()
 	collision_layer = _layer_for(new_state)
 	# In a hand it sits right in front of the lamp's beam: no shadow over the whole view.
 	var shadow: GeometryInstance3D.ShadowCastingSetting = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF \
@@ -226,6 +227,12 @@ func _apply_state(new_state: State, peer: int, place: int, follow_path: NodePath
 	if new_state != State.STORED:
 		visible = true
 	state_changed.emit()
+
+
+## The magazine's count, from the host to everyone (after a shot or a reload).
+@rpc("authority", "call_local", "reliable")
+func set_rounds(count: int) -> void:
+	rounds = count
 
 
 @rpc("authority", "call_local", "reliable")

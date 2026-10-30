@@ -6,6 +6,8 @@ Godot 4 + GDScript, Windows desktop build, Steam networking via GodotSteam with 
 The full game design is here and must be followed:
 @docs/DESIGN.md
 
+`docs/DECISIONS.md` records every decision and change made along the way – what the owner decided, what Claude chose, and why (newest at the bottom). Read it at the start of a session before changing anything; DESIGN.md says what the game is, DECISIONS.md how we got there and the exact numbers.
+
 ## How to work
 - Work milestone by milestone (DESIGN.md §12). Finish and test one milestone before starting the next.
 - At the end of each milestone, produce a working Windows build and summarise what to playtest.
@@ -38,6 +40,7 @@ The full game design is here and must be followed:
   - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, the host must see each use arrive
   - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl)
   - `godot --headless -s tools/balance_report.gd` – loot value per shift and the share needed for the quota, per cycle, crew and section
+  - `godot --audio-driver Dummy -- --solo --scenario=smooth --shots=build/shots` – measures how evenly the camera moves while walking (stutter check; add `--no-interp` for the old behaviour)
   - `tools/steam_test.ps1` – needs the Steam client running: headless host creates a public lobby, a second instance must find it via the game/ver filter
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it
   - Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`

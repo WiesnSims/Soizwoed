@@ -3,11 +3,13 @@ extends Resource
 ## One loot item, tool or consumable. New content = a new .tres of this type plus its scene
 ## (a WorldItem). Loot spawns by `spawn_weight` from `min_depth` steps from the lift.
 
-enum Kind { LOOT, TOOL, CONSUMABLE }
+enum Kind { LOOT, TOOL, CONSUMABLE, AMMO }
 enum WeightClass { LIGHT, MEDIUM, HEAVY }
 ## What the use key (left click) does with it in the hand (Player._use_active). The numbers
 ## behind each use live in balance.tres.
-enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO, WEAR, OPEN, EAT_OLD, REVIVE }
+enum Use { NONE, REFILL_LAMP, HEADLAMP, ALPHORN, THROW, DRINK, EAT, ROPE, PFEIFERL, RADIO, WEAR, OPEN, EAT_OLD, REVIVE, SHOOT }
+## Which pocket slots it goes in (Inventory): guns and the pick 1–3, throwables 4, the rest 5–9.
+enum SlotKind { WEAPON, THROWABLE, ITEM }
 ## Something the item does by itself in the mine (host, Game._host_tick_specials).
 enum Special { NONE, CUCKOO, CURSED }
 
@@ -35,6 +37,19 @@ enum Special { NONE, CUCKOO, CURSED }
 @export var breaks_rock: bool = false
 @export var use: Use = Use.NONE
 @export var special: Special = Special.NONE
+## A gun: how it shoots (its use is SHOOT).
+@export var weapon: WeaponData
+## Ammo boxes (kind AMMO): picking one up adds `ammo_amount` to the counter `ammo_type`.
+@export var ammo_type: StringName = &""
+@export var ammo_amount: int = 0
+
+
+func slot_kind() -> SlotKind:
+	if weapon != null or (kind == Kind.TOOL and melee_damage > 0):
+		return SlotKind.WEAPON
+	if use == Use.THROW:
+		return SlotKind.THROWABLE
+	return SlotKind.ITEM
 
 
 ## Whether this loot may spawn in the mine section `biome`.

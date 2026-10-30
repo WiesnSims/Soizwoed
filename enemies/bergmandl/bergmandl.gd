@@ -1,8 +1,9 @@
 class_name Bergmandl
 extends Creature
-## The mine gnome (DESIGN.md §6): small, quick, in groups. Steals loot from the floor, from
-## Schubkarren and out of players' hands, then runs off giggling and drops it somewhere far
-## away. Not deadly. Counter: shout at it ("Plärren") or hit it, and it drops what it has.
+## The mine gnome (DESIGN.md §6): small, quick, in groups – the harasser. Steals loot and ammo
+## boxes from the floor, from Schubkarren and out of players' hands, then runs off giggling and
+## drops it somewhere far away. With nothing to steal it throws stones at miners from a
+## distance. Counter: shoot it (30 health), or shout at it ("Plärren") and it drops what it has.
 ## Loot inside the Förderkorb is safe.
 
 enum State { WANDER, FETCH, SNATCH, RUN_OFF, SCARED }
@@ -27,6 +28,7 @@ var _snatch_cooldown: float = 0.0
 var _target_item: WorldItem
 var _target_player: Player
 var _spotted: Dictionary = {}  # peer id -> true while that player stays in sight
+var _throw_left: float = 2.0
 ## Local presentation (every peer).
 var _last_position: Vector3
 var _step_left: float = 0.0
@@ -39,7 +41,7 @@ var _bob: float = 0.0
 
 func _ready() -> void:
 	super()
-	health = _config.bergmandl_health
+	health = scaled_health(_config.bergmandl_health)
 	_goal = global_position
 	_last_position = global_position
 
@@ -66,6 +68,7 @@ func _think(delta: float) -> void:
 	_state_time += delta
 	_look_left -= delta
 	_snatch_cooldown -= delta
+	_throw_left -= delta
 	if carried != null and (not is_instance_valid(carried) or carried.state != WorldItem.State.STOLEN):
 		carried = null
 	match state:
@@ -135,6 +138,12 @@ func _look_around() -> bool:
 		_target_item = item
 		_set_state(State.FETCH)
 		return true
+	if _throw_left <= 0.0:
+		for player: Player in seen:
+			var distance: float = player.global_position.distance_to(global_position)
+			if distance > _config.bergmandl_throw_min and distance < _config.bergmandl_throw_max:
+				_throw_at(player)
+				return false
 	for player: Player in seen:
 		if _loot_in_hands(player) != null:
 			_target_player = player
@@ -159,7 +168,9 @@ func _nearest_loot() -> WorldItem:
 
 ## Loot lying around or in a parked Schubkarre, outside the Förderkorb.
 func _can_take(item: WorldItem) -> bool:
-	if item == null or not is_instance_valid(item) or item.is_queued_for_deletion() or not item.is_loot():
+	if item == null or not is_instance_valid(item) or item.is_queued_for_deletion():
+		return false
+	if not item.is_loot() and item.data.kind != ItemData.Kind.AMMO:
 		return false
 	if item.global_position.y > Game.HUB_FLOOR_ABOVE or Game.instance.in_mine_cage(item.global_position):
 		return false
@@ -233,11 +244,20 @@ func host_shouted_at(from: Vector3) -> void:
 	_set_state(State.SCARED)
 
 
+## A stone at a miner: lobbed at where they will be, a little off (host decides the hit).
+func _throw_at(player: Player) -> void:
+	_throw_left = randf_range(_config.bergmandl_throw_seconds * 0.7, _config.bergmandl_throw_seconds * 1.3)
+	var from: Vector3 = global_position + Vector3.UP * 0.9
+	var target: Vector3 = player.global_position + Vector3.UP * 1.2 + player.velocity * 0.35
+	target += Vector3(randf_range(-0.6, 0.6), randf_range(-0.3, 0.3), randf_range(-0.6, 0.6))
+	look_at(Vector3(target.x, global_position.y, target.z), Vector3.UP)
+	Game.instance.host_throw_stone(from, target, _config.bergmandl_stone_damage, get_path())
+	play_sound.rpc("voices/bergmandl/giggle", -8.0)
+
+
 func host_hit(damage: int, from: Vector3) -> void:
 	_drop_carried()
-	health -= damage
-	if health <= 0:
-		host_vanish(VoiceLine.Moment.DIE, "poof")
+	if host_damage(damage, from, "poof"):
 		return
 	say(VoiceLine.Moment.HIT, true)
 	_goal = away_point(from)

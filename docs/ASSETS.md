@@ -26,3 +26,17 @@ Fetched by `tools/textures/fetch.py`.
 ## Music
 
 The Gasthaus waltz (`assets/audio/music/stubenmusi.ogg`) is synthesised by `tools/audio/music.py` (our own, no third-party material).
+
+## Gun recordings (CC0)
+
+`assets/audio/sfx/shot_pistole_*.ogg`, `shot_jagdflinte_*.ogg`, `mag_in_1`, `mag_out_1`, `dry_click_1`, `bolt_open_1`, `bolt_close_1` were copied from our earlier project Berghittn (`X:\Code\Projects\GeilesGame`, owner request 2026-10-30), where `tools/audio/recordings.py` cut them out of near-distance takes, mixed them to mono and limited them. Shots: Walther PPQ (Dienstpistole), Winchester Model 12 and Charles Daly 12 ga (Salzschrot-Flinte).
+
+| Source | Authors | Licence |
+|---|---|---|
+| "The Free Firearm Sound Library", https://opengameart.org/content/the-free-firearm-sound-library | Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney | CC0 |
+
+The mine's echo after a shot (`shot_echo_*`) and the creature hit (`flesh_hit_*`) are synthesised by `tools/audio/sfx.py`.
+
+## Font
+
+`assets/fonts/BarlowCondensed-SemiBold.ttf` and `-Medium.ttf` ("Barlow Condensed" by The Barlow Project Authors, https://github.com/jpt/barlow), from the Google Fonts repository, SIL Open Font License 1.1 (`assets/fonts/OFL.txt`). Used for all UI text.

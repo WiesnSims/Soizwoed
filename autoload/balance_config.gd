@@ -53,7 +53,10 @@ extends Resource
 
 @export_group("Player")
 @export var player_max_health: int = 100
-@export var inventory_slots: int = 4
+## Pocket slots (owner decision): keys 1–3 weapons, 4 a throwable, 5–9 everything else.
+@export var weapon_slots: int = 3
+@export var throwable_slots: int = 1
+@export var item_slots: int = 5
 @export var solo_free_schubkarre: bool = true
 @export var walk_speed: float = 3.4
 @export var sprint_speed: float = 5.8
@@ -96,6 +99,30 @@ extends Resource
 ## A Karbidpatrone refills this share of the tank.
 @export var karbid_refill_share: float = 0.6
 
+@export_group("Combat")
+## Share of a shot's damage that hits a teammate (friendly fire, owner decision: on, 33 %).
+@export var friendly_fire: float = 0.33
+## Most of each ammo type a miner can carry.
+@export var ammo_cap_pistole: int = 48
+@export var ammo_cap_schrot: int = 20
+## The company's ration at the start of every shift: whoever has less gets topped up to this.
+@export var ration_pistole: int = 24
+## Ammo boxes lying in a mine per miner (at least one), before the section's share.
+@export var ammo_boxes_per_player: float = 3.5
+## Moving while aiming down the sights is this much slower.
+@export var ads_move_speed: float = 0.6
+## Downed (co-op, DESIGN.md §3): seconds until a downed miner bleeds out, crawling speed,
+## how long a teammate holds E to get them up, and the health they get up with.
+@export var downed_seconds: float = 20.0
+@export var downed_crawl_speed: float = 0.8
+@export var help_up_seconds: float = 3.0
+@export var help_up_health: int = 30
+## Solo instead: once per shift, a hit that would kill leaves 1 health and this many seconds
+## of invulnerability ("Zweite Luft").
+@export var second_wind_seconds: float = 3.0
+## Creature health for 1–4 miners (solo is easier, DESIGN.md §8).
+@export var enemy_health_by_players: Array[float] = [0.7, 0.85, 0.95, 1.0]
+
 @export_group("Shout (Plärren)")
 @export var shout_radius: float = 14.0
 @export var shout_cooldown: float = 3.0
@@ -119,6 +146,13 @@ extends Resource
 @export var bergmandl_sight: float = 14.0
 @export var bergmandl_steal_from_hands_chance: float = 0.35
 @export var bergmandl_scared_seconds: float = 8.0
+## Stones: thrown at miners between these distances (m), every few seconds, for this damage.
+@export var bergmandl_throw_min: float = 4.0
+@export var bergmandl_throw_max: float = 14.0
+@export var bergmandl_throw_seconds: float = 3.5
+@export var bergmandl_stone_damage: int = 8
+## Thrown stones fly this fast (m/s).
+@export var stone_speed: float = 13.0
 
 @export_group("Creature spawning")
 ## How the enemy budget is spent per creature type (group sizes, limits, first cycle).
@@ -261,6 +295,27 @@ extends Resource
 @export var schichtmeister_speed: float = 6.4
 @export var schichtmeister_damage: int = 100
 
+@export_group("Grubenhund")
+@export var grubenhund_health: int = 55
+## Hunting: faster than walking (3.4), a bit slower than sprinting (5.8).
+@export var grubenhund_speed: float = 5.2
+@export var grubenhund_roam_speed: float = 1.8
+## It sees a lit lamp from this far, a miner in the dark from that far; crouching multiplies.
+@export var grubenhund_sight_lit: float = 22.0
+@export var grubenhund_sight_dark: float = 10.0
+@export var grubenhund_crouch_factor: float = 0.5
+@export var grubenhund_bite_damage: int = 12
+@export var grubenhund_bite_cooldown: float = 1.3
+@export var grubenhund_bite_distance: float = 1.5
+## After a bite it springs back this long before coming again.
+@export var grubenhund_backoff_seconds: float = 0.9
+## Below 30 % health it runs off yelping once, this long.
+@export var grubenhund_flee_seconds: float = 3.0
+## Out of sight this long and it has lost the miner.
+@export var grubenhund_lose_seconds: float = 5.0
+## Dogs this close join when one finds a miner.
+@export var grubenhund_pack_radius: float = 20.0
+
 @export_group("Percht")
 ## Near-unkillable: this much health before it gives up and goes back into the dark.
 @export var percht_health: int = 800
@@ -315,6 +370,19 @@ func quota_for_cycle(cycle: int, player_count: int) -> int:
 
 func shift_seconds(player_count: int) -> float:
 	return shift_base_seconds + by_players(shift_bonus_seconds_by_players, player_count)
+
+
+func enemy_health_mult(player_count: int) -> float:
+	return by_players(enemy_health_by_players, player_count)
+
+
+func ammo_cap(ammo_type: StringName) -> int:
+	match ammo_type:
+		&"pistole":
+			return ammo_cap_pistole
+		&"schrot":
+			return ammo_cap_schrot
+	return 99
 
 
 func enemy_budget_mult(player_count: int) -> float:

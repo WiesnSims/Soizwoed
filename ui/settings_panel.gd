@@ -14,6 +14,8 @@ const ACCENT: Color = Color(0.86, 0.62, 0.3)
 
 var _tabs: TabContainer
 var _panel: PanelContainer
+## The microphone's level, on the sound tab (the mic records while that tab is shown).
+var _mic_meter: ProgressBar
 ## Keys tab: the action waiting for its new key.
 var _waiting_action: StringName = &""
 
@@ -45,6 +47,13 @@ func open() -> void:
 func close() -> void:
 	hide()
 	closed.emit()
+
+
+func _process(_delta: float) -> void:
+	var listening: bool = visible and _tabs != null and _tabs.current_tab == 0 and _mic_meter != null
+	Mic.want(&"settings", listening)
+	if listening:
+		_mic_meter.value = Mic.level
 
 
 ## While waiting for a new key, the next key or mouse button goes to that action (Esc cancels).
@@ -136,6 +145,33 @@ func _build_audio(grid: GridContainer) -> void:
 	_check(grid, "SET_CREATURE_LINES", data.creature_lines, func(on: bool) -> void: data.creature_lines = on)
 	_check(grid, "SET_OPEN_MIC", data.voice_open_mic, func(on: bool) -> void: data.voice_open_mic = on)
 	_check(grid, "SET_VOICE_LURE", data.voice_lure, func(on: bool) -> void: data.voice_lure = on)
+	_device(grid, "SET_OUTPUT_DEVICE", Mic.output_devices(), data.output_device, func(name: String) -> void: data.output_device = name)
+	_device(grid, "SET_INPUT_DEVICE", Mic.input_devices(), data.input_device, func(name: String) -> void: data.input_device = name)
+	grid.add_child(_label(tr("SET_MIC_LEVEL"), 17))
+	_mic_meter = ProgressBar.new()
+	_mic_meter.min_value = 0.0
+	_mic_meter.max_value = 1.0
+	_mic_meter.show_percentage = false
+	_mic_meter.custom_minimum_size = Vector2(220, 14)
+	_mic_meter.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var back: StyleBoxFlat = StyleBoxFlat.new()
+	back.bg_color = Color(0, 0, 0, 0.55)
+	back.set_corner_radius_all(3)
+	var fill: StyleBoxFlat = StyleBoxFlat.new()
+	fill.bg_color = Color(0.45, 0.8, 0.4)
+	fill.set_corner_radius_all(3)
+	_mic_meter.add_theme_stylebox_override("background", back)
+	_mic_meter.add_theme_stylebox_override("fill", fill)
+	grid.add_child(_mic_meter)
+
+
+## A list of audio devices ("Default" shown as the system's).
+func _device(grid: GridContainer, key: String, names: PackedStringArray, current: String, setter: Callable) -> void:
+	var shown: Array = []
+	for name: String in names:
+		shown.append(tr("SET_DEVICE_DEFAULT") if name == "Default" else name)
+	var selected: int = maxi(0, names.find(current if current != "" else "Default"))
+	_option(grid, key, shown, selected, func(i: int) -> void: setter.call("" if names[i] == "Default" else names[i]))
 
 
 func _build_display(grid: GridContainer) -> void:

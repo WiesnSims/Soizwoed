@@ -563,7 +563,131 @@ def water_lap(v):
     return cave(laps * 0.6, 1.8, 0.45)
 
 
+# --- M6: guns and the Grubenhund --------------------------------------------------------------------
+
+def gunshot(crack_hz, boom_hz, body, tail):
+    """A shot in a tunnel: a hard crack, the boom of the charge, and the rock throwing it back."""
+    s = 0.6
+    crack = d.highpass(d.noise(s), crack_hz) * d.env_exp(s, 0.006)
+    blast = d.lowpass(d.noise(s), 2500) * d.env_exp(s, body)
+    boom = d.sine(d.glide(s, boom_hz, boom_hz * 0.45), s) * d.env_exp(s, body * 1.6)
+    return d.echo(cave(d.drive(d.mix(crack * 0.9, blast, boom * 0.9), 2.4), tail, 0.5), 0.22, 0.32, 3)
+
+
+def pistol_shot(v):
+    return gunshot(2500, 110, 0.04, 2.2)
+
+
+def shotgun_shot(v):
+    return gunshot(1800, 70, 0.09, 2.8)
+
+
+def shot_echo(v):
+    """The mine answering a shot: no crack of its own, only the rock throwing the boom back –
+    a few late slaps off far walls and a long, dark roll down the galleries."""
+    s = 3.2
+    boom = d.lowpass(d.noise(s), 700) * d.env_points(s, [(0, 0), (0.06, 1.0), (0.5, 0.45), (3.2, 0)])
+    slaps = d.mix(*[(t, d.lowpass(d.noise(0.25), 1600) * d.env_exp(0.25, 0.05) * g) for t, g in [(0.09, 0.7), (0.21, 0.5), (0.38, 0.35), (0.6, 0.25)]])
+    roll = d.lowpass(d.brown(s), 160) * d.env_points(s, [(0, 0), (0.3, 1.0), (3.2, 0)])
+    return cave(d.mix(boom * 0.6, slaps, roll * 0.7), 3.0, 0.6)
+
+
+def flesh_hit(v):
+    """A shot going into a creature: a short wet slap and a dull thump."""
+    s = 0.3
+    slap = d.bandpass(d.noise(s), 500 + 150 * v, 2600) * d.env_exp(s, 0.025)
+    return cave(d.mix(thud(130 + 25 * v, 0.03, 0.9), slap * 0.7), 0.8, 0.2)
+
+
+def dry_fire(v):
+    """The hammer falling on an empty chamber."""
+    return d.mix(click(2600, 0.004, 0.8, ring=0.3), (0.05, click(1400, 0.006, 0.4)))
+
+
+def reload_pistol(v):
+    """Magazine out, magazine in, slide forward."""
+    return d.mix(click(1800, 0.01, 0.6, ring=0.4), (0.55, click(1200, 0.012, 0.8, ring=0.3)), (0.62, thud(400, 0.01, 0.3)),
+                 (1.2, click(2400, 0.008, 0.9, ring=0.5)))
+
+
+def reload_shell(v):
+    """A shell pushed into a barrel and the gun snapped shut."""
+    return d.mix(d.bandpass(d.noise(0.12), 800, 3000) * d.env_exp(0.12, 0.03) * 0.5, (0.25, click(1500, 0.01, 0.6, ring=0.3)),
+                 (0.85, thud(300, 0.02, 0.5)), (0.86, click(2000, 0.008, 0.9, ring=0.4)))
+
+
+def ammo_pickup(v):
+    """A box of cartridges rattling into a pocket."""
+    rattle = d.mix(*[(i * 0.025 + d.rng.uniform(0, 0.01), click(3500 + d.rng.uniform(-800, 800), 0.004, 0.5, ring=0.3)) for i in range(9)])
+    return d.mix(rattle, thud(200, 0.02, 0.3))
+
+
+def dog_growl(v):
+    """A mangy mine dog growling low, close."""
+    s = 1.6
+    growl = d.lowpass(d.glottal(d.glide(s, 85 + 10 * v, 70), s, 0.12, 0.6), 900) * (0.6 + 0.4 * d.smooth_noise(s, 9.0))
+    return cave(growl * d.env_points(s, [(0, 0), (0.15, 1), (1.3, 0.9), (1.6, 0)]), 1.2, 0.3)
+
+
+def dog_bark(v):
+    """A hoarse, broken bark."""
+    s = 0.35
+    bark = d.vowel(d.glottal(d.glide(s, 420 + 40 * v, 260), s, 0.06, 0.4), "a", 1.4) + d.bandpass(d.noise(s), 800, 4000) * 0.3
+    return cave(d.drive(bark * d.env_points(s, [(0, 0), (0.02, 1), (0.12, 0.7), (0.35, 0)]), 2.5), 1.6, 0.35)
+
+
+def dog_bite(v):
+    """Teeth snapping shut and tearing."""
+    return d.mix(click(2200, 0.006, 1.0), thud(220, 0.02, 0.6), (0.04, d.bandpass(d.noise(0.25), 600, 3500) * d.env_exp(0.25, 0.06) * 0.6))
+
+
+def dog_yelp(v):
+    """A hit dog yelping."""
+    s = 0.4
+    yelp = d.vowel(d.glottal(d.glide(s, 700, 1100, 0.6), s, 0.04, 0.2), "i", 1.5)
+    return cave(yelp * d.env_points(s, [(0, 0), (0.02, 1), (0.4, 0)]), 1.2, 0.3)
+
+
+def dog_die(v):
+    """A last whine, then nothing."""
+    s = 1.1
+    whine = d.vowel(d.glottal(d.glide(s, 600, 250), s, 0.05, 0.3), "u", 1.3)
+    return cave(whine * d.env_points(s, [(0, 0), (0.05, 1), (0.8, 0.5), (1.1, 0)]), 1.6, 0.35)
+
+
+def dog_steps(v):
+    """Claws skittering on rock."""
+    return d.mix(*[(i * 0.06, click(3200 + 300 * i, 0.003, 0.5)) for i in range(3)], thud(300, 0.01, 0.2))
+
+
+def stone_throw(v):
+    """A stone whooshing past."""
+    s = 0.35
+    return d.bandpass(d.noise(s), 700, 3000) * d.env_points(s, [(0, 0), (0.15, 1), (0.35, 0)]) * 0.6
+
+
+def stone_hit(v):
+    """A stone cracking against rock (or a helmet)."""
+    return cave(d.mix(click(2400, 0.01, 0.9, ring=0.3), thud(260, 0.02, 0.5)), 1.0, 0.3)
+
+
 SOUNDS = {
+    "shot_echo": (shot_echo, 2),
+    "flesh_hit": (flesh_hit, 3),
+    "pistol_shot": (pistol_shot, 1),
+    "shotgun_shot": (shotgun_shot, 1),
+    "dry_fire": (dry_fire, 1),
+    "reload_pistol": (reload_pistol, 1),
+    "reload_shell": (reload_shell, 1),
+    "ammo_pickup": (ammo_pickup, 1),
+    "dog_growl": (dog_growl, 2),
+    "dog_bark": (dog_bark, 3),
+    "dog_bite": (dog_bite, 1),
+    "dog_yelp": (dog_yelp, 1),
+    "dog_die": (dog_die, 1),
+    "dog_steps": (dog_steps, 2),
+    "stone_throw": (stone_throw, 1),
+    "stone_hit": (stone_hit, 1),
     "percht_bells": (percht_bells, 1),
     "percht_steps": (percht_steps, 3),
     "percht_roar": (percht_roar, 1),

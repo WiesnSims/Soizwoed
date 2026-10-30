@@ -27,6 +27,8 @@ const DEATH_VIEW_SECONDS: float = 2.5
 const NAMEPLATE_DISTANCE: float = 10.0
 ## Swimming, the feet hang this far under the surface (the head stays above it).
 const SWIM_DEPTH: float = 1.35
+## Downed, the eyes are this close to the floor.
+const DOWNED_HEAD: float = 0.45
 
 var peer_id: int = 1
 ## 1..4 in order of joining, for the name other players see ("Kumpl 2").
@@ -35,6 +37,10 @@ var player_number: int = 1
 var steam_name: String = ""
 ## Proximity voice (Steam sessions only), else null.
 var voice_chat: VoiceChat
+## Spare ammo per type (the owner's counters; DESIGN.md §3: ammo takes no pocket slot).
+var ammo: Dictionary = {}
+## Shooting, aiming, reloading (local player only, else null).
+var gunner: Gunner
 ## The owner lets the Salzweibl copy their voice (setting; the host keeps snippets only then).
 var voice_lure_ok: bool = true
 var inventory: Inventory
@@ -63,6 +69,9 @@ var gas_flare: float = 0.0
 ## The Salzsee lake you are swimming in (null on dry land).
 var swim_lake: Lake
 var crouching: bool = false
+## At 0 health in co-op: down but not out, until a teammate helps up or it is too late (§3).
+var downed: bool = false
+var _downed_at: float = 0.0
 var input_enabled: bool = true
 ## False after dying, until the next ride (host-authoritative).
 var alive: bool = true
@@ -117,6 +126,9 @@ var _shake: float = 0.0
 ## Seconds climbing a rotten ladder with a heavy load, and until the next creak.
 var _rotten_strain: float = 0.0
 var _creak_left: float = 0.0
+## The Obstler's sway and the death tilt, applied on top of the view (the camera is placed
+## every frame, see _place_camera).
+var _view_tilt: Vector3 = Vector3.ZERO
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera
@@ -144,7 +156,7 @@ func _enter_tree() -> void:
 func _ready() -> void:
 	add_to_group(&"players")
 	_config = Balance.config
-	inventory = Inventory.new(_config.inventory_slots)
+	inventory = Inventory.new(Inventory.layout(_config))
 	inventory.changed.connect(_on_inventory_changed)
 	health = _config.player_max_health
 	lamp_fuel = _config.lamp_fuel_seconds
@@ -153,11 +165,24 @@ func _ready() -> void:
 	ray.add_exception(self)
 	_carbide_color = lamp.light_color
 	var local: bool = is_local()
+	# Smooth movement at any frame rate (DESIGN.md §10): the body moves in physics steps and is
+	# drawn interpolated between them; the camera is set every rendered frame from that drawn
+	# position plus the current look direction, so mouse look never waits for a physics step.
+	# Process before the held items, which follow points on the camera.
+	process_priority = -10
+	camera.top_level = true
+	camera.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	if not local:
+		# Moved every frame from network snapshots: nothing to interpolate.
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	camera.current = local
 	body_mesh.visible = not local
 	if local and not Game.dev_quiet:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	if local:
+		gunner = Gunner.new()
+		gunner.name = "Gunner"
+		add_child(gunner)
 		lamp.light_volumetric_fog_energy = 0.0
 		beam.light_volumetric_fog_energy = 0.0
 		_on_settings_changed()
@@ -226,6 +251,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_drop_active()
 	elif event.is_action_pressed(&"use"):
 		_use_active()
+	elif downed:
+		return  # down: crawl, look, shoot the pistol – nothing else
 	elif event.is_action_pressed(&"shout"):
 		_shout()
 	elif event.is_action_pressed(&"emote_jodler"):
@@ -235,9 +262,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"emote_point"):
 		game().request_emote.rpc_id(1, Emote.POINT)
 	elif event.is_action_pressed(&"slot_next"):
-		inventory.select(inventory.selected + 1)
+		inventory.select_next(1)
 	elif event.is_action_pressed(&"slot_prev"):
-		inventory.select(inventory.selected - 1)
+		inventory.select_next(-1)
 	else:
 		for i: int in inventory.slots.size():
 			if event.is_action_pressed(StringName("slot_%d" % (i + 1))):
@@ -273,13 +300,24 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	if is_local():
+		_place_camera()
 		return
 	if _net.sample(Time.get_ticks_msec() / 1000.0):
 		global_position = _net.position
 		rotation.y = Basis(_net.rotation).get_euler().y
 		head.rotation.x = _net.aux
 		velocity = _net.velocity
+	_place_camera()
 	_update_nameplate()
+
+
+## Puts the camera at the eyes of the body as drawn this frame (interpolated), looking where
+## the mouse points right now.
+func _place_camera() -> void:
+	var body: Transform3D = get_global_transform_interpolated() if is_local() else global_transform
+	var eyes: Vector3 = body.origin + Vector3.UP * head.position.y
+	var look: Basis = Basis(Vector3.UP, rotation.y) * Basis.from_euler(Vector3(head.rotation.x, _view_tilt.y, head.rotation.z + _view_tilt.z))
+	camera.global_transform = Transform3D(look, eyes)
 
 
 ## A new snapshot of a remote player arrived.
@@ -293,10 +331,13 @@ func _on_synchronized() -> void:
 func _move(delta: float) -> void:
 	var controls: bool = input_enabled
 	var input_dir: Vector2 = Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back") if controls else Vector2.ZERO
-	crouching = controls and Input.is_action_pressed(&"crouch")
+	crouching = downed or (controls and Input.is_action_pressed(&"crouch"))
 	var wants_sprint: bool = controls and Input.is_action_pressed(&"sprint") and input_dir.y < 0.0 and not crouching
 	var can_sprint: bool = wants_sprint and stamina > 0.0 and _can_sprint_with_load()
 	var speed: float = _config.crouch_speed if crouching else (_config.sprint_speed if can_sprint else _config.walk_speed)
+	if downed:
+		speed = _config.downed_crawl_speed
+		can_sprint = false
 	speed *= _load_speed_factor()
 	if can_sprint:
 		stamina = maxf(0.0, stamina - delta / _config.stamina_seconds)
@@ -384,6 +425,8 @@ func _try_climb_out() -> void:
 
 
 func _load_speed_factor() -> float:
+	if gunner != null and gunner.aiming:
+		return _config.ads_move_speed
 	if inventory.hands is Schubkarre:
 		return _config.schubkarre_speed
 	if pushed_cart() != null:
@@ -461,7 +504,7 @@ func _let_go_of_climbable() -> void:
 
 
 func _update_crouch(delta: float) -> void:
-	var target: float = CROUCH_HEAD if crouching else STAND_HEAD
+	var target: float = DOWNED_HEAD if downed else (CROUCH_HEAD if crouching else STAND_HEAD)
 	_head_height = lerpf(_head_height, target, clampf(10.0 * delta, 0.0, 1.0))
 	var capsule: CapsuleShape3D = shape.shape as CapsuleShape3D
 	capsule.height = CROUCH_HEIGHT if crouching else STAND_HEIGHT
@@ -501,7 +544,7 @@ func _surface() -> Surface:
 @rpc("authority", "call_local", "unreliable")
 func _play_footstep(surface: Surface) -> void:
 	Audio.play_on(footsteps, ["footstep_gravel", "footstep_wood", "wade", "footstep_salt"][surface], 0.06)
-	footsteps.volume_db = -14.0 if crouching else -6.0
+	footsteps.volume_db = -21.0 if crouching else -13.0
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -512,6 +555,7 @@ func teleport(to: Transform3D) -> void:
 	net_position = to.origin
 	net_angles = Vector2(rotation.y, 0.0)
 	_net.clear()
+	reset_physics_interpolation()  # no smear across the mine
 	_teleported_to = to.origin
 	_teleport_ignore_until = Time.get_ticks_msec() / 1000.0 + 0.5
 
@@ -520,6 +564,7 @@ func teleport(to: Transform3D) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func revive() -> void:
 	health = _config.player_max_health
+	set_downed(false)
 	if alive:
 		return
 	alive = true
@@ -549,6 +594,42 @@ func die() -> void:
 	if _nameplate != null:
 		_nameplate.visible = false
 	print("[player] P%d died" % peer_id)
+
+
+# --- downed (co-op) ------------------------------------------------------------------------------------
+
+## Down or back up (the host decides). A downed miner can be aimed at and helped up: their
+## body joins the interactables layer on every peer.
+@rpc("any_peer", "call_local", "reliable")
+func set_downed(on: bool) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return
+	downed = on
+	_downed_at = Time.get_ticks_msec() / 1000.0
+	collision_layer = 2 | (WorldItem.LAYER_INTERACT if on else 0)
+	if on and is_local():
+		_stop_eating()
+
+
+## Seconds until a downed miner bleeds out (the host's own clock decides; this is for the HUD).
+func downed_left() -> float:
+	return maxf(0.0, _config.downed_seconds - (Time.get_ticks_msec() / 1000.0 - _downed_at)) if downed else 0.0
+
+
+## Teammates see "help up" on a downed miner (hold E).
+func interaction_text(other: Player) -> String:
+	if downed and alive and other != self and other.alive and not other.downed:
+		return tr("PROMPT_HELP_UP") % display_name()
+	return ""
+
+
+func interact_hold_seconds(_other: Player) -> float:
+	return _config.help_up_seconds
+
+
+func interact(other: Player) -> void:
+	game().request_help_up.rpc_id(1, get_path())
+	other.hold_progress = 0.0
 
 
 # --- death and spectating (local player) ------------------------------------------------------------
@@ -763,7 +844,7 @@ func _interactable_under_crosshair() -> Node:
 
 
 func _update_focus(delta: float) -> void:
-	focus = _interactable_under_crosshair() if input_enabled else null
+	focus = _interactable_under_crosshair() if input_enabled and not downed else null
 	if focus != null and focus.interaction_text(self) == "":
 		focus = null
 	var holding: bool = input_enabled and Input.is_action_pressed(&"interact") and focus != null
@@ -808,7 +889,7 @@ func _try_take(item: WorldItem) -> void:
 	if cart != null and item != cart and item.data.kind == ItemData.Kind.LOOT:
 		game().request_load_cart.rpc_id(1, cart.get_path(), item.get_path())
 		return
-	if inventory.place_for(item.data.weight_class) == Inventory.NONE:
+	if inventory.place_for(item.data.weight_class, item.data.slot_kind()) == Inventory.NONE:
 		game().show_message(tr("MSG_HANDS_FULL"))
 		return
 	game().request_take.rpc_id(1, item.get_path(), peer_id)
@@ -836,6 +917,10 @@ func _drop_active() -> void:
 
 func _use_active() -> void:
 	if _use_cooldown > 0.0 or _eating != null:
+		return
+	if downed:
+		if gunner != null:
+			gunner.fire()  # only a gun that works lying down (Gunner.weapon_item)
 		return
 	var held: WorldItem = inventory.hands as WorldItem
 	if inventory.hands_busy():
@@ -883,6 +968,9 @@ func _use_active() -> void:
 		ItemData.Use.OPEN:
 			_use_cooldown = 1.0
 			game().request_open.rpc_id(1, item.get_path())
+		ItemData.Use.SHOOT:
+			if gunner != null:
+				gunner.fire()
 		ItemData.Use.REVIVE:
 			_use_cooldown = 1.0
 			var body: WorldItem = focus as WorldItem
@@ -940,13 +1028,13 @@ func _stop_eating() -> void:
 ## After an Obstler the view sways and rolls a little, fading out at the end.
 func _tick_wobble(delta: float) -> void:
 	if _wobble_left <= 0.0:
-		camera.rotation.z = 0.0
+		_view_tilt = Vector3.ZERO
 		return
 	_wobble_left -= delta
 	_wobble_time += delta
 	var strength: float = clampf(_wobble_left / 4.0, 0.0, 1.0)
-	camera.rotation.z = sin(_wobble_time * 1.1) * 0.07 * strength
-	camera.rotation.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
+	_view_tilt.z = sin(_wobble_time * 1.1) * 0.07 * strength
+	_view_tilt.y = sin(_wobble_time * 0.7 + 1.0) * 0.03 * strength
 
 
 ## A jolt from a blast or a rockfall nearby (mount 0..1).
@@ -1122,6 +1210,45 @@ func refresh_held_items() -> void:
 func _check_headlamp() -> void:
 	if lamp_electric and not has_tool(&"stirnlampe"):
 		_set_lamp_kind.rpc(false)
+
+
+func ammo_count(ammo_type: StringName) -> int:
+	return int(ammo.get(ammo_type, 0))
+
+
+## Takes `amount` rounds off a counter (the owner, when reloading).
+func use_ammo(ammo_type: StringName, amount: int) -> void:
+	ammo[ammo_type] = maxi(0, ammo_count(ammo_type) - amount)
+	_share_ammo.rpc(ammo)
+
+
+## The owner's counters, for everyone else (the host's cap check, teammates' HUD later).
+@rpc("authority", "call_remote", "reliable")
+func _share_ammo(counts: Dictionary) -> void:
+	ammo = counts.duplicate()
+
+
+## The host hands this miner ammo (a box picked up, the shift ration). `at_least`: top up to
+## `amount` instead of adding it. Capped per type.
+@rpc("any_peer", "call_local", "reliable")
+func give_ammo(ammo_type: StringName, amount: int, at_least: bool = false) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return  # only the host hands out ammo
+	var have: int = ammo_count(ammo_type)
+	var total: int = maxi(have, amount) if at_least else have + amount
+	ammo[ammo_type] = mini(total, _config.ammo_cap(ammo_type))
+	if is_local():
+		_share_ammo.rpc(ammo)
+
+
+## Everything spare is gone (death).
+@rpc("any_peer", "call_local", "reliable")
+func clear_ammo() -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return
+	ammo.clear()
+	if is_local():
+		_share_ammo.rpc(ammo)
 
 
 ## Whether an item of type `id` is in the pockets or hands.

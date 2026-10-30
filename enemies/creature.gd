@@ -48,6 +48,7 @@ func _ready() -> void:
 	_net.delay = sync.replication_interval * 2.0
 	if not multiplayer.is_server():
 		sync.synchronized.connect(_on_synchronized)
+		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 
 func _physics_process(delta: float) -> void:
@@ -296,6 +297,67 @@ func _farewell(line_index: int, sound: String) -> void:
 		Audio.play_at(sound, where, &"Creatures", 0.0, 25.0)
 	if line_index >= 0 and Audio.creature_lines_enabled:
 		Audio.play_stream_at(data.voice_lines[line_index].stream, where, &"Creatures", voice.volume_db, voice.max_distance)
+
+
+# --- combat ----------------------------------------------------------------------------------------
+
+## `base` health scaled for the crew size (solo creatures are weaker, DESIGN.md §8).
+func scaled_health(base: int) -> int:
+	var players: int = GameState.run.player_count if GameState.run != null else 1
+	return maxi(1, roundi(base * _config.enemy_health_mult(players)))
+
+
+## Generic damage (host): health down, a flinch everyone sees, death at 0. True if it died.
+func host_damage(damage: int, from: Vector3, die_sound: String = "") -> bool:
+	if damage <= 0 or health <= 0:
+		return false
+	health -= damage
+	_flinch.rpc(from)
+	if health <= 0:
+		host_die(die_sound)
+		return true
+	return false
+
+
+## Killed (host): a last line and sound, and the body drops where it stood on every peer.
+func host_die(sound: String = "") -> void:
+	var lines: Array[VoiceLine] = data.lines_for(VoiceLine.Moment.DIE)
+	var index: int = -1 if lines.is_empty() else data.voice_lines.find(lines.pick_random())
+	_died.rpc(index, sound)
+	print("[creature] %s %s killed" % [data.id, name])
+	queue_free()
+
+
+@rpc("authority", "call_local", "unreliable")
+func _flinch(from: Vector3) -> void:
+	# Heard on every peer even when the creature's own cry is on cooldown: the shot went in.
+	Audio.play_at("flesh_hit", global_position + Vector3.UP * 0.6, &"Creatures", 0.0, 25.0, randf_range(0.9, 1.1))
+	var body: Node3D = get_node_or_null(^"Body") as Node3D
+	if body == null:
+		return
+	var away: Vector3 = (global_position - from)
+	away.y = 0.0
+	var jolt: Vector3 = to_local(global_position + away.normalized() * 0.12) if away.length() > 0.01 else Vector3.ZERO
+	var tween: Tween = body.create_tween()
+	tween.tween_property(body, "position", jolt, 0.05)
+	tween.tween_property(body, "position", Vector3.ZERO, 0.15)
+
+
+@rpc("authority", "call_local", "reliable")
+func _died(line_index: int, sound: String) -> void:
+	_farewell(line_index, sound)
+	var body: Node3D = get_node_or_null(^"Body") as Node3D
+	if body == null or not body.visible:
+		return
+	# The body falls over and sinks into the floor, then is gone.
+	var corpse: Node3D = body.duplicate() as Node3D
+	get_tree().current_scene.add_child(corpse)
+	corpse.global_transform = body.global_transform
+	var tween: Tween = corpse.create_tween()
+	tween.tween_property(corpse, "rotation:z", corpse.rotation.z + PI / 2.0 * (1.0 if randf() < 0.5 else -1.0), 0.35)
+	tween.tween_interval(3.0)
+	tween.tween_property(corpse, "position:y", corpse.position.y - 0.8, 2.0)
+	tween.tween_callback(corpse.queue_free)
 
 
 ## Says a `moment` line one last time and disappears (host).

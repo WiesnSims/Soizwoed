@@ -1,8 +1,9 @@
 class_name Inventory
 extends RefCounted
-## What a player carries: `slot_count` small slots for light items and tools, plus both hands
-## for one medium or heavy item (or the Schubkarre). Pure logic; holds whatever objects the
-## game gives it, together with their weight class.
+## What a player carries (owner decision after the M6 playtest): slots by kind – keys 1–3 for
+## weapons, 4 for something to throw, 5–9 for everything else – plus both hands for one medium
+## or heavy item (or the Schubkarre). A second throwable goes into a free item slot. Pure logic;
+## holds whatever objects the game gives it, with their weight class.
 
 signal changed
 
@@ -11,6 +12,8 @@ const HANDS: int = -2
 
 var slots: Array = []
 var slot_weights: PackedInt32Array = []
+## ItemData.SlotKind of each slot.
+var slot_kinds: PackedInt32Array = []
 var hands: Object = null
 var hands_weight: int = ItemData.WeightClass.LIGHT
 ## True while the item in the hands is carried by two players together.
@@ -18,24 +21,46 @@ var shared_carry: bool = false
 var selected: int = 0
 
 
-func _init(slot_count: int) -> void:
-	slots.resize(slot_count)
-	slot_weights.resize(slot_count)
+func _init(kinds: PackedInt32Array) -> void:
+	slot_kinds = kinds
+	slots.resize(kinds.size())
+	slot_weights.resize(kinds.size())
 
 
-## Where `item` would go: a slot index, HANDS, or NONE when it does not fit.
-func place_for(weight: int) -> int:
-	if weight == ItemData.WeightClass.LIGHT:
-		var free: int = slots.find(null)
-		if free != NONE:
-			# Prefer the selected slot when it is free, so the item shows in the hand.
-			return selected if slots[selected] == null else free
-		return NONE
-	return HANDS if hands == null else NONE
+## The slot layout from balance.tres: weapons, throwables, then items.
+static func layout(config: BalanceConfig) -> PackedInt32Array:
+	var kinds: PackedInt32Array = []
+	for i: int in config.weapon_slots:
+		kinds.append(ItemData.SlotKind.WEAPON)
+	for i: int in config.throwable_slots:
+		kinds.append(ItemData.SlotKind.THROWABLE)
+	for i: int in config.item_slots:
+		kinds.append(ItemData.SlotKind.ITEM)
+	return kinds
 
 
-func add(item: Object, weight: int) -> int:
-	var place: int = place_for(weight)
+## Where an item would go: a slot index, HANDS, or NONE when it does not fit.
+func place_for(weight: int, kind: int = ItemData.SlotKind.ITEM) -> int:
+	if weight != ItemData.WeightClass.LIGHT:
+		return HANDS if hands == null else NONE
+	var place: int = free_slot(kind)
+	if place == NONE and kind == ItemData.SlotKind.THROWABLE:
+		place = free_slot(ItemData.SlotKind.ITEM)
+	return place
+
+
+## A free slot of `kind`: the selected one if it fits, else the first.
+func free_slot(kind: int) -> int:
+	if slots[selected] == null and slot_kinds[selected] == kind:
+		return selected
+	for i: int in slots.size():
+		if slots[i] == null and slot_kinds[i] == kind:
+			return i
+	return NONE
+
+
+func add(item: Object, weight: int, kind: int = ItemData.SlotKind.ITEM) -> int:
+	var place: int = place_for(weight, kind)
 	if place == HANDS:
 		hands = item
 		hands_weight = weight
@@ -80,6 +105,16 @@ func active_item() -> Object:
 func select(index: int) -> void:
 	selected = posmod(index, slots.size())
 	changed.emit()
+
+
+## The mouse wheel: the next slot with something in it (`step` 1 or -1), like in other
+## shooters; stays put when everything else is empty.
+func select_next(step: int) -> void:
+	for i: int in range(1, slots.size() + 1):
+		var index: int = posmod(selected + step * i, slots.size())
+		if slots[index] != null:
+			select(index)
+			return
 
 
 func hands_busy() -> bool:

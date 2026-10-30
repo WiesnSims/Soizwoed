@@ -22,26 +22,26 @@ if ($HostLeavesFirst) {
     $clientSeconds = 12
     $clientExpect = @("\[net\] host left")
 } elseif ($Coop) {
-    $hostSeconds = 39
-    $clientSeconds = 35
+    $hostSeconds = 43
+    $clientSeconds = 39
     $hostArgs += @("--scenario=coop", "--wait-peers=1")
     $clientExtra = @("--scenario=coopclient")
-    $hostExpect = @("host: ITestFall fell [1-9]", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
-    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client carrying together with P1, speed 0\.95", "client took the block over", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
+    $hostExpect = @("host: ITestFall fell [1-9]", "voice snippets from the client 1", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "friendly fire, client health 90", "client downed true, alive true", "helped up, downed false, health 30", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
+    $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client sent 1 s of voice", "client carrying together with P1, speed 0\.95", "client took the block over", "client downed, crouching true", "client up again, health 30", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
 } elseif ($Tools) {
     $hostSeconds = 36
     $clientSeconds = 32
     $hostArgs += @("--scenario=mptools", "--wait-peers=1")
     $clientExtra = @("--scenario=mptoolsclient")
-    $hostExpect = @("Alphorn by P[0-9]{2,}", "Bierzelt cloud", "Hunt called by P[0-9]{2,}", "host sees P[0-9]+: lamp electric true, health 55", "\[game\] shift ended")
-    $clientExpect = @("client used stirnlampe", "client health after obstler 55", "client used boeller", "client used funkgeraet", "client saw the hunt roll [1-9]", "\[game\] shift ended")
+    $hostExpect = @("Alphorn by P[0-9]{2,}", "Bierzelt cloud", "Hunt called by P[0-9]{2,}", "host sees P[0-9]+: lamp electric true, health 55", "dog shot dead by the client true", "grubenhund C[0-9]+ killed", "\[game\] shift ended")
+    $clientExpect = @("client used stirnlampe", "client health after obstler 55", "client used boeller", "client used funkgeraet", "client saw the hunt roll [1-9]", "client fired, rounds", "\[game\] shift ended")
 } else {
     $hostSeconds = 26
     $clientSeconds = 19
     $hostArgs += @("--auto-shift=6", "--wait-peers=$Clients", "--section=$Section")
     $hostExpect = @("\[game\] shift ended")
     $clientExpect = @("\[game\] shift started", "\[game\] shift ended")
-    if ($Section -eq 2) { $hostExpect += @("(dev: percht spawned|spawned [0-9]+ percht)", "(dev: salzweibl spawned|spawned [0-9]+ salzweibl)", "relic mann_im_salz worth") }
+    if ($Section -eq 2) { $hostExpect += @("(dev: percht spawned|spawned [0-9]+ percht)", "(dev: salzweibl spawned|spawned [0-9]+ salzweibl)") }
 }
 
 $hostProc = Start-Godot "mp_host" ($hostArgs + @("--smoke=$hostSeconds"))

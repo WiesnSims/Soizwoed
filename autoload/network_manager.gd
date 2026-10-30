@@ -178,7 +178,7 @@ func invite_friend(friend_id: int) -> bool:
 
 ## Proximity voice runs in multiplayer sessions over a backend that carries it (Steam).
 func voice_enabled() -> bool:
-	return (mode == Mode.HOST or mode == Mode.CLIENT) and _backend.has_voice()
+	return mode == Mode.HOST or mode == Mode.CLIENT
 
 
 func _end_session(reason: String) -> void:

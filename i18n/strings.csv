@@ -246,13 +246,45 @@ ACTION_WATCH,Taschnuhr,Pocket watch
 ACTION_EMOTE_JODLER,Jodln,Yodel
 ACTION_EMOTE_WAVE,Winkn,Wave
 ACTION_EMOTE_POINT,Zeign,Point
-ACTION_SLOT_1,Fach 1,Pocket 1
-ACTION_SLOT_2,Fach 2,Pocket 2
-ACTION_SLOT_3,Fach 3,Pocket 3
-ACTION_SLOT_4,Fach 4,Pocket 4
+ACTION_SLOT_1,Waffe 1,Weapon 1
+ACTION_SLOT_2,Waffe 2,Weapon 2
+ACTION_SLOT_3,Waffe 3,Weapon 3
+ACTION_SLOT_4,Wurfzeug,Throwable
 ITEM_WUNDERHEILERIN_SALBE,Wunderheilerin-Salbe,Wise woman's salve
 USE_REVIVE,Auf an hinign Kumpl: aufwecken,On a dead mate: bring them back
 MSG_REVIVE_AIM,Schau auf an hinign Kumpl.,Look at a dead mate.
 MSG_REVIVE_TOO_LATE,Z'spät – do hilft ka Salbn mehr.,Too late – no salve helps now.
 MSG_REVIVED,%s is wieder do!,%s is back!
 MSG_YOU_REVIVED,De Salbn wirkt – du bist wieder do!,The salve works – you're back!
+ITEM_DIENSTPISTOLE,Dienstpistole,Service pistol
+ITEM_DIENSTPISTOLE_DESC,"De oide k.u.k.-Pistoln. 8 Schuss, genau, oba schwach. Jeder kriagt ane vo da Firma.","The old k.u.k. pistol. 8 rounds, accurate but weak. The company gives everyone one."
+ITEM_SALZSCHROT_FLINTE,Salzschrot-Flintn,Rock-salt shotgun
+ITEM_SALZSCHROT_FLINTE_DESC,"Zwoa Läuf, Steinsalz drin. Aus da Näh haut's ois um, weiter weg kitzlt's nur.","Two barrels loaded with rock salt. Knocks anything over up close, only tickles further away."
+ITEM_PISTOLENPATRONEN,Schachtl Pistoln-Patronen,Box of pistol rounds
+ITEM_PISTOLENPATRONEN_DESC,12 Schuss für de Dienstpistole.,12 rounds for the service pistol.
+ITEM_SALZSCHROT,Schachtl Salzschrot,Box of rock-salt shells
+ITEM_SALZSCHROT_DESC,5 Patronen für de Flintn.,5 shells for the shotgun.
+USE_SHOOT,Schiaßn,Shoot
+MSG_AMMO_FULL,Mehr konnst ned trogn.,You can't carry any more.
+MSG_SHOT_BY_FRIEND,"Au! Pass auf, wo'st hinschiaßt!",Ow! Watch where you're shooting!
+HUD_RELOADING,Lodn…,Reloading…
+HUD_NO_AMMO,Ka Munition!,No ammo!
+ACTION_AIM,Ziagn (Kimme),Aim down the sights
+ACTION_RELOAD,Nochlodn,Reload
+CREATURE_GRUBENHUND,Grubenhund,Mine dog
+PROMPT_HELP_UP,Aufhelfn: %s,Help up: %s
+MSG_PLAYER_DOWNED,%s liegt! Helfts eam auf!,%s is down! Help them up!
+MSG_YOU_DOWNED,Du liegst! A Kumpl muass di aufhebn (E hoitn).,You're down! A mate has to help you up (hold E).
+MSG_PLAYER_UP,%s is wieder auf de Fiaß.,%s is back on their feet.
+MSG_YOU_UP,"Wieder auf. Danke, Kumpl!","Back up. Thanks, mate!"
+MSG_SECOND_WIND,Zweite Luft! Jetzt oba schnö weg do!,Second wind! Now get out of here!
+HUD_DOWNED,Du liegst – no %d Sekundn,You're down – %d seconds left
+ACTION_SLOT_5,Fach 1,Pocket 1
+ACTION_SLOT_6,Fach 2,Pocket 2
+ACTION_SLOT_7,Fach 3,Pocket 3
+ACTION_SLOT_8,Fach 4,Pocket 4
+ACTION_SLOT_9,Fach 5,Pocket 5
+SET_OUTPUT_DEVICE,Lautsprecher / Kopfhörer,Speakers / headphones
+SET_INPUT_DEVICE,Mikrofon,Microphone
+SET_DEVICE_DEFAULT,Standard vom System,System default
+SET_MIC_LEVEL,Mikro-Pegel (red amoi),Mic level (say something)
