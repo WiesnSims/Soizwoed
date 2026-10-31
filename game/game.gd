@@ -119,6 +119,8 @@ var alarm_length: float = 0.0
 var upgrade_levels: Dictionary = {}
 var armour_max: int = 0
 var lamp_mult: float = 1.0
+## How long carbide and battery last (the Batterie upgrade).
+var lamp_fuel_mult: float = 1.0
 ## Host: the Fundstück lying in the mine this shift, where it was put, and its guard.
 var fundstueck: FundstueckItem
 var _fundstueck_home: Vector3
@@ -269,6 +271,10 @@ func _client_loaded() -> void:
 		if holder != null:
 			place = Inventory.HANDS if holder.inventory.hands == item else holder.inventory.slots.find(item)
 		item.host_send_state_to(peer, place)
+	# And what everyone's profile brings (perks, hats, lamp colours).
+	for player: Player in players():
+		if player.peer_id != peer and not player.loadout.is_empty():
+			player.set_loadout.rpc_id(peer, player.loadout)
 	_update_player_count()
 	_broadcast_run()
 	print("[game] peer %d is in the Gasthaus" % peer)
@@ -407,6 +413,8 @@ func _spawn_loot(seed_value: int) -> void:
 			boxes.append(data)
 			box_weights.append(data.spawn_weight * (1.0 if carried.has(data.ammo_type) else 0.2))
 	var box_count: int = _config.ammo_box_count(run.shift_index, run.player_count)
+	if has_overtime(&"knapp"):
+		box_count = maxi(1, roundi(box_count * _config.overtime_ammo_mult))
 	for i: int in box_count if not boxes.is_empty() else 0:
 		var box_spot: Array = spots[(count + i) % spots.size()]
 		var box: ItemData = boxes[rng.rand_weighted(box_weights)]
@@ -487,9 +495,12 @@ func _spawn_creature_group(rule: CreatureSpawnRule) -> int:
 		return 0
 	var at: Vector3 = spots.pick_random()
 	var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), _enemy_budget_left)
+	# Überstund "Doppelte Bergmandl": every Bergmandl brings a brother (at no budget).
+	var copies: int = 2 if rule.id == &"bergmandl" and has_overtime(&"bergmandl") else 1
 	for i: int in size:
-		var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), 0.3, randf_range(-1.0, 1.0))
-		spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset), _roll_elite())
+		for copy: int in copies:
+			var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), 0.3, randf_range(-1.0, 1.0))
+			spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset), _roll_elite())
 		_enemy_budget_left -= rule.budget_cost
 	return size
 
@@ -506,7 +517,13 @@ func spawn_creature(id: StringName, xform: Transform3D, elite: bool = false) -> 
 ## Host: whether a creature of the shift's budget or a wave spawns as an elite (from shift 5,
 ## DESIGN.md §6, §8). Never the Schichtmeister or a boss; always with the dev flag --elites.
 func _roll_elite() -> bool:
-	return _force_elites or randf() < _config.elite_chance(GameState.run.shift_index)
+	var bonus: float = _config.overtime_elite_bonus if has_overtime(&"raunacht") else 0.0
+	return _force_elites or randf() < _config.elite_chance(GameState.run.shift_index) + bonus
+
+
+## Whether the Überstunden modifier `kind` is in force this shift (on every peer).
+func has_overtime(kind: StringName) -> bool:
+	return (run_info.get("overtime", []) as Array).has(kind)
 
 
 ## Host: an elite died – a full box of ammo where it fell, for one of the guns the crew carries.
@@ -657,7 +674,7 @@ func _descend() -> void:
 		for key: StringName in [&"was_downed", &"second_wind_used", &"bleeds_out_at", &"invulnerable_until"]:
 			player.remove_meta(key)
 		player.teleport.rpc(mine_cage.player_spot(index))
-		player.set_armour.rpc(armour_max)
+		player.set_armour.rpc(player.armour_cap())
 		index += 1
 	alarm_on = false
 	_give_up_until.clear()
@@ -681,7 +698,7 @@ func _descend() -> void:
 				spawn_creature(id, Transform3D(Basis.IDENTITY, (spot[0] as Marker3D).global_position + Vector3.UP * 0.3))
 				print("[game] dev: %s spawned" % id)
 	_trickle_left = _config.enemy_trickle_seconds
-	_start_shift.rpc(_config.shift_seconds(run.player_count))
+	_start_shift.rpc(_config.shift_seconds(run.player_count) * (_config.overtime_whistle_mult if has_overtime(&"frueh") else 1.0))
 
 
 func _host_tick_shift(delta: float) -> void:
@@ -727,6 +744,8 @@ func _start_alarm() -> void:
 	var way: float = _way_to_lift(_fundstueck_home)
 	var run: RunState = GameState.run
 	var seconds: float = _config.rueckweg_seconds(run.shift_index, run.player_count, way)
+	if has_overtime(&"eile"):
+		seconds *= _config.overtime_timer_mult
 	_wave_left = minf(8.0, _config.wave_seconds)
 	_pulse_left = 0.0
 	_alarm.rpc(seconds)
@@ -1035,6 +1054,10 @@ func _build_mine(seed_value: int, cycle: int, biome: int) -> void:
 	mine_cage.name = "MineCage"
 	mine.add_child(mine_cage)
 	mine_cage.global_transform = anchor.global_transform
+	if has_overtime(&"finster"):
+		# Überstund "Ka Liacht": nobody lit the lanterns.
+		for light: OmniLight3D in mine.lights:
+			light.visible = false
 	print("[game] mine built (seed %d, %d chunks) in %d ms" % [seed_value, mine.chunks.size(), Time.get_ticks_msec() - started])
 
 
@@ -1059,8 +1082,14 @@ func _start_shift(seconds: float) -> void:
 	_update_clocks()
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
-	hud.show_message(tr("MSG_SHIFT_START"), 4.0)
-	print("[game] shift started (%.0f s)" % seconds)
+	var overtime: Array = run_info.get("overtime", [])
+	if overtime.is_empty():
+		hud.show_message(tr("MSG_SHIFT_START"), 4.0)
+	else:
+		# The newest Überstunden modifier and what it does.
+		var kind: String = String(overtime.back()).to_upper()
+		hud.show_message(tr("MSG_OVERTIME") % [tr("OVERTIME_" + kind), tr("OVERTIME_" + kind + "_DESC")], 6.0)
+	print("[game] shift started (%.0f s, overtime %s)" % [seconds, overtime])
 
 
 @rpc("authority", "call_local", "reliable")
@@ -1087,6 +1116,11 @@ func _end_shift(results: Dictionary) -> void:
 	_set_local_input(true)
 	hud.fade_in(FADE_SECONDS)
 	var me: int = multiplayer.get_unique_id()
+	# Ehrenzeichen go to every miner of the crew, into their own profile (DESIGN.md §7).
+	if not results.fired:
+		GameState.earn_ehrenzeichen(int(results.ehrenzeichen))
+	else:
+		GameState.record_run(int((results.score as Dictionary).shifts))
 	hud.show_results(results, me in (results.left_behind as Array), me in (results.dead as Array))
 	print("[game] shift ended, sold %d" % int(results.total))
 
@@ -1136,6 +1170,7 @@ func _broadcast_run() -> void:
 		"players": run.player_count,
 		"section": biome_index,
 		"upgrades": run.upgrades.duplicate(),
+		"overtime": run.overtime.duplicate(),
 	}
 	for peer: int in _ready_peers:
 		if peer == multiplayer.get_unique_id():
@@ -1159,6 +1194,9 @@ func _apply_upgrades(levels: Dictionary) -> void:
 	upgrade_levels = levels.duplicate()
 	armour_max = _config.armour_points(upgrade_levels)
 	lamp_mult = _config.lamp_range_mult(upgrade_levels)
+	lamp_fuel_mult = _config.lamp_fuel_mult(upgrade_levels)
+	for player: Player in players():
+		player.refresh_open_slots()
 	for entry: Resource in catalog.items:
 		var data: ItemData = entry as ItemData
 		if data.weapon == null:
@@ -1166,6 +1204,25 @@ func _apply_upgrades(levels: Dictionary) -> void:
 		if not data.has_meta(&"base_weapon"):
 			data.set_meta(&"base_weapon", data.weapon)
 		data.weapon = RunUpgrade.upgraded_weapon(data.get_meta(&"base_weapon") as WeaponData, data.id, _config.run_upgrades, upgrade_levels)
+
+
+## A miner's profile arrived (host): their starting money goes into the till once per run,
+## and in the Gasthaus their armour is put on.
+func host_loadout_arrived(player: Player) -> void:
+	var run: RunState = GameState.run
+	if run == null:
+		return
+	var money: int = roundi(_config.perk_total(Perk.Effect.START_MONEY, player.perks()))
+	if phase == Phase.HUB and run.bring_money(player.display_name(), money):
+		_start_money_message.rpc(player.display_name(), money)
+		_broadcast_run()
+	if phase == Phase.HUB:
+		player.set_armour.rpc(player.armour_cap())
+
+
+@rpc("authority", "call_local", "reliable")
+func _start_money_message(who: String, money: int) -> void:
+	show_message(tr("MSG_START_MONEY") % [who, money], 4.0)
 
 
 ## The ammo cap of `ammo_type` with the crew's upgrades.
@@ -1202,7 +1259,7 @@ func request_buy_upgrade(id: StringName) -> void:
 	_broadcast_run()
 	# Armour is put on right away, so it shows in the Gasthaus too.
 	for player: Player in players():
-		player.set_armour.rpc(armour_max)
+		player.set_armour.rpc(player.armour_cap())
 	print("[game] upgrade %s now level %d" % [id, GameState.run.upgrade_level(id)])
 
 
@@ -1386,18 +1443,29 @@ func _to_peer(peer: int, node: Node, method: StringName, args: Array = []) -> vo
 ## The company's kit before every shift: a Dienstpistole for whoever has no gun, a Spitzhacke
 ## for whoever has none (DESIGN.md §7: everyone has one – the weapon that never runs dry), and
 ## the ration of pistol rounds (topped up, not added).
+##
+## The Knappenbrief adds to it (DESIGN.md §7): the start weapon chosen, if they do not carry
+## one like it and a weapon slot is free, and the starting ammo of each type.
 func _hand_out_kit(player: Player) -> void:
-	_to_peer(player.peer_id, player, &"give_ammo", [&"pistole", _config.ration_pistole, true])
+	for ammo_type: StringName in [&"pistole", &"schrot", &"gewehr", &"leucht"]:
+		var rounds: int = _config.kit_ammo(ammo_type, player.perks())
+		if rounds > 0:
+			_to_peer(player.peer_id, player, &"give_ammo", [ammo_type, rounds, true])
 	var has_gun: bool = false
 	var has_pick: bool = false
+	var start_weapon: StringName = _config.start_weapon_item(StringName(str(player.loadout.get("start_weapon", ""))), player.perks())
 	for item: Object in player.inventory.all_items():
 		if item is WorldItem:
 			has_gun = has_gun or (item as WorldItem).data.weapon != null
 			has_pick = has_pick or (item as WorldItem).data.id == &"spitzhacke"
+			if (item as WorldItem).data.id == start_weapon:
+				start_weapon = &""
 	if not has_gun:
 		await _give_kit_item(player, &"dienstpistole")
 	if not has_pick:
 		await _give_kit_item(player, &"spitzhacke")
+	if start_weapon != &"":
+		await _give_kit_item(player, start_weapon)
 
 
 func _give_kit_item(player: Player, id: StringName) -> void:
@@ -1697,7 +1765,7 @@ func _curse_whisper(item_path: NodePath) -> void:
 
 func host_heal_player(player: Player, amount: int) -> void:
 	if player.alive and amount > 0:
-		player.set_health.rpc(mini(_config.player_max_health, player.health + amount))
+		player.set_health.rpc(mini(player.max_health, player.health + amount))
 
 
 ## Lit and thrown: a Böller or a Rauchbombe (Throwable) leaves the hand.
@@ -2045,7 +2113,7 @@ func request_fall_damage(amount: int) -> void:
 		return
 	var player: Player = player_by_peer(_sender())
 	if player != null:
-		host_damage_player(player, clampi(amount, 0, _config.player_max_health))
+		host_damage_player(player, clampi(amount, 0, player.max_health))
 
 
 ## Every source of damage to players goes through here (host).
@@ -2251,6 +2319,25 @@ func request_shout(peer: int, where: Vector3, with_sound: bool = true) -> void:
 
 
 ## An emote (DESIGN.md §9). The Jodler is heard far through the mine and draws creatures.
+## A miner pings a spot, item or creature (DESIGN.md §9): everyone sees the mark for a while.
+@rpc("any_peer", "call_local", "reliable")
+func request_ping(point: Vector3, target_path: NodePath) -> void:
+	if not multiplayer.is_server():
+		return
+	var player: Player = player_by_peer(_sender())
+	if player == null or not player.alive or player.global_position.distance_to(point) > _config.ping_distance + 2.0:
+		return
+	_ping.rpc(player.peer_id, point, target_path)
+
+
+@rpc("authority", "call_local", "reliable")
+func _ping(peer: int, point: Vector3, target_path: NodePath) -> void:
+	var target: Node3D = get_node_or_null(target_path) as Node3D if not target_path.is_empty() else null
+	hud.team.add_ping(peer, point, target, _config.ping_seconds)
+	Audio.play_ui("ping")
+	print("[game] P%d pinged %s" % [peer, target.name if target != null else str(point.snapped(Vector3.ONE * 0.1))])
+
+
 @rpc("any_peer", "call_local", "reliable")
 func request_emote(kind: int) -> void:
 	if not multiplayer.is_server():

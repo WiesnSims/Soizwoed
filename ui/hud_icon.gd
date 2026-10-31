@@ -4,9 +4,10 @@ extends Control
 ## for the lamp, chevrons for breath, a cartridge, a shotgun shell, a rifle round and a flare
 ## for ammo; for the shop's
 ## shelves a pistol, a cartridge, a bomb, a bottle and a pick; a coin for money; a shield for
-## armour and the upgrades shelf.
+## armour and the upgrades shelf; an Ehrenzeichen, a pouch and a hat for the Knappenbrief; a
+## marker drop for pings.
 
-enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN, ARMOUR, RIFLE, FLARE }
+enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN, ARMOUR, RIFLE, FLARE, MEDAL, POCKET, HAT, PING }
 
 @export var kind: Kind = Kind.HEALTH
 @export var color: Color = Color.WHITE:
@@ -101,6 +102,30 @@ func _draw() -> void:
 					Vector2(0.16, 0.56), Vector2(0.12, 0.2)])
 			_polygon(shield, s, shadow, color)
 			draw_line(Vector2(s.x * 0.5, s.y * 0.2), Vector2(s.x * 0.5, s.y * 0.78), Color(0, 0, 0, 0.35), maxf(1.0, s.x * 0.06))
+		Kind.MEDAL:
+			# An Ehrenzeichen: red-white-red ribbon above a gold star with hammer and pick.
+			_polygon(PackedVector2Array([Vector2(0.3, 0.02), Vector2(0.7, 0.02), Vector2(0.62, 0.36), Vector2(0.38, 0.36)]), s, shadow, Color(0.8, 0.14, 0.12))
+			draw_rect(Rect2(Vector2(s.x * 0.44, s.y * 0.02), Vector2(s.x * 0.12, s.y * 0.34)), Color(0.95, 0.93, 0.9))
+			var star: PackedVector2Array = []
+			for i: int in 16:
+				var a: float = TAU * i / 16.0 - PI / 2.0
+				var r: float = 0.3 if i % 2 == 0 else 0.17
+				star.append(Vector2(0.5, 0.64) + Vector2(cos(a), sin(a)) * r)
+			_polygon(star, s, shadow, Color(0.9, 0.7, 0.28))
+			draw_circle(Vector2(s.x * 0.5, s.y * 0.64), s.x * 0.09, Color(0.55, 0.38, 0.12))
+		Kind.POCKET:
+			# A leather pouch with a flap.
+			_polygon(PackedVector2Array([Vector2(0.14, 0.3), Vector2(0.86, 0.3), Vector2(0.82, 0.9), Vector2(0.18, 0.9)]), s, shadow, color)
+			draw_colored_polygon(PackedVector2Array([Vector2(s.x * 0.12, s.y * 0.26), Vector2(s.x * 0.88, s.y * 0.26), Vector2(s.x * 0.5, s.y * 0.56)]), color.darkened(0.35))
+			draw_circle(Vector2(s.x * 0.5, s.y * 0.5), s.x * 0.05, Color(0.85, 0.7, 0.3))
+		Kind.HAT:
+			_polygon(PackedVector2Array([Vector2(0.06, 0.72), Vector2(0.94, 0.72), Vector2(0.86, 0.82), Vector2(0.14, 0.82)]), s, shadow, color)
+			_polygon(PackedVector2Array([Vector2(0.26, 0.72), Vector2(0.32, 0.3), Vector2(0.5, 0.22), Vector2(0.68, 0.3), Vector2(0.74, 0.72)]), s, shadow, color)
+			draw_line(Vector2(s.x * 0.62, s.y * 0.34), Vector2(s.x * 0.86, s.y * 0.04), Color(0.82, 0.8, 0.74), maxf(1.0, s.x * 0.07))
+		Kind.PING:
+			# A marker drop pointing down at the spot.
+			_polygon(PackedVector2Array([Vector2(0.5, 0.96), Vector2(0.2, 0.46), Vector2(0.24, 0.22), Vector2(0.5, 0.06), Vector2(0.76, 0.22), Vector2(0.8, 0.46)]), s, shadow, color)
+			draw_circle(Vector2(s.x * 0.5, s.y * 0.36), s.x * 0.12, Color(0, 0, 0, 0.45))
 
 
 ## The icon of an ammo type's counter.

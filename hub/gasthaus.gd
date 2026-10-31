@@ -29,6 +29,7 @@ func _ready() -> void:
 	_body.name = "Room"
 	add_child(_body)
 	_build_plan()
+	_build_knappenbrief()
 	_build_shell()
 	_build_counter()
 	_build_tables()
@@ -70,6 +71,13 @@ func update_board(info: Dictionary) -> void:
 		tr("BOARD_MONEY") % int(info.money),
 		tr("BOARD_RULE"),
 	]
+	# Überstunden (DESIGN.md §8): every modifier in force, the newest first.
+	var overtime: Array = info.get("overtime", [])
+	if not overtime.is_empty():
+		var names: PackedStringArray = []
+		for i: int in range(overtime.size() - 1, -1, -1):
+			names.append(tr("OVERTIME_" + String(overtime[i]).to_upper()))
+		board_text.text += "\n\n" + tr("BOARD_OVERTIME") % ", ".join(names)
 	if _plan != null:
 		_plan.text = "%s\n\n%s" % [tr("PLAN_TITLE"), tr("PLAN_TODAY") % tr(section.biome_name_key)]
 
@@ -121,6 +129,82 @@ class SectionPlan:
 
 	func interact(_player: Player) -> void:
 		Game.instance.hud.open_sections()
+
+## The Knappenbrief: a framed certificate on the east wall between the tables (DESIGN.md §7).
+## E opens this player's own perks; the sheet shows their Ehrenzeichen.
+func _build_knappenbrief() -> void:
+	var brief: KnappenbriefFrame = KnappenbriefFrame.new()
+	brief.name = "Knappenbrief"
+	brief.position = Vector3(HALF_X - 0.05, 1.7, -1.3)
+	brief.rotation.y = -PI / 2.0
+	add_child(brief)
+	var parchment: StandardMaterial3D = StandardMaterial3D.new()
+	parchment.albedo_color = Color(0.86, 0.8, 0.64)
+	parchment.roughness = 0.9
+	var frame: MeshInstance3D = MeshInstance3D.new()
+	var frame_box: BoxMesh = BoxMesh.new()
+	frame_box.size = Vector3(0.78, 0.98, 0.04)
+	frame.mesh = frame_box
+	frame.material_override = TIMBER
+	brief.add_child(frame)
+	var sheet: MeshInstance3D = MeshInstance3D.new()
+	var sheet_box: BoxMesh = BoxMesh.new()
+	sheet_box.size = Vector3(0.66, 0.86, 0.01)
+	sheet.mesh = sheet_box
+	sheet.material_override = parchment
+	sheet.position = Vector3(0, 0, 0.022)
+	brief.add_child(sheet)
+	var seal: MeshInstance3D = MeshInstance3D.new()
+	var seal_mesh: CylinderMesh = CylinderMesh.new()
+	seal_mesh.top_radius = 0.045
+	seal_mesh.bottom_radius = 0.045
+	seal_mesh.height = 0.012
+	seal.mesh = seal_mesh
+	var wax: StandardMaterial3D = StandardMaterial3D.new()
+	wax.albedo_color = Color(0.55, 0.06, 0.05)
+	wax.roughness = 0.4
+	seal.material_override = wax
+	seal.rotation.x = PI / 2.0
+	seal.position = Vector3(0.2, -0.32, 0.03)
+	brief.add_child(seal)
+	brief.text = Label3D.new()
+	brief.text.font_size = 30
+	brief.text.pixel_size = 0.0034
+	brief.text.width = 180.0
+	brief.text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	brief.text.modulate = Color(0.22, 0.14, 0.08)
+	brief.text.outline_size = 0
+	brief.text.position = Vector3(0.0, 0.05, 0.03)
+	brief.add_child(brief.text)
+
+
+class KnappenbriefFrame:
+	extends StaticBody3D
+
+	var text: Label3D
+	var _shown: int = -1
+
+	func _ready() -> void:
+		collision_layer = 16
+		collision_mask = 0
+		var shape: CollisionShape3D = CollisionShape3D.new()
+		var box: BoxShape3D = BoxShape3D.new()
+		box.size = Vector3(0.78, 0.98, 0.1)
+		shape.shape = box
+		add_child(shape)
+
+	func _process(_delta: float) -> void:
+		var honours: int = GameState.profile.ehrenzeichen if GameState.profile != null else 0
+		if honours != _shown and text != null:
+			_shown = honours
+			text.text = "%s\n\n%s" % [tr("KNAPPENBRIEF_TITLE"), tr("KNAPPENBRIEF_HONOURS") % honours]
+
+	func interaction_text(_player: Player) -> String:
+		return tr("PROMPT_KNAPPENBRIEF") if Game.instance.phase == Game.Phase.HUB else ""
+
+	func interact(_player: Player) -> void:
+		Game.instance.hud.open_knappenbrief()
+
 
 func _build_shell() -> void:
 	_box(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0), Vector3(0, -0.1, 0), FLOOR)

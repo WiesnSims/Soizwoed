@@ -19,6 +19,10 @@ enum Effect {
 	ARMOUR,
 	## The lamp's reach, as a share.
 	LAMP_RANGE,
+	## How long carbide and battery last, as a share.
+	LAMP_BATTERY,
+	## Opens the crew's extra pocket slot (the Rucksack, key ß).
+	POCKET_SLOT,
 }
 
 @export var id: StringName = &""

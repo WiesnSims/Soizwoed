@@ -18,11 +18,17 @@ var ehrenzeichen: int = 0
 var fired: bool = false
 ## Run upgrades bought: upgrade id -> level.
 var upgrades: Dictionary = {}
+## The Überstunden modifiers in force, in the order they came (DESIGN.md §8); they stack.
+var overtime: Array[StringName] = []
+## Miners whose Knappenbrief starting money is already in the till (by name).
+var money_brought: Dictionary = {}
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func _init(balance: BalanceConfig, players: int) -> void:
 	config = balance
 	player_count = players
+	rng.randomize()
 
 
 ## Ends a shift: the loot that rode up is sold; with the Fundstück delivered the bonus and the
@@ -38,6 +44,23 @@ func finish_shift(loot_value: int, delivered: bool, bonus: int = 0, honours: int
 	ehrenzeichen += honours
 	shifts_survived += 1
 	shift_index += 1
+	if shift_index >= config.overtime_first_shift:
+		var kind: StringName = config.roll_overtime(overtime, rng)
+		if kind != &"":
+			overtime.append(kind)
+
+
+func has_overtime(kind: StringName) -> bool:
+	return overtime.has(kind)
+
+
+## A miner's Knappenbrief starting money goes into the till once per run (`who`: their name).
+func bring_money(who: String, amount: int) -> bool:
+	if amount <= 0 or money_brought.has(who):
+		return false
+	money_brought[who] = true
+	money += amount
+	return true
 
 
 ## Test cheat: money that was not earned (not counted in the score).

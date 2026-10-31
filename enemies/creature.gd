@@ -435,7 +435,8 @@ func _farewell(line_index: int, sound: String) -> void:
 func scaled_health(base: int) -> int:
 	var run: RunState = GameState.run
 	var elite_mult: float = _config.elite_health_mult if elite else 1.0
-	return maxi(1, roundi(base * elite_mult * _config.enemy_health_mult(run.player_count if run != null else 1, run.shift_index if run != null else 0)))
+	var overtime_mult: float = _config.overtime_health_mult if Game.instance != null and Game.instance.has_overtime(&"zaach") else 1.0
+	return maxi(1, roundi(base * elite_mult * overtime_mult * _config.enemy_health_mult(run.player_count if run != null else 1, run.shift_index if run != null else 0)))
 
 
 ## `base` damage of an attack, growing with the shift (DESIGN.md §8).
@@ -453,6 +454,8 @@ func speed_mult() -> float:
 func host_damage(damage: int, from: Vector3, die_sound: String = "") -> bool:
 	if damage <= 0 or health <= 0:
 		return false
+	if data.id == &"grubenhund" and Game.instance != null and Game.instance.has_overtime(&"panzerhunde"):
+		damage = maxi(1, roundi(damage * _config.overtime_dog_damage_taken))  # Überstund: armoured dogs
 	health -= damage
 	_flinch.rpc(from)
 	if health <= 0:

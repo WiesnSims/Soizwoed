@@ -686,3 +686,52 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Version 0.8.0.**
 - `tests/test_m8.gd`: the new guns and ammo as data, caps, Notration with flares, the elite curve, armour and weak spots, the bosses per section, the HUD icons.
 - New headless checks: `smoke_weapons`, `smoke_seemuada`, `smoke_schiachpercht`, `smoke_elites`; `smoke_tatzel`, `smoke_kaser`, `smoke_percht` and `smoke_weibl` now check the v2 rules (throat, lit-only damage, the charge and the mask, the pin).
+
+## 2026-10-31 – M9 progression (chosen by Claude unless marked, change any time)
+
+### Ehrenzeichen and the profile (DESIGN.md §7)
+- **Saved per player** in `user://profile.cfg` (`PlayerProfile`): Ehrenzeichen left and earned in all, the Knappenbrief perks, the start weapon, hat and lamp colour chosen, runs played and the most shifts in one run. Saved the moment something changes.
+- **Every miner in the session gets the shift's Ehrenzeichen** when the Fundstück is delivered – dead or left-behind ones too. The crew delivered; nobody should lose honours for having died for it. Same numbers as in M7 (1, +1 every 3 shifts, +1 Salzsee / +2 Tiefe, +1 with a boss).
+- Automated runs (`--smoke`, `--scenario`, `--auto-shift`, `--shots`, `--wait-peers`, or any headless run) keep the profile in memory only and never touch the real one. `--profile=<name>` uses `user://profile_<name>.cfg`, so two instances on one PC can each have their own.
+- A saved perk that no longer exists is dropped; levels above the highest are capped.
+
+### The Knappenbrief
+- A framed certificate on the Gasthaus's east wall between the tables; it shows your Ehrenzeichen. E opens it (only in the Gasthaus): two sheets, "Knappe" (perks) and "Gwand" (cosmetics), cards like the shop.
+- **Perks** (prices in Ehrenzeichen, `balance.tres` → `perks`):
+  - Gsund und zaach: +10 max health per level, 5 levels (3/4/6/8/10).
+  - Eigene Flintn (8) / Eigener Stutzen (12): the kit brings that gun every shift if you carry none like it and a weapon slot is free. One start weapon at a time; bought ones can be taken along or left at home on the card.
+  - Startmunition: pistol +8 rounds to the ration (2/4), shells 4 (3/5), rifle rounds 5 (3/5) per level – the kit tops the counter up to it.
+  - Erspartes: 100 S per level (3/5/7) into the crew's till, once per run per miner (by name). Bought in the middle of a run it pays out right away, once.
+  - Lederweste: +15 armour at every shift start per level (4/7), on top of the crew's armour.
+  - Sanitäter: helping up 20 % quicker per level (3/5).
+  - Grubentaschn (10): an extra pocket, key 0.
+- **Cosmetics:** the Gamsbart-Hut (4, the loot hat's look) and a Schachthut (6, the black parade hat with a plume); lamp colours "Mondliacht" (cold blue-white) and "Grünspan" (green copper flame), 3 each. Only looks: lamp reach, the Kasermandl's light rule etc. are unchanged. Others see your hat (you don't); a worn loot hat covers it.
+- Modest numbers on purpose (DESIGN §7): a run of five shifts earns about 8–12 Ehrenzeichen.
+- How it travels: your peer sends its loadout to the host, the host checks it (known perks, capped levels, choices only if bought) and passes it on to everyone; late joiners get everyone's from the host. The host uses it for the kit, armour, starting money and health; the helper's own peer uses Sanitäter for the hold time.
+
+### Run upgrades (the rest of DESIGN §7)
+- Rucksack (260 S): an extra pocket for the whole crew, key ß (the key right of 0; rebindable).
+- Große Batterie (80 / 140 S): carbide and battery last 30 % longer per level.
+- Stutzen Diopter (150 S): −30 % spread. Leuchtpistole gschmierts Scharnier (90 S): −30 % reload time.
+- **The extra pockets:** two locked slots after slot 9. They show on the hotbar only once open; the mouse wheel and keys skip locked ones. Grubentaschn + Rucksack = both.
+
+### Überstunden (DESIGN §8)
+- From shift 10 (index 9) every new shift adds one random modifier not yet in force; they stack until all eight are in. Shown on the notice board and when the shift starts.
+  - **Ka Liacht:** the mine's lanterns are out.
+  - **Doppelte Bergmandl:** every Bergmandl spawned with the shift brings a second one (not in waves).
+  - **Eile:** Rückweg-timer ×0.75.
+  - **Panzerhunde:** Grubenhunde take 60 % of the damage.
+  - **Knappe Munition:** 60 % of the ammo boxes.
+  - **Früher Pfiff:** the Grubenpfeife after half the shift (the Schichtmeister comes sooner).
+  - **Raunacht:** +25 % elite chance.
+  - **Zaache Viecher:** creatures have 25 % more health.
+
+### Crew HUD and pings (DESIGN §9)
+- **Teammates** on the left: name, a health bar (their own maximum), an armour bar, the rounds of the gun in their hand (magazine / spare) or "trogt wos"; states "am Bodn (12 s)", "gfangen!", "hin".
+- **Downed teammates** are marked through the rock (a blinking red cross with name, seconds left and distance), kept at the screen edge when they are off screen or behind you.
+- **Pings:** middle mouse ("Do!", rebindable) marks what you point at for 5 s, up to 80 m: a creature (the mark follows it, red), an item or a spot. One mark per miner; a miner's Klopfzeichen (two hammer taps on a rail) plays for everyone. At most every 0.4 s.
+
+### Version and tests
+- **Version 0.9.0.**
+- `tests/test_m9.gd`: perks as data, buying and levels, choices, the profile saved and loaded (unknown perks dropped), the perk numbers, the new upgrades, starting money once, Überstunden from shift 10 and stacking, the locked pockets.
+- New headless checks: `smoke_knappenbrief` (perks → health, slots, armour, help-up time, lamp colour, starting money once; the kit's Flinte and shells; Ehrenzeichen saved after a delivery) and `smoke_overtime` (six modifiers in force, a ping). `mp_test.ps1 -Coop` also checks that a late-joining client sees the host's perks and hat, and that the client's ping reaches the host.

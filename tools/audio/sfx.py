@@ -192,6 +192,14 @@ def ui_click(v):
     return click(2000 + 400 * v, 0.003, 0.6)
 
 
+def ping(v):
+    """A ping ("do!"): a miner's Klopfzeichen, two quick hammer taps on an iron rail."""
+    def tap(level):
+        ring = d.partials(0.45, [(1180, 0.5, 0.12), (2950, 0.3, 0.06), (4410, 0.15, 0.03)])
+        return d.mix((0.0, click(3000, 0.002, 0.7)), (0.0, ring)) * level
+    return d.mix((0.0, tap(0.8)), (0.11, tap(0.65)))
+
+
 # --- mine ambience ---------------------------------------------------------------------------------
 
 def drip(v):
@@ -766,6 +774,7 @@ SOUNDS = {
     "lever": (lever, 1),
     "sell": (sell, 1),
     "ui_click": (ui_click, 1),
+    "ping": (ping, 1),
     "drip": (drip, 4),
     "creak": (creak, 3),
     "rumble": (rumble, 2),

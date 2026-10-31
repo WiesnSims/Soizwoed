@@ -18,6 +18,8 @@ const SHOP_CATEGORY_KEYS: Array[String] = ["SHOP_CAT_WEAPONS", "SHOP_CAT_AMMO", 
 const SHOP_CATEGORY_ICONS: Array[HudIcon.Kind] = [HudIcon.Kind.GUN, HudIcon.Kind.BULLET, HudIcon.Kind.BOMB, HudIcon.Kind.BOTTLE, HudIcon.Kind.PICK, HudIcon.Kind.ARMOUR]
 const ALARM_COLOR: Color = Color(1.0, 0.42, 0.3)
 
+## Teammates, downed marks and pings.
+var team: TeamOverlay
 var _root: Control
 var _crosshair: Crosshair
 var _icons: ItemIcons
@@ -59,6 +61,8 @@ var _settings: SettingsPanel
 ## item id -> the TextureRects showing it.
 var _shop_category: int = ItemData.ShopCategory.WEAPONS
 var _shop_pictures: Dictionary = {}
+## The Knappenbrief sheet shown: 0 perks, 1 cosmetics.
+var _brief_sheet: int = 0
 
 
 func _ready() -> void:
@@ -75,6 +79,9 @@ func _ready() -> void:
 	_build_bottom()
 	_build_ammo()
 	_build_top()
+	team = TeamOverlay.new()
+	team.name = "Team"
+	_root.add_child(team)
 	_build_panel()
 	_settings = SettingsPanel.new()
 	_settings.closed.connect(_on_settings_closed)
@@ -111,10 +118,10 @@ func _process(_delta: float) -> void:
 	_update_prompt(player)
 	_update_slots(player)
 	_update_gun(player)
-	_health_bar.value = float(player.health) / Balance.config.player_max_health
+	_health_bar.value = float(player.health) / player.max_health
 	_health_value.text = str(player.health)
-	_armour_bar.get_parent().visible = game.armour_max > 0
-	_armour_bar.value = float(player.armour) / maxf(1.0, game.armour_max)
+	_armour_bar.get_parent().visible = player.armour_cap() > 0
+	_armour_bar.value = float(player.armour) / maxf(1.0, player.armour_cap())
 	_alarm_label.visible = game.alarm_on and game.phase == Game.Phase.SHIFT
 	if _alarm_label.visible:
 		_alarm_label.text = tr("HUD_ALARM") % Game._clock(game.alarm_left)
@@ -339,7 +346,8 @@ func _upgrade_card(upgrade: RunUpgrade, money: int) -> Control:
 		picture_back.add_child(picture)
 		_remember_picture(item.id, picture)
 	else:
-		var shield: HudIcon = HudIcon.new(HudIcon.Kind.ARMOUR, Color(0.62, 0.66, 0.72), 72)
+		var drawn: HudIcon.Kind = HudIcon.Kind.POCKET if upgrade.effect == RunUpgrade.Effect.POCKET_SLOT else HudIcon.Kind.ARMOUR
+		var shield: HudIcon = HudIcon.new(drawn, Color(0.62, 0.66, 0.72) if drawn == HudIcon.Kind.ARMOUR else Color(0.55, 0.38, 0.22), 72)
 		shield.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		shield.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		picture_back.add_child(shield)
@@ -408,6 +416,206 @@ func _rule() -> ColorRect:
 	return line
 
 
+## The Knappenbrief on the Gasthaus wall (DESIGN.md §7): this player's own Ehrenzeichen buy
+## permanent perks (the "Knappe" sheet) and things to wear (the "Gwand" sheet). Bought start
+## weapons and cosmetics can be taken along or put away. Only in the Gasthaus.
+func open_knappenbrief() -> void:
+	_start_panel("knappenbrief", "", SHOP_SIZE)
+	var profile: PlayerProfile = GameState.profile
+	var top: HBoxContainer = HBoxContainer.new()
+	top.add_theme_constant_override("separation", 10)
+	var title: Label = _label(tr("KNAPPENBRIEF_TITLE"), 32)
+	title.add_theme_color_override("font_color", ACCENT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(title)
+	top.add_child(HudIcon.new(HudIcon.Kind.MEDAL, Color.WHITE, 30))
+	top.add_child(_label(tr("KNAPPENBRIEF_HONOURS") % profile.ehrenzeichen, 24))
+	_panel_box.add_child(top)
+	var note: Label = _label(tr("KNAPPENBRIEF_NOTE") % [profile.ehrenzeichen_total, profile.best_shifts], 15)
+	note.add_theme_color_override("font_color", DIM_COLOR)
+	_panel_box.add_child(note)
+	_panel_box.add_child(_rule())
+	var body: HBoxContainer = HBoxContainer.new()
+	body.add_theme_constant_override("separation", 18)
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_panel_box.add_child(body)
+	var sheets: VBoxContainer = VBoxContainer.new()
+	sheets.custom_minimum_size = Vector2(200, 0)
+	sheets.add_theme_constant_override("separation", 6)
+	body.add_child(sheets)
+	for sheet: int in 2:
+		var tab: Button = Button.new()
+		var chosen: bool = sheet == _brief_sheet
+		tab.text = "        %s" % tr("KNAPPENBRIEF_SHEET_%d" % sheet)
+		tab.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		tab.custom_minimum_size = Vector2(0, 46)
+		tab.add_theme_font_size_override("font_size", 20)
+		tab.add_theme_stylebox_override("normal", _tab_box(chosen))
+		tab.add_theme_stylebox_override("hover", _tab_box(true, 0.6))
+		tab.add_theme_stylebox_override("pressed", _tab_box(true))
+		tab.add_theme_color_override("font_color", ACCENT if chosen else TEXT_COLOR)
+		tab.pressed.connect(func() -> void:
+			Audio.play_ui("ui_click")
+			_brief_sheet = sheet
+			open_knappenbrief())
+		var icon: HudIcon = HudIcon.new(HudIcon.Kind.MEDAL if sheet == 0 else HudIcon.Kind.HAT, ACCENT if chosen else DIM_COLOR, 24)
+		icon.position = Vector2(10, 11)
+		tab.add_child(icon)
+		sheets.add_child(tab)
+	var scroll: ScrollContainer = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body.add_child(scroll)
+	var grid: GridContainer = GridContainer.new()
+	grid.columns = 3
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	scroll.add_child(grid)
+	_shop_pictures.clear()
+	for perk: Perk in Balance.config.perks:
+		if perk.is_cosmetic() == (_brief_sheet == 1):
+			grid.add_child(_perk_card(perk, profile))
+	_panel_box.add_child(_rule())
+	var close: Button = Button.new()
+	close.text = tr("PANEL_CLOSE")
+	close.custom_minimum_size = Vector2(200, 40)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.pressed.connect(close_panels)
+	_panel_box.add_child(close)
+	_apply_modal()
+
+
+## A Knappenbrief card: the picture, name and level, what it does, and either the price of the
+## next level or, for a bought start weapon or cosmetic, taking it along / putting it away.
+func _perk_card(perk: Perk, profile: PlayerProfile) -> Control:
+	var level: int = profile.level(perk.id)
+	var maxed: bool = level >= perk.max_level()
+	var price: int = perk.price_after(level)
+	var affordable: bool = not maxed and price <= profile.ehrenzeichen
+	var card: PanelContainer = PanelContainer.new()
+	card.custom_minimum_size = Vector2(SHOP_CARD_WIDTH, 0)
+	var frame: StyleBoxFlat = _stylebox(Color(1, 1, 1, 0.05), 12)
+	frame.border_color = Color(ACCENT, 0.5) if level > 0 else Color(1, 1, 1, 0.12)
+	frame.set_border_width_all(1)
+	card.add_theme_stylebox_override("panel", frame)
+	var box: VBoxContainer = VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	card.add_child(box)
+	var picture_back: PanelContainer = PanelContainer.new()
+	picture_back.add_theme_stylebox_override("panel", _stylebox(Color(0, 0, 0, 0.35), 4))
+	picture_back.custom_minimum_size = Vector2(0, 104)
+	var item: ItemData = Game.instance.catalog.by_id(perk.icon_item) if perk.icon_item != &"" else null
+	if item != null:
+		var picture: TextureRect = TextureRect.new()
+		picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		picture.texture = _icons.icon(item)
+		picture_back.add_child(picture)
+		_remember_picture(item.id, picture)
+	else:
+		var drawn: HudIcon = HudIcon.new(_perk_icon(perk), _perk_icon_color(perk), 72)
+		drawn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		drawn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		picture_back.add_child(drawn)
+	box.add_child(picture_back)
+	var heading: String = tr(perk.name_key) if perk.max_level() == 1 else "%s  %s" % [tr(perk.name_key), tr("SHOP_LEVEL") % [level, perk.max_level()]]
+	var name_label: Label = _label(heading, 21)
+	name_label.add_theme_color_override("font_color", TEXT_COLOR if affordable or level > 0 else DIM_COLOR)
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(name_label)
+	var description: Label = _label(tr(perk.name_key + "_DESC"), 15)
+	description.add_theme_color_override("font_color", DIM_COLOR)
+	description.add_theme_constant_override("outline_size", 0)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.custom_minimum_size = Vector2(SHOP_CARD_WIDTH - 24, 64)
+	description.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(description)
+	var button: Button = Button.new()
+	button.custom_minimum_size = Vector2(0, 38)
+	button.add_theme_font_size_override("font_size", 18)
+	if perk.is_choice() and level > 0:
+		var on: bool = profile.chosen(perk)
+		var weapon: bool = perk.effect == Perk.Effect.START_WEAPON
+		if on:
+			button.text = tr("KNAPPENBRIEF_LEAVE" if weapon else "KNAPPENBRIEF_TAKE_OFF")
+		else:
+			button.text = tr("KNAPPENBRIEF_TAKE" if weapon else "KNAPPENBRIEF_WEAR")
+		button.add_theme_color_override("font_color", ACCENT)
+		button.pressed.connect(_on_perk_choice.bind(perk.id, not on))
+	else:
+		button.text = tr("SHOP_MAXED") if maxed else tr("KNAPPENBRIEF_BUY") % price
+		button.disabled = not affordable
+		if affordable:
+			button.add_theme_color_override("font_color", ACCENT)
+		button.pressed.connect(_on_perk_pressed.bind(perk.id))
+	box.add_child(button)
+	if not affordable and level == 0:
+		card.modulate = Color(1, 1, 1, 0.65)
+	return card
+
+
+func _perk_icon(perk: Perk) -> HudIcon.Kind:
+	match perk.effect:
+		Perk.Effect.MAX_HEALTH, Perk.Effect.REVIVE_SPEED:
+			return HudIcon.Kind.HEALTH
+		Perk.Effect.START_MONEY:
+			return HudIcon.Kind.COIN
+		Perk.Effect.START_ARMOUR:
+			return HudIcon.Kind.ARMOUR
+		Perk.Effect.POCKET_SLOT:
+			return HudIcon.Kind.POCKET
+		Perk.Effect.HAT:
+			return HudIcon.Kind.HAT
+		Perk.Effect.LAMP_COLOUR:
+			return HudIcon.Kind.LAMP
+	return HudIcon.Kind.MEDAL
+
+
+func _perk_icon_color(perk: Perk) -> Color:
+	match perk.effect:
+		Perk.Effect.REVIVE_SPEED:
+			return Color(0.9, 0.9, 0.86)
+		Perk.Effect.START_ARMOUR:
+			return Color(0.62, 0.66, 0.72)
+		Perk.Effect.POCKET_SLOT:
+			return Color(0.55, 0.38, 0.22)
+		Perk.Effect.HAT:
+			return Color(0.12, 0.12, 0.13) if perk.target == &"knappe" else Color(0.25, 0.32, 0.22)
+		Perk.Effect.LAMP_COLOUR:
+			return Balance.config.lamp_colours.get(perk.target, Color.WHITE)
+	return Color(0.85, 0.22, 0.17)
+
+
+func _on_perk_pressed(id: StringName) -> void:
+	var perk: Perk = Balance.config.perk(id)
+	if perk == null or not GameState.profile.buy(perk):
+		show_message(tr("MSG_TOO_FEW_HONOURS"))
+		return
+	Audio.play_ui("ui_click")
+	GameState.profile.save()
+	_profile_changed()
+	show_message(tr("MSG_PERK_BOUGHT") % tr(perk.name_key))
+
+
+func _on_perk_choice(id: StringName, on: bool) -> void:
+	var perk: Perk = Balance.config.perk(id)
+	if perk == null:
+		return
+	Audio.play_ui("ui_click")
+	GameState.profile.choose(perk, on)
+	GameState.profile.save()
+	_profile_changed()
+
+
+## The profile changed: the host and everyone else learn what it brings now.
+func _profile_changed() -> void:
+	var player: Player = Game.instance.local_player()
+	if player != null:
+		player.submit_loadout.rpc_id(1, GameState.profile.loadout())
+	open_knappenbrief()
+
+
 ## The Grubnplan: pick the mine section for the next shift (deeper ones open as the run goes on).
 func open_sections() -> void:
 	_start_panel("sections", tr("PLAN_TITLE"))
@@ -467,6 +675,7 @@ func show_results(results: Dictionary, left_behind: bool, dead: bool = false) ->
 	else:
 		_add_text(tr("RESULTS_DELIVERED") % [fundstueck, int(results.bonus)], Color(0.6, 0.9, 0.5))
 		_add_text(tr("RESULTS_EHRENZEICHEN") % int(results.ehrenzeichen), Color(0.95, 0.82, 0.45))
+		_add_text(tr("RESULTS_HONOURS_TOTAL") % GameState.profile.ehrenzeichen, DIM_COLOR, 16)
 		_add_text(tr("RESULTS_NEXT_SHIFT") % (int(results.shift) + 1), DIM_COLOR)
 		_add_text(tr("HUD_MONEY") % int(results.money), TEXT_COLOR)
 		_add_button(tr("PANEL_CONTINUE"), close_panels)
@@ -762,8 +971,8 @@ func _build_bottom() -> void:
 	# Bottom centre: the hint for what is in hand, and the hotbar.
 	var bottom: VBoxContainer = VBoxContainer.new()
 	bottom.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	bottom.position = Vector2(-380, -140)
-	bottom.size = Vector2(760, 128)
+	bottom.position = Vector2(-440, -140)
+	bottom.size = Vector2(880, 128)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
 	bottom.add_theme_constant_override("separation", 2)
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE

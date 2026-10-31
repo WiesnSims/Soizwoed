@@ -45,6 +45,11 @@ var gunner: Gunner
 var voice_lure_ok: bool = true
 var inventory: Inventory
 var health: int = 100
+## Most health, with the owner's Knappenbrief perks.
+var max_health: int = 100
+## The owner's profile as others need it (PlayerProfile.loadout(): perks, start weapon, hat,
+## lamp colour); the host passes it on to everyone.
+var loadout: Dictionary = {}
 ## Points of armour left (Lederschurz, Grubenhelm), refilled before every shift (host decides).
 var armour: int = 0
 var stamina: float = 1.0
@@ -105,6 +110,7 @@ var _step_accum: float = 0.0
 var _bob_phase: float = 0.0
 var _head_height: float = STAND_HEAD
 var _shout_cooldown: float = 0.0
+var _ping_cooldown: float = 0.0
 var _use_cooldown: float = 0.0
 var _hold_target: Node
 var _hold_time: float = 0.0
@@ -164,8 +170,10 @@ func _ready() -> void:
 	add_to_group(&"players")
 	_config = Balance.config
 	inventory = Inventory.new(Inventory.layout(_config))
+	inventory.set_open_slots(Inventory.base_slots(_config))
 	inventory.changed.connect(_on_inventory_changed)
-	health = _config.player_max_health
+	max_health = _config.player_max_health
+	health = max_health
 	lamp_fuel = _config.lamp_fuel_seconds
 	battery = _config.stirnlampe_battery_seconds
 	ray.target_position = Vector3(0, 0, -_config.interact_distance)
@@ -204,6 +212,89 @@ func _ready() -> void:
 		sync.synchronized.connect(_on_synchronized)
 		inventory.select(net_slot)
 	_update_lamp()
+	if local:
+		submit_loadout.rpc_id(1, GameState.profile.loadout())
+
+
+# --- the Knappenbrief profile ---------------------------------------------------------------------
+
+## The owner sends what their profile brings (on joining and after buying on the Knappenbrief);
+## the host passes it on to everyone (late joiners get it from Game._client_loaded).
+@rpc("any_peer", "call_local", "reliable")
+func submit_loadout(data: Dictionary) -> void:
+	if not multiplayer.is_server() or multiplayer.get_remote_sender_id() != peer_id:
+		return
+	set_loadout.rpc(_clean_loadout(data))
+	if game() != null:
+		game().host_loadout_arrived(self)
+
+
+## Only what the game knows: perks that exist, at most their highest level; choices bought.
+func _clean_loadout(data: Dictionary) -> Dictionary:
+	var perks: Dictionary = {}
+	var given: Dictionary = data.get("perks", {}) if data.get("perks", {}) is Dictionary else {}
+	for id: Variant in given:
+		var perk: Perk = _config.perk(StringName(str(id)))
+		if perk != null:
+			perks[perk.id] = clampi(int(given[id]), 0, perk.max_level())
+	var clean: Dictionary = {"perks": perks}
+	for key: String in ["start_weapon", "hat", "lamp"]:
+		var id: StringName = StringName(str(data.get(key, "")))
+		clean[key] = id if int(perks.get(id, 0)) > 0 else &""
+	return clean
+
+
+## The host tells everyone what this miner's profile brings.
+@rpc("any_peer", "call_local", "reliable")
+func set_loadout(data: Dictionary) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return  # only the host
+	var was_full: bool = health >= max_health
+	loadout = data.duplicate(true)
+	max_health = _config.max_health(perks())
+	# In the Gasthaus a stronger miner is at full health at once; in the mine it waits for
+	# the next healing.
+	if was_full and (game() == null or game().phase != Game.Phase.SHIFT):
+		health = max_health
+	health = mini(health, max_health)
+	refresh_open_slots()
+	_wear_hat()
+	_update_lamp()
+
+
+func perks() -> Dictionary:
+	return loadout.get("perks", {})
+
+
+## Pockets open to this miner: the usual ones, the Grubentaschn (their perk) and the crew's
+## Rucksack (a run upgrade).
+func refresh_open_slots() -> void:
+	var extra: int = 0
+	if _config.perk_total(Perk.Effect.POCKET_SLOT, perks()) > 0.0:
+		extra += 1
+	if game() != null and _config.crew_pocket_slot(game().upgrade_levels):
+		extra += 1
+	var count: int = Inventory.base_slots(_config) + mini(extra, _config.extra_slots)
+	if count != inventory.open_slots:
+		inventory.set_open_slots(count)
+
+
+## Armour this miner starts a shift with: the crew's upgrades plus their own Lederweste.
+func armour_cap() -> int:
+	var crew: int = game().armour_max if game() != null else 0
+	return crew + roundi(_config.perk_total(Perk.Effect.START_ARMOUR, perks()))
+
+
+## The cosmetic hat others see (none for the wearer, and none while a loot hat is worn).
+func _wear_hat() -> void:
+	var old: Node = _hat_point().get_node_or_null(^"CosmeticHat")
+	if old != null:
+		old.free()
+	var perk: Perk = _config.perk(StringName(str(loadout.get("hat", ""))))
+	if perk == null or perk.effect != Perk.Effect.HAT or is_local():
+		return
+	_hat_point().add_child(Cosmetics.build_hat(perk.target))
+	refresh_held_items()
 
 
 func _exit_tree() -> void:
@@ -270,6 +361,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		game().request_emote.rpc_id(1, Emote.WAVE)
 	elif event.is_action_pressed(&"emote_point"):
 		game().request_emote.rpc_id(1, Emote.POINT)
+	elif event.is_action_pressed(&"ping"):
+		ping()
 	elif event.is_action_pressed(&"slot_next"):
 		inventory.select_next(1)
 	elif event.is_action_pressed(&"slot_prev"):
@@ -282,6 +375,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	_shout_cooldown = maxf(0.0, _shout_cooldown - delta)
+	_ping_cooldown = maxf(0.0, _ping_cooldown - delta)
 	_use_cooldown = maxf(0.0, _use_cooldown - delta)
 	_alphorn_cooldown = maxf(0.0, _alphorn_cooldown - delta)
 	if _radio != null and _radio.playing and Time.get_ticks_msec() / 1000.0 > _radio_until:
@@ -582,7 +676,7 @@ func teleport(to: Transform3D) -> void:
 ## Back in the game at the ride (after dying or being left behind).
 @rpc("any_peer", "call_local", "reliable")
 func revive() -> void:
-	health = _config.player_max_health
+	health = max_health
 	set_downed(false)
 	pinned = false
 	knocked_left = 0.0
@@ -677,8 +771,9 @@ func interaction_text(other: Player) -> String:
 	return ""
 
 
-func interact_hold_seconds(_other: Player) -> float:
-	return _config.help_up_seconds
+## The helper's Sanitäter perk makes it quicker.
+func interact_hold_seconds(other: Player) -> float:
+	return _config.help_up_time(other.perks()) if other != null else _config.help_up_seconds
 
 
 func interact(other: Player) -> void:
@@ -830,6 +925,7 @@ func _update_lamp() -> void:
 	beam.spot_range = reach
 	_beam_flame.base_energy = energy * _config.lamp_beam_energy
 	_beam_flame.flicker = _lamp_flame.flicker
+	color = _tinted(color)
 	beam.light_color = color
 	lamp.omni_range = _config.lamp_glow_range * strength
 	_lamp_flame.base_energy = energy * _config.lamp_glow_energy
@@ -847,6 +943,22 @@ func _lamp_mult() -> float:
 	return game().lamp_mult if game() != null else 1.0
 
 
+## Seconds a full carbide tank lasts, with the crew's Batterie upgrade.
+func lamp_fuel_max() -> float:
+	return _config.lamp_fuel_seconds * (game().lamp_fuel_mult if game() != null else 1.0)
+
+
+## Seconds a fresh Stirnlampe battery lasts, with the crew's Batterie upgrade.
+func battery_max() -> float:
+	return _config.stirnlampe_battery_seconds * (game().lamp_fuel_mult if game() != null else 1.0)
+
+
+## The worn lamp colour (Knappenbrief) over the lamp's own colour.
+func _tinted(color: Color) -> Color:
+	var tint: Color = _config.lamp_tint(StringName(str(loadout.get("lamp", ""))))
+	return color if tint == Color.WHITE else Color(color.r * tint.r, color.g * tint.g, color.b * tint.b).lerp(tint, 0.6)
+
+
 ## An open flame that can set off firedamp: a burning carbide lamp.
 func has_open_flame() -> bool:
 	return alive and lamp_on and not lamp_electric
@@ -854,12 +966,12 @@ func has_open_flame() -> bool:
 
 ## A fresh battery for the Stirnlampe (in the Gasthaus, before each shift).
 func recharge_battery() -> void:
-	battery = _config.stirnlampe_battery_seconds
+	battery = battery_max()
 	_update_lamp()
 
 
 func refill_lamp(share: float) -> void:
-	lamp_fuel = minf(_config.lamp_fuel_seconds, lamp_fuel + share * _config.lamp_fuel_seconds)
+	lamp_fuel = minf(lamp_fuel_max(), lamp_fuel + share * lamp_fuel_max())
 	Audio.play_at("lamp_refill", lamp.global_position, &"SFX", -4.0, 10.0)
 	if not lamp_on:
 		_set_lamp.rpc(true)
@@ -893,8 +1005,8 @@ func lights_point(point: Vector3, share: float = 1.0) -> bool:
 ## What is left of the lamp in use: carbide, or the Stirnlampe's battery (0–1).
 func lamp_share() -> float:
 	if lamp_electric:
-		return battery / _config.stirnlampe_battery_seconds
-	return lamp_fuel / _config.lamp_fuel_seconds
+		return battery / battery_max()
+	return lamp_fuel / lamp_fuel_max()
 
 
 # --- interaction -----------------------------------------------------------------------------------
@@ -1177,6 +1289,23 @@ func _melee(damage: int, bare_hand: bool, breaks_rock: bool, swish: bool = true)
 		game().show_message(tr("MSG_NEED_PICK"))
 
 
+## "Do!" (middle mouse, DESIGN.md §9): marks what the crosshair points at for the whole crew –
+## a creature (the mark follows it), an item or a spot.
+func ping() -> void:
+	if _ping_cooldown > 0.0:
+		return
+	_ping_cooldown = _config.ping_cooldown
+	var from: Vector3 = camera.global_position
+	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, from - camera.global_basis.z * _config.ping_distance, 1 | WorldItem.LAYER_ITEMS | Creature.LAYER_CREATURES | WorldItem.LAYER_INTERACT)
+	query.exclude = [get_rid()]
+	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
+	var point: Vector3 = hit.get("position", from - camera.global_basis.z * _config.ping_distance)
+	var target: Node = hit.get("collider") as Node
+	while target != null and not (target is Creature or target is WorldItem or target is Player):
+		target = target.get_parent()
+	game().request_ping.rpc_id(1, point, target.get_path() if target != null else NodePath())
+
+
 func _shout() -> void:
 	if _shout_cooldown > 0.0:
 		return
@@ -1291,12 +1420,17 @@ func _on_inventory_changed() -> void:
 ## Only the selected slot item shows in the hand, and only while the hands are free. A worn
 ## hat shows on the head, to everyone but its wearer.
 func refresh_held_items() -> void:
+	var loot_hat: bool = false
 	for i: int in inventory.slots.size():
 		var item: WorldItem = inventory.slots[i] as WorldItem
 		if item != null and item.worn:
 			item.visible = not is_local() and alive
+			loot_hat = true
 		elif item != null:
 			item.visible = i == inventory.selected and not inventory.hands_busy()
+	var cosmetic: Node3D = head.get_node_or_null(^"HatPoint/CosmeticHat") as Node3D
+	if cosmetic != null:
+		cosmetic.visible = alive and not loot_hat
 
 
 func _check_headlamp() -> void:
