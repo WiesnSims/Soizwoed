@@ -131,6 +131,42 @@ def shot_leucht(v):
     return d.fade(d.reverb(d.drive(d.normalize(body), 1.6), 0.6, 0.25, 2400, 0.012), 0.0005, 0.4)
 
 
+# --- M10: the Leuchtpistole's own break, the pistol's slide, drawing a weapon -----------------------
+
+def leucht_open(v):
+    """Breaking the Leuchtpistole: a light brass latch and the barrel dropping, the burnt
+    cardboard case falling out (softer than the Flinte's hulls)."""
+    latch = d.lowpass(pitched(take("bolt_open_1"), 1.15), 6000) * 0.6
+    case = d.mix(thud(300, 0.012, 0.35), d.bandpass(d.noise(0.06), 600, 2500) * d.env_exp(0.06, 0.015) * 0.3)
+    return d.mix(click(2100, 0.004, 0.5, ring=0.25), (0.03, latch), (0.36, case))
+
+
+def leucht_close(v):
+    """Snapping the flare gun shut: a light clack."""
+    return d.mix(pitched(take("bolt_close_1"), 1.2) * 0.8, (0.002, click(3000, 0.004, 0.4, ring=0.3)))
+
+
+def flare_in(v):
+    """A fat flare cartridge pushed into the wide barrel: cardboard on brass, a hollow tock."""
+    slide = d.bandpass(d.noise(0.18), 500, 2200) * d.env_points(0.18, [(0, 0), (0.04, 0.6), (0.16, 0.4), (0.18, 0)])
+    return d.mix(slide * 0.6, (0.17, thud(240, 0.02, 0.6)), (0.17, click(1100, 0.01, 0.4, ring=0.2)))
+
+
+def slide_rack(v):
+    """Racking the Dienstpistole's slide after a fresh magazine: back, and slammed forward."""
+    back = d.lowpass(pitched(take("bolt_open_1"), 1.5), 7000) * 0.7
+    home = pitched(take("bolt_close_1"), 1.45)
+    return d.mix(back, (0.11, home), (0.115, click(3400, 0.004, 0.6, ring=0.4)))
+
+
+def weapon_draw(v):
+    """Bringing a weapon up: cloth and leather, a light rattle of steel."""
+    s = 0.35
+    cloth = d.bandpass(d.pink(s), 400, 2500) * d.env_points(s, [(0, 0), (0.08, 0.7), (0.35, 0)])
+    rattle = d.mix(*[(0.12 + i * 0.03 + d.rng.uniform(0, 0.01), click(2500 + 400 * v + d.rng.uniform(-300, 300), 0.004, 0.35, ring=0.3)) for i in range(2 + v)])
+    return d.mix(cloth * 0.5, rattle)
+
+
 SOUNDS = {
     "shot_stutzen": (shot_stutzen, 3),
     "bolt_cycle": (bolt_cycle, 1),
@@ -142,4 +178,9 @@ SOUNDS = {
     "flinte_close": (flinte_close, 1),
     "shell_in": (shell_in, 3),
     "dry_click_flinte": (dry_click_flinte, 1),
+    "leucht_open": (leucht_open, 1),
+    "leucht_close": (leucht_close, 1),
+    "flare_in": (flare_in, 2),
+    "slide_rack": (slide_rack, 1),
+    "weapon_draw": (weapon_draw, 2),
 }

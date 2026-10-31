@@ -735,3 +735,62 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
 - **Version 0.9.0.**
 - `tests/test_m9.gd`: perks as data, buying and levels, choices, the profile saved and loaded (unknown perks dropped), the perk numbers, the new upgrades, starting money once, Überstunden from shift 10 and stacking, the locked pockets.
 - New headless checks: `smoke_knappenbrief` (perks → health, slots, armour, help-up time, lamp colour, starting money once; the kit's Flinte and shells; Ehrenzeichen saved after a delivery) and `smoke_overtime` (six modifiers in force, a ping). `mp_test.ps1 -Coop` also checks that a late-joining client sees the host's perks and hat, and that the client's ping reaches the host.
+
+## 2026-10-31 – M10 feel & balance (chosen by Claude unless marked, change any time)
+
+### Impacts (DESIGN.md §10 "Hits")
+- **What a shot or a pick leaves depends on what it hits** (`weapons/impact_fx.gd`), on every peer and purely cosmetic (each peer finds the surface and its normal itself from the hit point the shot already sends – no new network data):
+  - salt rock: a dark hole with a chipped rim and cracks, grit flying, a small dust cloud hanging a moment;
+  - timber (props, sleepers, crates, the Gasthaus): a splintered hole and splinters;
+  - iron (rails, the cage, carts): a bright dent, sparks with a tiny flash, a ricochet;
+  - a creature: the blood spray as before, plus a splash on the rock behind it (up to 2 m away), and **a pool where it dies** (`EnemyData.blood_pool`: dog 1 m, Percht 2 m, Schiachpercht 2.6 m; the Salzweibl, D'Seemuada and the Schichtmeister leave none).
+- The surface is read from the hit body's own materials (timber_*, hub_planks/logs → wood; rust_iron, metal_plate → iron; everything else rock), so no chunk had to be tagged; a body can still say it with the meta `surface`.
+- Marks are decals with pictures drawn in code; at most 72 in the world (the oldest goes). They stay for the shift.
+- Sounds: `impact_rock` (3), `impact_wood` (2), `impact_metal` (3, with a ricochet whine), only for the first two pellets of a shotgun blast. The Spitzhacke on rock, timber or iron shows the same impact for everyone (`Game.impact_everywhere`).
+
+### Weapons: sound and animation pass
+- **The Leuchtpistole has its own reload** now (it borrowed the Flinte's): a light brass latch and the burnt case falling out (`leucht_open`), a fat cardboard flare pushed in (`flare_in`), a light clack shut (`leucht_close`).
+- **Racking the pistol's slide** after a reload from empty now sounds (`slide_rack`, `WeaponData.rack_sound`, at 70 % of the reload – where the animation racks it).
+- **Taking a weapon in hand** (switching slots, putting loot down, getting up) brings it up from below in 0.28 s with a rustle of cloth and steel (`weapon_draw`). Only a look: the gun can fire at once, and a shot ends the draw – no change to the timing of fights.
+- Built from the recorded bolt/click takes like the other gun sounds (`tools/audio/guns.py`).
+
+### Boss stings (DESIGN.md §10: the only music in the mine)
+- A few seconds of music when a boss starts to fight, and one when a boss falls – no loop under the fight (DESIGN says stings).
+  - Da Bergkini: a crooked little Blasmusik fanfare in minor – tuba oom-pa, bass drum, a trumpet call that ends a semitone too low.
+  - D'Seemuada: a sub swell rising, low horns sliding down, glassy bubbles, one deep blow.
+  - Die Schiachpercht: a Perchtenlauf breaking loose – bells out of time, drums speeding up, a dissonant horn blast.
+  - Boss down: the drum stops, a low horn chord resolves upward into major and dies away – relief, not triumph (the way back is still ahead).
+- Synthesised (`tools/audio/music.py`), flat on the Music bus (the music volume applies), 4 dB under the music level. The host plays the boss's sting once when it wakes (`Creature.boss_fighting`, `EnemyData.sting`).
+
+### Spawn holes (DESIGN.md §4 "Löcher", open since M7)
+- Every wave group now breaks out of a hole in the rock where it appears: the host finds the nearest wall around the spawn point (else the floor) and every peer builds the same hole – black inside a ring of cracks and broken salt, rubble on the floor, a burst of grit and dust and the sound of rock giving way (`hole_burst`, heard 40 m). Holes stay for the shift, so the crew sees where the waves came from. Still never in sight of a miner (the spawn rules are unchanged).
+
+### Balance (tuned with the new report, not yet with a playtest)
+- **`tools/balance_report.gd` now also prints** hits to kill per creature and gun (body / weak spot, per shift and crew), and a shift's ammo economy: the rounds a crew has (ration + boxes found) as damage at 60 % hits, against the health of the shift's creatures and four waves.
+- What it showed and what changed:
+  - **Ammo ran out too fast deep in a run:** rounds found and the ration covered ~166 % of a shift's creature health in shift 1 but only ~31 % by shift 10 (more and tougher creatures while the boxes halve). Ammo found now shrinks 3.5 % a shift down to 60 % (was 5 % down to 50 %), creature health grows 4 % a shift (was 5 %). Now ~166 % → ~81 % (shift 5) → ~41 % (shift 10): late shifts buy most of their ammo, but not all of their income goes to it.
+  - **The Rückweg-timer was generous** (Claude's own note from M7): 3:41 for four miners in shift 1 against 33 s of walking. Now 60 s + 1.1 s per metre (was 90 s + 1.25): shift 1 about 4:05 solo (DESIGN: "~4 min") and 2:55 for four; late shifts about 3× the bare carrying time. `test_balance` still checks it always leaves 1.5× the time to carry the heavy Fundstück alone at half speed.
+  - **Da Bergkini was the only creature without a weak spot** (30 pistol hits for four miners in shift 1). His head under the crown now counts 2× (`bergkini_head_mult`).
+- Everything else as it was: hits to kill look right (a solo dog in 3 pistol hits, one Flinte shell close up; weak spots matter – Tatzelwurm 31 body / 5 throat hits, Percht 186 / 16).
+- **Open for the owner's playtest:** the timer, the ammo curve and the stings are first guesses.
+
+### The money cheat
+- `zaster` now works only in debug builds and in exports with the feature tag `playtest`. The Windows preset has the tag for now, so playtest builds keep it; **for a public release remove `playtest` from `custom_features` in `export_presets.cfg`**. The host checks it too.
+
+### Translations
+- `test_translations` now scans every key-like string in code, scenes and data (weapons, progression, net and autoload too, and `balance.tres`), not only `tr("…")`. It found two creature names without text: **CREATURE_PERCHT** ("Die Percht") and **CREATURE_SALZWEIBL** ("Des Salzweibl").
+- `tools/i18n_en.py` had four English texts left from v1 ("quota round", the old whistle text) and would have overwritten the current ones when run; brought up to date.
+
+### Version and tests
+- **Version 0.10.0.**
+- `tests/test_m10.gd`: surfaces from materials and meta, the marks' pictures, every sound the weapon data names exists, the impact sounds, a sting per boss, blood pools, the Leuchtpistole's own reload, the cheat gate, the new curves.
+- New headless check `smoke_impacts` (surfaces in a real mine, a hole in the rock, a dog's pool, the draw, Da Bergkini's head); `smoke_boss`, `smoke_seemuada` and `smoke_schiachpercht` check their stings, `smoke_fundstueck` a spawn hole.
+- Fixed on the way:
+  - a sting (or UI sound) still playing when the game quits leaked its playback: the audio server lets go of a stopped sound only on its next mix, so the smoke quit now stops the Audio autoload's sounds and waits a moment (`Audio.stop_all`);
+  - an item could ask a point that had just left the tree where to be (a rare error at the end of `mp_test -Tools`); it now waits;
+  - the `smoke_overtime` pattern no longer depends on how the log's "Ü" is read.
+- Still seen under load (full smoke suite), as in M9: `smoke_fundstueck` (a wave with no free spot) and `smoke_weapons` (the flare's timing) can miss; both pass alone.
+
+## 2026-10-31 – M10 approved
+
+- **M10 approved by the owner** and merged into `main` (0.10.0). The balance numbers stay first guesses until longer playtests say otherwise.

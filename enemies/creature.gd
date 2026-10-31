@@ -507,6 +507,13 @@ func _died(line_index: int, sound: String) -> void:
 	tween.tween_interval(3.0)
 	tween.tween_property(corpse, "position:y", corpse.position.y - 0.8, 2.0)
 	tween.tween_callback(corpse.queue_free)
+	if data != null and data.blood_pool > 0.0:
+		ImpactFx.pool_at(get_tree().current_scene, global_position, data.blood_pool * scale.x)
+
+
+## Bosses: whether it has woken and fights (host; Game plays its sting once).
+func boss_fighting() -> bool:
+	return false
 
 
 ## Says a `moment` line one last time and disappears (host).

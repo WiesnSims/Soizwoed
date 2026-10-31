@@ -2,16 +2,16 @@ class_name ShotFx
 extends RefCounted
 ## What a shot looks and sounds like, on every peer: the report (a real recording) with the
 ## mine throwing it back (a long rolling echo), a muzzle flash that lights the tunnel for an
-## instant, a faint tracer per pellet, and what it hit: salt dust on rock, a spray of dark blood
-## on flesh. There is no hit marker (owner decision): you see the blood and hear the creature –
-## in the dark you may not know whether you hit.
+## instant, a faint tracer per pellet, and what it hit (ImpactFx: holes, grit, splinters, sparks
+## by surface; a spray of dark blood on flesh, splashed onto the rock behind). There is no hit
+## marker (owner decision): you see the blood and hear the creature – in the dark you may not
+## know whether you hit.
 
 const FLASH_SECONDS: float = 0.06
 const TRACER_SECONDS: float = 0.06
 
 static var _tracer_material: StandardMaterial3D
 static var _flash_material: StandardMaterial3D
-static var _dust_material: StandardMaterial3D
 static var _blood_material: StandardMaterial3D
 
 
@@ -38,10 +38,12 @@ static func play(muzzle: Vector3, ends: PackedVector3Array, flesh: PackedByteArr
 	for i: int in ends.size():
 		_tracer(root, muzzle, ends[i])
 		if muzzle.distance_to(ends[i]) < 80.0:
+			var direction: Vector3 = (ends[i] - muzzle).normalized()
 			if i < flesh.size() and flesh[i] == 1:
-				_blood(root, ends[i], (ends[i] - muzzle).normalized())
+				_blood(root, ends[i], direction)
+				ImpactFx.splash_behind(root, ends[i], direction)
 			else:
-				_dust(root, ends[i])
+				ImpactFx.hit_surface(root, ends[i], direction, i < 2)
 
 
 static func _flash(root: Node, at: Vector3, toward: Vector3) -> void:
@@ -87,15 +89,6 @@ static func _tracer(root: Node, from: Vector3, to: Vector3) -> void:
 	var fade: Tween = line.create_tween()
 	fade.tween_interval(TRACER_SECONDS)
 	fade.tween_callback(line.queue_free)
-
-
-## Salt dust and grit where a shot hits rock.
-static func _dust(root: Node, at: Vector3) -> void:
-	if _dust_material == null:
-		_dust_material = StandardMaterial3D.new()
-		_dust_material.albedo_color = Color(0.78, 0.73, 0.65)
-		_dust_material.roughness = 1.0
-	_burst(root, at, Vector3.UP, _dust_material, 12, 0.02, 0.05, 2.0, 0.6)
 
 
 ## A hit on a creature: a spray of dark blood out of the far side and some dripping down.

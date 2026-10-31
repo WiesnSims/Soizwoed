@@ -5,6 +5,7 @@
 
 [resource]
 script = ExtResource("1_data")
+blood_pool = 1.8
 id = &"tatzelwurm"
 name_key = "CREATURE_TATZELWURM"
 scene = ExtResource("2_scene")

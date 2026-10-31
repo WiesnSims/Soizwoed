@@ -86,6 +86,32 @@ func test_code_texts_are_known_keys() -> void:
 				assert_true(rows.has(found.get_string(1)), "%s uses unknown key %s" % [path, found.get_string(1)])
 
 
+## Keys handed around as plain strings (message_everyone("MSG_…"), name keys in data): every
+## literal that looks like one of the CSV's key families must be a known key. Literals ending in
+## "_" are prefixes that code completes ("ACTION_" + name).
+func test_key_literals_everywhere_are_known() -> void:
+	var rows: Dictionary = _csv_rows()
+	var families: Dictionary = {}
+	for key: String in rows:
+		if key.contains("_"):
+			families[key.get_slice("_", 0)] = true
+	var literal: RegEx = RegEx.create_from_string("\"([A-Z][A-Z0-9]*_[A-Z0-9_]*[A-Z0-9])\"")
+	var paths: PackedStringArray = []
+	for dir: String in ["res://game", "res://hub", "res://ui", "res://player", "res://items", "res://world", "res://enemies", "res://weapons", "res://progression", "res://net", "res://autoload"]:
+		paths.append_array(_files_in(dir, [".gd", ".tres", ".tscn"]))
+	paths.append("res://balance.tres")
+	var checked: int = 0
+	for path: String in paths:
+		var source: String = FileAccess.get_file_as_string(path)
+		for found: RegExMatch in literal.search_all(source):
+			var key: String = found.get_string(1)
+			if not families.has(key.get_slice("_", 0)):
+				continue
+			checked += 1
+			assert_true(rows.has(key), "%s uses unknown key %s" % [path, key])
+	assert_gt(checked, 100, "the literal scan found too few keys – is the pattern still right?")
+
+
 func test_data_name_keys_are_known() -> void:
 	var rows: Dictionary = _csv_rows()
 	var catalog: ItemCatalog = load("res://items/item_catalog.tres")
@@ -94,6 +120,19 @@ func test_data_name_keys_are_known() -> void:
 		assert_true(rows.has(data.name_key), "missing %s" % data.name_key)
 		if data.price > 0:
 			assert_true(rows.has(data.name_key + "_DESC"), "missing %s_DESC" % data.name_key)
+
+
+func _files_in(dir: String, endings: Array) -> PackedStringArray:
+	var result: PackedStringArray = []
+	if not DirAccess.dir_exists_absolute(dir):
+		return result
+	for file: String in DirAccess.get_files_at(dir):
+		for ending: String in endings:
+			if file.ends_with(ending):
+				result.append(dir.path_join(file))
+	for sub: String in DirAccess.get_directories_at(dir):
+		result.append_array(_files_in(dir.path_join(sub), endings))
+	return result
 
 
 func _scripts_in(dir: String) -> PackedStringArray:

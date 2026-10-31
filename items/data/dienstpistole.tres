@@ -27,6 +27,7 @@ sound = "shot_pistole"
 reload_sound = "mag_out"
 reload_sound_late = "mag_in"
 reload_late_share = 0.55
+rack_sound = "slide_rack"
 kick_back = 0.05
 kick_angle = 10.0
 kick_time = 0.13

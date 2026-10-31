@@ -62,6 +62,7 @@ stream = ExtResource("s7")
 
 [resource]
 script = ExtResource("1_data")
+blood_pool = 0.0
 id = &"schichtmeister"
 name_key = "CREATURE_SCHICHTMEISTER"
 scene = ExtResource("3_scene")

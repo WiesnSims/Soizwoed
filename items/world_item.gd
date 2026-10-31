@@ -89,7 +89,9 @@ func _process(delta: float) -> void:
 		if not multiplayer.is_server() and _net.sample(Time.get_ticks_msec() / 1000.0):
 			global_transform = Transform3D(Basis(_net.rotation), _net.position)
 		return
-	if follow == null or not is_instance_valid(follow):
+	# A point that has just left the tree (its player or the mine going away at the shift's end)
+	# has no place to follow.
+	if follow == null or not is_instance_valid(follow) or not follow.is_inside_tree():
 		return
 	var target: Transform3D = follow.global_transform
 	if state == State.HELD and helper_peer != 0:

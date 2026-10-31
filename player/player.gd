@@ -1278,6 +1278,8 @@ func _melee(damage: int, bare_hand: bool, breaks_rock: bool, swish: bool = true)
 		sound = "pick_hit"
 	if sound != "":
 		game().play_sound_everywhere.rpc(sound, camera.global_position - camera.global_basis.z * 1.0)
+	if creature == null and not hit.is_empty() and not bare_hand:
+		game().impact_everywhere.rpc(hit.position, -camera.global_basis.z)
 	if creature != null:
 		var mult: float = (creature as Creature).weak_spot_mult(hit.position) if creature is Creature else 1.0
 		if creature is Creature and not (creature as Creature).can_be_shot():

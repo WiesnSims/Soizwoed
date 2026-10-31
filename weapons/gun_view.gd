@@ -12,7 +12,8 @@ extends Node3D
 ##   left hand brings a new one; the Flinte breaks open, the empty hulls fly, the left hand
 ##   pushes in one shell after the other and it snaps shut;
 ## - close to a wall the gun is pulled back and lowered instead of sticking into the rock;
-## - the Spitzhacke is held in both hands and swung (`swing`).
+## - the Spitzhacke is held in both hands and swung (`swing`);
+## - a weapon taken in hand comes up from below (M10), with a rustle of cloth and steel.
 ## A gun follows this node (WorldItem.follow), the Spitzhacke follows `melee_point`, so everything
 ## here moves them too.
 
@@ -65,6 +66,11 @@ const WALL_RANGE: float = 0.35
 const PICK_HAND: Vector3 = Vector3(0.05, -0.06, 0.08)
 const PICK_GRIP: float = 0.08
 const PICK_SUPPORT: float = 0.3
+## Taking a weapon in hand: from this pose (m, degrees) up to the hip, in DRAW_SECONDS. Only a look:
+## the gun can fire at once (a shot cuts the draw short).
+const DRAW_OFFSET: Vector3 = Vector3(0.02, -0.16, 0.05)
+const DRAW_ROTATION: Vector3 = Vector3(-40.0, 8.0, -14.0)
+const DRAW_SECONDS: float = 0.28
 const SWING_SECONDS: float = 0.55
 const SWING_STRIKE: float = 0.17
 
@@ -112,6 +118,9 @@ var _rack: bool = false
 var _left_target: Vector3 = Vector3.ZERO
 ## Close to a wall, 0..1.
 var _wall: float = 0.0
+## The weapon last in hand, and how far it still is from being up (1 just taken … 0 up).
+var _drawn_item: WorldItem
+var _draw: float = 0.0
 ## Seconds into the current swing of the Spitzhacke (< 0: none).
 var _swing_time: float = -1.0
 
@@ -150,6 +159,8 @@ func update(delta: float, item: WorldItem, aiming: bool, reloading: bool = false
 	var aimed: Vector3 = Vector3(0.0, -weapon.sight_height, -weapon.aim_distance) if weapon != null else HIP
 	var base: Vector3 = HIP.lerp(aimed, eased_aim)
 	_update_motion(delta, eased_aim)
+	_tick_draw(delta, item)
+	var draw: float = _draw * _draw
 	# The kick: back and muzzle up, springing back.
 	_kick = maxf(0.0, _kick - delta / maxf(0.01, _kick_time))
 	var kick: float = ease(_kick, 0.4)
@@ -170,9 +181,9 @@ func update(delta: float, item: WorldItem, aiming: bool, reloading: bool = false
 	var reach: float = -base.z + (-weapon.muzzle.z if weapon != null else 0.45)
 	_wall = move_toward(_wall, _wall_share(reach) if item != null else 0.0, 4.0 * delta)
 	var wall: float = smoothstep(0.0, 1.0, _wall)
-	var turn: Basis = Basis.from_euler(_motion_rotation + Vector3(climb, 0.0, 0.0) + _degrees(pose_rotation + WALL_ROTATION * wall))
+	var turn: Basis = Basis.from_euler(_motion_rotation + Vector3(climb, 0.0, 0.0) + _degrees(pose_rotation + WALL_ROTATION * wall + DRAW_ROTATION * draw))
 	var pivot: Vector3 = PIVOT - base
-	var offset: Vector3 = _motion_position + Vector3(0.0, 0.0, back) + pose_offset + WALL_OFFSET * wall
+	var offset: Vector3 = _motion_position + Vector3(0.0, 0.0, back) + pose_offset + WALL_OFFSET * wall + DRAW_OFFSET * draw
 	transform = Transform3D(Basis.IDENTITY, base + offset + pivot) * Transform3D(turn, Vector3.ZERO) * Transform3D(Basis.IDENTITY, -pivot)
 	if item != null and weapon != null:
 		if breaks:
@@ -185,6 +196,18 @@ func update(delta: float, item: WorldItem, aiming: bool, reloading: bool = false
 	_place_hands(delta, item, weapon, melee)
 	_tick_flash(delta)
 	_tick_casings(delta)
+
+
+## A new weapon in hand comes up from below; a shot (the kick) brings it up at once.
+func _tick_draw(delta: float, item: WorldItem) -> void:
+	if item != _drawn_item:
+		_drawn_item = item
+		if item != null:
+			_draw = 1.0
+			Audio.play_at("weapon_draw", player.camera.global_position, &"SFX", -10.0, 6.0, randf_range(0.95, 1.05))
+	if _kick > 0.0:
+		_draw = 0.0
+	_draw = move_toward(_draw, 0.0, delta / DRAW_SECONDS)
 
 
 ## A swing of the Spitzhacke (the hit itself comes SWING_STRIKE s later, from Player).

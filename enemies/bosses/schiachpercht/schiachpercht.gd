@@ -49,6 +49,10 @@ func _think(delta: float) -> void:
 	super(delta)
 
 
+func boss_fighting() -> bool:
+	return state in [State.HUNT, State.WINDUP, State.CHARGE, State.DAZED]
+
+
 ## The bell is struck: everyone close by without rock in between is hurt and thrown down.
 func _shockwave() -> void:
 	net_pose = Pose.NORMAL

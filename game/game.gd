@@ -68,6 +68,9 @@ const SCENARIO_SCRIPT: String = "res://tools/dev/dev_scenario.gd"
 ## Test cheat (owner request): typing this word anywhere in the game gives the crew money.
 const CHEAT_MONEY_WORD: String = "zaster"
 const CHEAT_MONEY_AMOUNT: int = 1000
+## Builds that know the cheat: the editor, debug builds and exports with this feature tag (the
+## playtest builds; a public release is exported without it – export_presets.cfg).
+const CHEAT_FEATURE: String = "playtest"
 
 static var instance: Game
 ## Set for automated windowed runs (--shots): no focus, no mouse capture, no sound, so a test
@@ -126,6 +129,8 @@ var fundstueck: FundstueckItem
 var _fundstueck_home: Vector3
 var _boss: Creature
 var _had_boss: bool = false
+## The boss's sting has played (once per shift, when it starts to fight).
+var _boss_stung: bool = false
 ## Host: the Fundstück the next shift's Auftrag asks for (rolled in the Gasthaus).
 var _auftrag: StringName = &""
 var _wave_left: float = 0.0
@@ -202,10 +207,14 @@ func _ready() -> void:
 			scenario.call(&"run", self, arg.trim_prefix(SCENARIO_ARG))
 
 
+static func cheats_allowed() -> bool:
+	return OS.is_debug_build() or OS.has_feature(CHEAT_FEATURE)
+
+
 ## Watches the typed letters for the cheat word (before anything else uses the keys).
 func _input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
-	if key == null or not key.pressed or key.echo or key.unicode == 0:
+	if key == null or not key.pressed or key.echo or key.unicode == 0 or not cheats_allowed():
 		return
 	_typed = (_typed + char(key.unicode).to_lower()).right(CHEAT_MONEY_WORD.length())
 	if _typed == CHEAT_MONEY_WORD and NetworkManager.in_session():
@@ -230,6 +239,7 @@ func _process(delta: float) -> void:
 			_host_tick_specials(delta)
 			_host_tick_poison(delta)
 			_host_tick_downed()
+			_host_tick_boss_sting()
 
 
 # --- session --------------------------------------------------------------------------------------
@@ -452,6 +462,7 @@ func _spawn_fundstueck() -> void:
 	var run: RunState = GameState.run
 	_had_boss = false
 	_boss = null
+	_boss_stung = false
 	var boss_id: StringName = mine.chunk_set.boss
 	var boss_spots: Array[Array] = mine.markers_with_depth(&"boss_spawn")
 	if boss_id != &"" and creature_data(boss_id) != null and not boss_spots.is_empty() and (_force_boss or randf() < _config.boss_chance(run.shift_index)):
@@ -474,6 +485,21 @@ func _roll_auftrag() -> void:
 	_auftrag = options.pick_random() if not options.is_empty() else &""
 
 
+## Host: the boss starts to fight – everyone hears its sting, once.
+func _host_tick_boss_sting() -> void:
+	if _boss_stung or not is_instance_valid(_boss) or not _boss.boss_fighting():
+		return
+	_boss_stung = true
+	if _boss.data != null and _boss.data.sting != "":
+		_sting.rpc(_boss.data.sting)
+
+
+@rpc("authority", "call_local", "reliable")
+func _sting(sting: String) -> void:
+	print("[game] sting %s" % sting)
+	Audio.play_sting(sting)
+
+
 ## Host: the boss guarding the Fundstück is dead – the salt shell bursts.
 func host_boss_died(boss: Creature) -> void:
 	if boss != _boss:
@@ -482,6 +508,7 @@ func host_boss_died(boss: Creature) -> void:
 	if is_instance_valid(fundstueck):
 		fundstueck.host_set_locked(false)
 	_show_message_key.rpc("MSG_BOSS_DEAD")
+	_sting.rpc("sting_boss_down")
 	print("[game] boss dead, Fundstück free")
 
 
@@ -835,6 +862,8 @@ func _spawn_wave(budget: float) -> void:
 		var rule: CreatureSpawnRule = options[_rng_weighted(weights)]
 		var at: Vector3 = spots.pick_random()
 		var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), left)
+		if size > 0:
+			_host_open_hole(at)
 		for i: int in size:
 			spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + Vector3(randf_range(-0.8, 0.8), 0.3, randf_range(-0.8, 0.8))), _roll_elite())
 			left -= rule.budget_cost
@@ -842,6 +871,30 @@ func _spawn_wave(budget: float) -> void:
 		if size == 0 or left < 1.0:
 			break
 	print("[game] wave: %s" % (spawned if not spawned.is_empty() else "nobody (no spot or no budget)"))
+
+
+## Host: a wave group breaks out of the rock next to `at` – the nearest wall around it, else the
+## floor (DESIGN.md §4 "Löcher"). Every peer builds the same hole.
+func _host_open_hole(at: Vector3) -> void:
+	var space: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var from: Vector3 = at + Vector3.UP * 0.9
+	var best: Dictionary = {}
+	for i: int in 8:
+		var out: Vector3 = Vector3.FORWARD.rotated(Vector3.UP, TAU * i / 8.0)
+		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + out * 3.5, 1))
+		if not hit.is_empty() and absf((hit.normal as Vector3).y) < 0.5 and (best.is_empty() or from.distance_to(hit.position) < from.distance_to(best.position)):
+			best = hit
+	if best.is_empty():
+		best = space.intersect_ray(PhysicsRayQueryParameters3D.create(from, at + Vector3.DOWN * 2.0, 1))
+	if not best.is_empty() and mine != null:
+		_open_hole.rpc(best.position, best.normal)
+
+
+@rpc("authority", "call_local", "reliable")
+func _open_hole(at: Vector3, wall_normal: Vector3) -> void:
+	if mine != null:
+		SpawnHole.open(mine, at, wall_normal)
+		print("[game] spawn hole at %.0f m from the cage" % at.distance_to(mine_cage.global_position))
 
 
 ## Whether any living miner in the mine could see `point` (a creature's chest there).
@@ -1271,7 +1324,7 @@ func _upgrade_bought(name_key: String, level: int) -> void:
 ## The money cheat: any player can ask, the host adds it to the run and tells everyone.
 @rpc("any_peer", "call_local", "reliable")
 func request_cheat_money() -> void:
-	if not multiplayer.is_server() or GameState.run == null or GameState.run.fired:
+	if not multiplayer.is_server() or GameState.run == null or GameState.run.fired or not cheats_allowed():
 		return
 	GameState.run.add_cheat_money(CHEAT_MONEY_AMOUNT)
 	play_sound_everywhere.rpc("sell", hub.counter_spot().origin)
@@ -2373,6 +2426,12 @@ func _play_shout(peer: int) -> void:
 @rpc("any_peer", "call_local", "reliable")
 func play_sound_everywhere(sound: String, where: Vector3, volume_db: float = 0.0, max_distance: float = 30.0) -> void:
 	Audio.play_at(sound, where, &"SFX", volume_db, max_distance)
+
+
+## A pick striking rock, timber or iron: chips, sparks or splinters and the mark, everywhere.
+@rpc("any_peer", "call_local", "unreliable")
+func impact_everywhere(where: Vector3, direction: Vector3) -> void:
+	ImpactFx.hit_surface(self, where, direction.normalized(), true)
 
 
 @rpc("authority", "call_local", "reliable")

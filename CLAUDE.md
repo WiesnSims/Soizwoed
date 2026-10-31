@@ -40,7 +40,7 @@ The full game design is here and must be followed:
   - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, shoots a dog, fires a flare and throws Dynamit; the host must see each use arrive
   - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl); add `-Boss` for the section's boss (Bergkini, D'Seemuada, Schiachpercht)
   - `tools/mp_test.ps1 -Boss` – headless: a shift with the Fundstück guarded by the boss; the client sees the salt shell, its end and the alarm
-  - `godot --headless -s tools/balance_report.gd` – per shift and crew: enemy budget, health, boss chance, ammo; per section loot, Fundstück bonus, Rückweg-timer against the carrying time
+  - `godot --headless -s tools/balance_report.gd` – per shift and crew: enemy budget, health, boss chance, ammo; per section loot, Fundstück bonus, Rückweg-timer against the carrying time; hits to kill per creature and gun; the ammo economy per shift
   - `godot --audio-driver Dummy -- --solo --scenario=smooth --shots=build/shots` – measures how evenly the camera moves while walking (stutter check; add `--no-interp` for the old behaviour)
   - `tools/steam_test.ps1` – needs the Steam client running: headless host creates a public lobby, a second instance must find it via the game/ver filter
   - `tools/build.ps1` – import, export `build/Soizwoed.exe`, copy `steam_appid.txt` next to it

@@ -14,6 +14,8 @@ const LOOK_SECONDS: float = 0.3
 const STEP_SECONDS: float = 0.45
 ## He keeps to his hall: covers within this far of where he started.
 const HOME_RADIUS: float = 12.0
+## His head (weak spot), in the body's own scale, around a point just under the crown.
+const HEAD_RADIUS: float = 0.17
 
 var state: State = State.SLEEP
 
@@ -106,6 +108,20 @@ func _fight(delta: float) -> void:
 		var distance: float = _target.global_position.distance_to(global_position)
 		if distance > 3.0 and distance < _config.bergkini_throw_range:
 			_throw_at(_target)
+
+
+func boss_fighting() -> bool:
+	return state == State.FIGHT
+
+
+## His head under the crown counts double (M10: every creature rewards aiming).
+func weak_spot_mult(point: Vector3) -> float:
+	var crown: Node3D = body.get_node_or_null(^"Crown") as Node3D
+	if crown == null:
+		return 1.0
+	var size: float = body.global_basis.get_scale().x
+	var head: Vector3 = crown.global_position - body.global_basis.y.normalized() * 0.12 * size
+	return _config.bergkini_head_mult if point.distance_to(head) < HEAD_RADIUS * size else 1.0
 
 
 func _wake() -> void:
