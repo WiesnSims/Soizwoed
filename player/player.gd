@@ -74,6 +74,11 @@ var crouching: bool = false
 ## At 0 health in co-op: down but not out, until a teammate helps up or it is too late (§3).
 var downed: bool = false
 var _downed_at: float = 0.0
+## Held by a Salzweibl (host decides): can't move, shoot or use anything until a teammate
+## frees them (DESIGN.md §6).
+var pinned: bool = false
+## Local: seconds left on the floor after being knocked down (a Percht's charge, a shockwave).
+var knocked_left: float = 0.0
 var input_enabled: bool = true
 ## False after dying, until the next ride (host-authoritative).
 var alive: bool = true
@@ -249,6 +254,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		head.rotation.x = clampf(head.rotation.x - pitch, deg_to_rad(-85), deg_to_rad(85))
 	elif event.is_action_pressed(&"lamp"):
 		_toggle_lamp()
+	elif not can_act():
+		return  # held by a Salzweibl or knocked down: look around, nothing else
 	elif event.is_action_pressed(&"drop"):
 		_drop_active()
 	elif event.is_action_pressed(&"use"):
@@ -330,10 +337,16 @@ func _on_synchronized() -> void:
 	_net.push(now, net_position, Quaternion(Vector3.UP, net_angles.x), net_angles.y)
 
 
+## Free to move and act: not held by a Salzweibl, not knocked down.
+func can_act() -> bool:
+	return not pinned and knocked_left <= 0.0
+
+
 func _move(delta: float) -> void:
-	var controls: bool = input_enabled
+	knocked_left = maxf(0.0, knocked_left - delta)
+	var controls: bool = input_enabled and can_act()
 	var input_dir: Vector2 = Input.get_vector(&"move_left", &"move_right", &"move_forward", &"move_back") if controls else Vector2.ZERO
-	crouching = downed or (controls and Input.is_action_pressed(&"crouch"))
+	crouching = downed or knocked_left > 0.0 or (controls and Input.is_action_pressed(&"crouch"))
 	var wants_sprint: bool = controls and Input.is_action_pressed(&"sprint") and input_dir.y < 0.0 and not crouching
 	var can_sprint: bool = wants_sprint and stamina > 0.0 and _can_sprint_with_load()
 	var speed: float = _config.crouch_speed if crouching else (_config.sprint_speed if can_sprint else _config.walk_speed)
@@ -357,6 +370,10 @@ func _move(delta: float) -> void:
 	if swimming:
 		speed = _config.swim_speed
 		accel = ACCEL_AIR
+	if pinned:
+		accel = 30.0  # held fast
+	elif knocked_left > 0.0:
+		accel = 1.5  # thrown: slides out
 	velocity.x = lerpf(velocity.x, direction.x * speed, clampf(accel * delta, 0.0, 1.0))
 	velocity.z = lerpf(velocity.z, direction.z * speed, clampf(accel * delta, 0.0, 1.0))
 	if swimming:
@@ -567,6 +584,8 @@ func teleport(to: Transform3D) -> void:
 func revive() -> void:
 	health = _config.player_max_health
 	set_downed(false)
+	pinned = false
+	knocked_left = 0.0
 	if alive:
 		return
 	alive = true
@@ -614,10 +633,36 @@ func set_downed(on: bool) -> void:
 	if multiplayer.get_remote_sender_id() > 1:
 		return
 	downed = on
+	crouching = on or crouching  # down on the floor at once, not only from the next step
 	_downed_at = Time.get_ticks_msec() / 1000.0
 	collision_layer = 2 | (WorldItem.LAYER_INTERACT if on else 0)
 	if on and is_local():
 		_stop_eating()
+
+
+## Held by a Salzweibl, or let go (the host decides).
+@rpc("any_peer", "call_local", "reliable")
+func set_pinned(on: bool) -> void:
+	if multiplayer.get_remote_sender_id() > 1:
+		return
+	pinned = on
+	if on and is_local():
+		_stop_eating()
+		if gunner != null:
+			gunner.cancel()
+
+
+## Thrown off your feet (host decides, this peer moves): `push` m/s, down for `seconds`.
+@rpc("any_peer", "call_local", "reliable")
+func knock(push: Vector3, seconds: float) -> void:
+	if multiplayer.get_remote_sender_id() > 1 or not is_local():
+		return
+	velocity = push
+	knocked_left = maxf(knocked_left, seconds)
+	shake(0.7)
+	_stop_eating()
+	if gunner != null:
+		gunner.cancel()
 
 
 ## Seconds until a downed miner bleeds out (the host's own clock decides; this is for the HUD).
@@ -946,7 +991,7 @@ func _drop_active() -> void:
 
 
 func _use_active() -> void:
-	if _use_cooldown > 0.0 or _eating != null:
+	if _use_cooldown > 0.0 or _eating != null or not can_act():
 		return
 	if downed:
 		if gunner != null:
@@ -1122,7 +1167,10 @@ func _melee(damage: int, bare_hand: bool, breaks_rock: bool, swish: bool = true)
 	if sound != "":
 		game().play_sound_everywhere.rpc(sound, camera.global_position - camera.global_basis.z * 1.0)
 	if creature != null:
-		game().request_hit.rpc_id(1, creature.get_path(), damage, global_position)
+		var mult: float = (creature as Creature).weak_spot_mult(hit.position) if creature is Creature else 1.0
+		if creature is Creature and not (creature as Creature).can_be_shot():
+			mult = 0.0  # the pick goes right through a Kasermandl in the dark
+		game().request_hit.rpc_id(1, creature.get_path(), roundi(damage * mult), global_position, mult > 1.0)
 	elif rock != null and breaks_rock:
 		game().request_break.rpc_id(1, rock.get_path(), damage)
 	elif rock != null:

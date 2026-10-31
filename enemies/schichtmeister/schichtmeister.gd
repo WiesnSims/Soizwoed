@@ -1,9 +1,11 @@
 class_name Schichtmeister
 extends Creature
 ## The ghost of a dead foreman (DESIGN.md §6). Game spawns him a little after the whistle when
-## miners are still down; he runs down whoever is outside the Förderkorb, faster than anyone
-## can sprint, and one touch kills. He never sets foot in the cage. Counter: be at the lift on
-## time. The Alphorn and a "Bierzelt" cloud buy a few seconds; hitting him only annoys him.
+## miners are still down (or when the Rückweg is nearly up); he runs down whoever is outside the
+## Förderkorb, faster than anyone can sprint, and one touch puts you down. He never sets foot in
+## the cage. He cannot be killed: bullets and picks only make him stagger. The Alphorn stuns him,
+## a flare in his face blinds him for a while, and he won't walk into a "Bierzelt" cloud.
+## Counter: be quick.
 
 const TOUCH_DISTANCE: float = 1.1
 const RETARGET_SECONDS: float = 0.4
@@ -71,7 +73,7 @@ func _pick_target() -> Player:
 	var best: Player = null
 	var best_distance: float = INF
 	for player: Player in Game.instance.players():
-		if not player.alive or player.global_position.y > Game.HUB_FLOOR_ABOVE or Game.instance.in_mine_cage(player.global_position):
+		if not player.alive or player.downed or player.global_position.y > Game.HUB_FLOOR_ABOVE or Game.instance.in_mine_cage(player.global_position):
 			continue
 		var distance: float = player.global_position.distance_to(global_position)
 		if distance < best_distance:
@@ -80,9 +82,22 @@ func _pick_target() -> Player:
 	return best
 
 
+## Bullets and picks: he only staggers.
 func host_hit(_damage: int, _from: Vector3) -> void:
+	say(VoiceLine.Moment.HIT)
+	host_stun(_config.schichtmeister_hit_stagger)
+
+
+## A flare in the face: blinded, he stands there for a while (DESIGN.md §6).
+func host_flared(_damage: int, _from: Vector3) -> void:
 	say(VoiceLine.Moment.HIT, true)
-	host_stun(0.8)
+	host_stun(_config.flare_stun_seconds)
+	print("[schichtmeister] blinded by a flare")
+
+
+## Ghosts do not burn.
+func host_ignite(_seconds: float, _dps: float) -> void:
+	pass
 
 
 func _build_body() -> void:

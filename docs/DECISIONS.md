@@ -635,3 +635,54 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - `smoke_giveup`, `smoke_boss`, `smoke_upgrades`;
   - `tools/mp_test.ps1 -Boss`: clients see the salt shell and the alarm.
 - Every `--auto-shift` and the old scenarios now deliver the Fundstück before riding up (`Game.dev_deliver`).
+
+## 2026-10-31 – M8 all creatures fight (chosen by Claude unless marked, change any time)
+
+### Hits, weak spots and armour (DESIGN.md §6, §11)
+- **The shooter's screen weighs the hit:** every pellet that lands on a creature asks it how much that spot counts (`Creature.weak_spot_mult`), and `request_hit` carries the summed damage plus a "weak spot" flag. The host clamps it and applies it.
+  - Grubenhund: the head 1.5× (`weak_spot_mult`). Its collision capsule now lies along the body, so the head can be hit at all.
+  - Percht: the carved mask 3×, everything else 0.25×.
+  - Tatzelwurm: the throat under the head 2.5×, the scales 0.35×.
+  - D'Seemuada: the head 2×, the neck 0.5×.
+  Melee hits use the same spots.
+- **What bullets cannot touch** (`Creature.can_be_shot`) they pass through: a Kasermandl in the dark, a Tatzelwurm or D'Seemuada under the floor/water.
+- **Burning:** a flare sets a creature alight, 7 damage a second for 5 s (on every peer you see the flames).
+
+### New weapons (DESIGN.md §7)
+- **Mannlicher-Stutzen** (480 S, Gewehrpatronen): 75 damage, 5 rounds, the bolt worked after every shot (1.15 s between shots), loaded round by round through the open action (0.7 s each), very accurate aimed (0.15°), 90 m, recoil 6°, heard 55 m. Model: a full-stocked carbine; the bolt really moves (up, back – a case flies – forward, down). Shot: the Tikka T3 bolt-action takes from the CC0 Free Firearm Sound Library (copied from Berghittn, checked: a sharp high-pressure crack fits a rifle; given the same mine treatment as the other guns: boom, rock slaps, room).
+- **Leuchtpistole** (220 S, Leuchtkugeln): a break-open single shot. The flare flies (30 m/s, a third of gravity), hurts what it hits (18) and sets it alight, then lies burning red for 20 s with a 11 m light: it freezes and lights up a Kasermandl, sets fire to creatures that step in (1.4 m) and sets off firedamp. A flare in the Schichtmeister's face blinds him for 5 s. The host flies the flare like the stones (every peer the same arc, the host decides hits); burning flares are listed in `Game.flares`.
+- **Dynamit** (90 S, slot 4): 3 s fuse, 110 damage within 5.5 m (rock shields), and in 60 % of blasts the roof comes down at the nearest waypoint (`Hazards.host_bring_down`): a pile that blocks the tunnel by the same rules as a rockfall (never cuts anyone off the lift, never buries anyone).
+- **Ammo:** Schachtl Gewehrpatronen (6 rounds, 70 S, cap 20) and Schachtl Leuchtkugeln (3 flares, 50 S, cap 6), in the shop and in the mine. **Boxes found in the mine are mostly for the guns the crew carries** (others at a fifth of their weight), so a crew without a Stutzen rarely finds rifle rounds.
+- **Notration:** rifle rounds count (out at 1 left, the drop holds 2); flares never count as ammo to fight with, so a flare gun never stops it.
+- **Run upgrades:** Stutzen Teilmantel +20 % damage (220 / 340), Ladestreifen −25 % reload (170), Patronenleiste +10 rifle rounds (110 / 170), Leuchtkugltaschn +3 flares (90).
+- HUD: a rifle round and a flare icon for the new counters.
+
+### Creatures in combat (DESIGN.md §6)
+- **Tatzelwurm:** 150 health (scaled). It no longer dives at the first hit: up out of the floor it stays 8 s while nobody moves near it (the time to shoot its throat), lunges at movers and at whoever shoots it from close by, and dives after 70 damage in one go up. Bite 40.
+- **Kasermandl** (owner rule "only hurt while lit"): 70 health. **Changed from v1:** caught in light it no longer fades away – it stands frozen and clearly visible (that is when you shoot it); in the dark it is a faint shape with pale eyes. Lamp beams, lanterns and burning flares all count as light. Its touch drains 16 health a second for up to 2.5 s (gone at once if lit), then it slips away for 8 s.
+- **Salzweibl (pin):** 45 health. A lone miner who comes to it is grabbed: they cannot move, shoot or use anything and lose 9 health a second until a teammate shoots or shoves it (any hit frees them; if it survives it vanishes). It lets go after 14 s in co-op, **after 4 s solo** (nobody can help). Downed or dead victims are let go. Two miners together still make it flee.
+- **Percht:** killable now, 650 health (scaled), armour as above.
+  - **The charge:** at a miner it sees 5–14 m away, with no rock in between: a 0.9 s wind-up (roar, horns lowered), then 1.2 s in a straight line at 10 m/s. Whoever it hits takes 45 and is knocked down (thrown 7 m/s, 1.3 s unable to act, eyes low). Running into rock leaves it dazed 1.8 s – the time to shoot the mask. Every 7 s at most.
+  - **The roar:** every 22 s while hunting, 2 Grubenhunde come out of the dark nearby and go for its miner (at most 4 dogs around).
+- **Schichtmeister:** still cannot be killed. One touch downs you (co-op) instead of killing outright – in solo the second wind still saves you once. He leaves downed miners alone. Bullets and picks make him stagger 0.4 s; the Alphorn stuns as before; a flare in the face 5 s. He does not burn.
+- **Knocked down** and **pinned** are new player states (`Player.knock`, `Player.set_pinned`): the host decides, the miner's own peer moves them.
+
+### Bosses (DESIGN.md §6)
+- **D'Seemuada (Salzsee):** the Salzsee Fundort now has a 5 × 8 m black lake along its left side (the Fundstück's plinth is 1.25 m from the shore). She sleeps on the bottom until a miner comes within 16 m, makes a noise or hits her. Then she swims under the surface (only a swirl shows) to the shore point nearest her target – the Fundstück's carrier first – rears up for 4.5 s, bites whoever is within 4.2 m of her (40) or spits brine at whoever is further (14, up to 20 m), and sinks again for at least 2.5 s (sooner after 120 damage while up). 520 health before the boss factors. "Im See rührt si wos! D'Seemuada is aufgwacht!"
+- **Die Schiachpercht (Die Tiefe):** the Percht as a boss: 1.25× its size with a great cracked bell on her chest, 1100 health before the boss factors, the charge and the mask. Keeps to her hall until she sees someone. Every 9 s, when her target is close, she swings the bell back (chains, a rising hum: the warning – 1.3 s), then strikes it: everyone within 7 m without rock in between takes up to 30 and is knocked down. Every 18 s 3 Grubenhunde come (at most 5).
+- Da Bergkini now guards only the Oberer Stollen.
+- Boss music stings are left for M10 (DESIGN §12 lists them there).
+
+### Elites "Raunacht" (DESIGN.md §6, §8)
+- From shift 5 (index 4) every creature of the shift's budget and the waves may spawn as one: 12 % in shift 5, +4 % a shift, at most 40 %. Never the Schichtmeister or a boss; dogs a Raunacht Percht calls are Raunacht too.
+- 1.8× health, 1.2× speed, 1.25× damage, red glowing eyes and a faint red glow, a little bigger. When it dies it leaves a full box of ammo for one of the guns the crew carries.
+- Dev flag `--elites` makes every one of them an elite.
+
+### Sounds (built by `tools/audio/build.py`)
+- From recordings: `shot_stutzen` (3), `bolt_cycle`, `round_in` (3), `shot_leucht` (a low "plopp" made from the pistol take plus a hiss).
+- Synthesised: `flare_burn` (loop), `flare_hiss`, `seemuada_roar`, `spit`, `bell_shock`, `bell_windup`.
+
+### Version and tests
+- **Version 0.8.0.**
+- `tests/test_m8.gd`: the new guns and ammo as data, caps, Notration with flares, the elite curve, armour and weak spots, the bosses per section, the HUD icons.
+- New headless checks: `smoke_weapons`, `smoke_seemuada`, `smoke_schiachpercht`, `smoke_elites`; `smoke_tatzel`, `smoke_kaser`, `smoke_percht` and `smoke_weibl` now check the v2 rules (throat, lit-only damage, the charge and the mask, the pin).

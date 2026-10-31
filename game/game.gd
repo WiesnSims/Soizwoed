@@ -40,6 +40,8 @@ const CREATURE_PATHS: PackedStringArray = [
 	"res://enemies/percht/percht.tres",
 	"res://enemies/grubenhund/grubenhund.tres",
 	"res://enemies/bosses/bergkini/bergkini.tres",
+	"res://enemies/bosses/seemuada/seemuada.tres",
+	"res://enemies/bosses/schiachpercht/schiachpercht.tres",
 ]
 const AMBIENCE: PackedStringArray = ["drip", "drip", "drip", "creak", "creak", "rumble"]
 ## Dev/smoke flag: ride down right away, play a few seconds (`--auto-shift=<s>`, default 5),
@@ -51,6 +53,8 @@ const WAIT_PEERS_ARG: String = "--wait-peers="
 const SECTION_ARG: String = "--section="
 ## With --auto-shift: the Fundstück is always guarded by the section's boss.
 const BOSS_ARG: String = "--boss"
+## With --auto-shift: every creature of the budget and the waves is a Raunacht elite.
+const ELITES_ARG: String = "--elites"
 ## How often the host sends the transforms of moving free items to the clients.
 const ITEM_SYNC_SECONDS: float = 0.05
 ## Floats per item in an item transform batch: position (3) + rotation quaternion (4).
@@ -128,6 +132,11 @@ var _pulse_left: float = 0.0
 var _give_up_until: Dictionary = {}
 ## Dev (--boss): the Fundstück is always guarded.
 var _force_boss: bool = false
+## Dev (--elites): every creature of the budget and the waves is a Raunacht elite.
+var _force_elites: bool = false
+## Every peer: the flares burning in the mine right now (they light it, DESIGN.md §7).
+var flares: Array[Flare] = []
+var _next_flare: int = 0
 ## Host: food poisoning (Speckbrot), peer -> [seconds left, damage per second, fraction carried over].
 var _poisoned: Dictionary = {}
 ## Host: seconds until each special loot item (Kuckucksuhr, Mann im Salz) acts next, and how
@@ -350,6 +359,7 @@ func _spawn_creature(spawn_data: Array) -> Node:
 	var creature: Creature = data.scene.instantiate() as Creature
 	creature.name = spawn_data[0]
 	creature.data = data
+	creature.elite = spawn_data.size() > 3 and bool(spawn_data[3])
 	creature.transform = spawn_data[2]
 	creature.net_position = creature.transform.origin
 	creature.net_yaw = creature.rotation.y
@@ -383,13 +393,19 @@ func _spawn_loot(seed_value: int) -> void:
 		if i >= spots.size():
 			xform.origin += Vector3(rng.randf_range(-0.6, 0.6), 0.2, rng.randf_range(-0.6, 0.6))
 		_spawn_item_at(picked.id, value, xform)
-	# Ammo boxes on the spots the loot left free (DESIGN.md §5: never enough).
+	# Ammo boxes on the spots the loot left free (DESIGN.md §5: never enough). Mostly for the
+	# guns the crew carries; boxes for other guns are rare finds.
+	var carried: Dictionary = {}
+	for player: Player in players():
+		for item: Object in player.inventory.all_items():
+			if item is WorldItem and (item as WorldItem).data.weapon != null:
+				carried[(item as WorldItem).data.weapon.ammo_type] = true
 	var boxes: Array[ItemData] = []
 	var box_weights: PackedFloat32Array = []
 	for data: ItemData in catalog.items:
 		if data.kind == ItemData.Kind.AMMO and data.spawn_weight > 0.0:
 			boxes.append(data)
-			box_weights.append(data.spawn_weight)
+			box_weights.append(data.spawn_weight * (1.0 if carried.has(data.ammo_type) else 0.2))
 	var box_count: int = _config.ammo_box_count(run.shift_index, run.player_count)
 	for i: int in box_count if not boxes.is_empty() else 0:
 		var box_spot: Array = spots[(count + i) % spots.size()]
@@ -473,15 +489,43 @@ func _spawn_creature_group(rule: CreatureSpawnRule) -> int:
 	var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), _enemy_budget_left)
 	for i: int in size:
 		var offset: Vector3 = Vector3(randf_range(-1.0, 1.0), 0.3, randf_range(-1.0, 1.0))
-		spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset))
+		spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + offset), _roll_elite())
 		_enemy_budget_left -= rule.budget_cost
 	return size
 
 
-## Host: one creature of type `id` (outside the budget, e.g. the Schichtmeister).
-func spawn_creature(id: StringName, xform: Transform3D) -> Creature:
+## Host: one creature of type `id` (outside the budget, e.g. the Schichtmeister), maybe as a
+## Raunacht elite.
+func spawn_creature(id: StringName, xform: Transform3D, elite: bool = false) -> Creature:
 	_next_creature += 1
-	return _creature_spawner.spawn(["C%d" % _next_creature, id, xform]) as Creature
+	if elite:
+		print("[game] a Raunacht %s" % id)
+	return _creature_spawner.spawn(["C%d" % _next_creature, id, xform, elite]) as Creature
+
+
+## Host: whether a creature of the shift's budget or a wave spawns as an elite (from shift 5,
+## DESIGN.md §6, §8). Never the Schichtmeister or a boss; always with the dev flag --elites.
+func _roll_elite() -> bool:
+	return _force_elites or randf() < _config.elite_chance(GameState.run.shift_index)
+
+
+## Host: an elite died – a full box of ammo where it fell, for one of the guns the crew carries.
+func host_elite_drop(at: Vector3) -> void:
+	var types: Dictionary = {}
+	for player: Player in players():
+		for item: Object in player.inventory.all_items():
+			var gun: WorldItem = item as WorldItem
+			if gun != null and gun.data.weapon != null and gun.data.weapon.ammo_type != &"leucht":
+				types[gun.data.weapon.ammo_type] = true
+	if types.is_empty():
+		types[&"pistole"] = true
+	var ammo_type: StringName = types.keys().pick_random()
+	for entry: Resource in catalog.items:
+		var data: ItemData = entry as ItemData
+		if data.kind == ItemData.Kind.AMMO and data.ammo_type == ammo_type:
+			_spawn_item_at(data.id, 0, Transform3D(Basis.IDENTITY, at + Vector3.UP * 0.4))
+			print("[game] the Raunacht left a box of %s" % ammo_type)
+			return
 
 
 func alive_count(id: StringName) -> int:
@@ -773,7 +817,7 @@ func _spawn_wave(budget: float) -> void:
 		var at: Vector3 = spots.pick_random()
 		var size: int = rule.group_size(randi_range(rule.group_min, rule.group_max), alive_count(rule.id), left)
 		for i: int in size:
-			spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + Vector3(randf_range(-0.8, 0.8), 0.3, randf_range(-0.8, 0.8))))
+			spawn_creature(rule.id, Transform3D(Basis(Vector3.UP, randf() * TAU), at + Vector3(randf_range(-0.8, 0.8), 0.3, randf_range(-0.8, 0.8))), _roll_elite())
 			left -= rule.budget_cost
 		spawned[rule.id] = int(spawned.get(rule.id, 0)) + size
 		if size == 0 or left < 1.0:
@@ -908,6 +952,7 @@ func _auto_shift() -> void:
 		_force_creatures = true
 		_roll_auftrag()
 	_force_boss = _has_arg(BOSS_ARG)
+	_force_elites = _has_arg(ELITES_ARG)
 	request_lift()
 	while phase != Phase.SHIFT:
 		await get_tree().process_frame
@@ -1406,9 +1451,16 @@ func host_throw_stone(from: Vector3, target: Vector3, damage: int, thrower_path:
 	_stone.rpc(from, Stone.lob(from, target, _config.stone_speed, gravity), damage, thrower_path)
 
 
+## D'Seemuada spits a gob of brine (host): flown like a stone on every peer.
+func host_spit(from: Vector3, target: Vector3, damage: int, spitter_path: NodePath) -> void:
+	var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+	_stone.rpc(from, Stone.lob(from, target, _config.stone_speed * 1.3, gravity), damage, spitter_path, true)
+
+
 @rpc("authority", "call_local", "reliable")
-func _stone(from: Vector3, velocity: Vector3, damage: int, thrower_path: NodePath) -> void:
+func _stone(from: Vector3, velocity: Vector3, damage: int, thrower_path: NodePath, brine: bool = false) -> void:
 	var stone: Stone = Stone.new()
+	stone.brine = brine
 	stone.velocity = velocity
 	stone.damage = damage
 	stone.thrower = get_node_or_null(thrower_path) as Node3D
@@ -1431,6 +1483,57 @@ func _dynamite(from: Vector3, velocity: Vector3, fuse: float, damage: int, throw
 	stick.thrower = get_node_or_null(thrower_path) as Node3D
 	(mine if mine != null else mine_root).add_child(stick)
 	stick.global_position = from
+
+
+## The Leuchtpistole went off: the magazine count for everyone, the noise, and the flare flying
+## on every peer (the host's copy decides what it hits).
+@rpc("any_peer", "call_local", "reliable")
+func request_flare(item_path: NodePath, rounds_left: int, muzzle: Vector3, aim_from: Vector3, velocity: Vector3) -> void:
+	if not multiplayer.is_server():
+		return
+	var item: WorldItem = get_node_or_null(item_path) as WorldItem
+	var shooter: int = _sender()
+	if item == null or item.holder_peer != shooter or item.data.weapon == null or not item.data.weapon.projectile:
+		return
+	var player: Player = player_by_peer(shooter)
+	if player == null or aim_from.distance_to(player.global_position) > 3.0:
+		return
+	item.set_rounds.rpc(clampi(rounds_left, 0, item.data.weapon.magazine))
+	_next_flare += 1
+	_flare.rpc("Flare%d" % _next_flare, muzzle, velocity.limit_length(_config.flare_speed * 1.6), shooter)
+	print("[game] flare fired by P%d" % shooter)
+	host_noise(muzzle, item.data.weapon.noise)
+	host_flame(muzzle, 0.6)
+
+
+@rpc("authority", "call_local", "reliable")
+func _flare(flare_name: String, from: Vector3, velocity: Vector3, shooter: int) -> void:
+	if shooter != multiplayer.get_unique_id():
+		Audio.play_at("shot_leucht", from, &"SFX", -1.0, 60.0, randf_range(0.97, 1.03))
+	print("[game] %s flying" % flare_name)
+	var flare: Flare = Flare.new()
+	flare.name = flare_name
+	flare.velocity = velocity
+	flare.shooter = shooter
+	(mine if mine != null else mine_root).add_child(flare)
+	flare.global_position = from
+
+
+## Whether a burning flare lights `point` (a Kasermandl freezes in it).
+func flare_lights(point: Vector3) -> bool:
+	for flare: Flare in flares:
+		if is_instance_valid(flare) and flare.lights_point(point):
+			return true
+	return false
+
+
+## A miner's stick of Dynamit goes off (host): the big blast, and the roof often comes down
+## with it, blocking the tunnel behind the crew (DESIGN.md §4, §7).
+func host_dynamit(where: Vector3) -> void:
+	print("[game] Dynamit went off")
+	host_explosion(where, _config.dynamit_radius, _config.dynamit_damage)
+	if mine != null and mine.hazards != null and randf() < _config.dynamit_roof_chance:
+		mine.hazards.host_bring_down(where)
 
 
 ## A big blast (dynamite, host): a flash and a bang on every peer, damage all around (rock
@@ -1977,12 +2080,32 @@ func host_damage_player(player: Player, amount: int) -> void:
 	if players().size() > 1 and not player.get_meta(&"was_downed", false) and _crew_alive() > 1:
 		player.set_meta(&"was_downed", true)
 		player.set_meta(&"bleeds_out_at", now + _config.downed_seconds)
+		host_pin_player(player, false)
 		_drop_hands(player)
 		player.set_downed.rpc(true)
 		_player_message.rpc("MSG_PLAYER_DOWNED", player.player_number, player.peer_id)
 		print("[game] P%d downed" % player.peer_id)
 		return
 	_kill_player(player)
+
+
+## A miner is thrown off their feet (a Percht's charge, a bell shockwave): pushed away from
+## `from`, unable to act for a moment. Their movement is their own, so their peer applies it.
+func host_knock_player(player: Player, from: Vector3, push: float, seconds: float) -> void:
+	if not player.alive or phase != Phase.SHIFT:
+		return
+	var away: Vector3 = player.global_position - from
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.05 else Vector3.FORWARD
+	_to_peer(player.peer_id, player, &"knock", [away * push + Vector3.UP * 2.5, seconds])
+
+
+## A Salzweibl has hold of a miner (or let go): they cannot move or act (host decides).
+func host_pin_player(player: Player, on: bool) -> void:
+	if player.pinned != on:
+		player.set_pinned.rpc(on)
+		if on:
+			_player_message.rpc("MSG_PLAYER_PINNED", player.player_number, player.peer_id)
 
 
 ## Living miners (downed ones count) in the mine.
@@ -2034,6 +2157,7 @@ func _host_tick_downed() -> void:
 
 
 func _kill_player(player: Player) -> void:
+	host_pin_player(player, false)
 	if player.downed:
 		player.set_downed.rpc(false)
 	_drop_everything(player)
@@ -2047,15 +2171,19 @@ func _kill_player(player: Player) -> void:
 	print("[game] P%d died, corpse spawned" % player.peer_id)
 
 
+## A miner's shot or blow landed on a creature (the shooter's screen decided where; `weak` = on
+## its weak spot, already counted into `damage`, DESIGN.md §11). The host applies it.
 @rpc("any_peer", "call_local", "reliable")
-func request_hit(creature_path: NodePath, damage: int, from: Vector3) -> void:
+func request_hit(creature_path: NodePath, damage: int, from: Vector3, weak: bool = false) -> void:
 	if not multiplayer.is_server():
 		return
 	var creature: Creature = get_node_or_null(creature_path) as Creature
-	if creature != null:
+	if creature != null and not creature.is_queued_for_deletion():
 		var at: Transform3D = Transform3D(Basis.IDENTITY, creature.global_position + Vector3.UP * 0.4)
 		var was_alive: bool = creature.health > 0
-		creature.host_hit(damage, from)
+		creature.hit_weak = weak
+		creature.host_hit(clampi(damage, 0, 2000), from)
+		creature.hit_weak = false
 		if was_alive and creature.health <= 0:
 			_host_notration(player_by_peer(_sender()), at)
 
@@ -2070,6 +2198,12 @@ func _host_notration(killer: Player, at: Transform3D) -> void:
 		return
 	var held: WorldItem = killer.inventory.slots[killer.inventory.selected] as WorldItem
 	var ammo_type: StringName = held.data.weapon.ammo_type if held != null and held.data.weapon != null else left.keys()[0]
+	if ammo_type == &"leucht":
+		# The flare gun in hand: rounds for a gun that kills.
+		ammo_type = &"pistole"
+		for other: StringName in left:
+			if other != &"leucht":
+				ammo_type = other
 	for entry: Resource in catalog.items:
 		var data: ItemData = entry as ItemData
 		if data.kind == ItemData.Kind.AMMO and data.ammo_type == ammo_type:

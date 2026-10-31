@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://enemies/percht/percht.tscn" id="1_base"]
+[ext_resource type="Script" path="res://enemies/bosses/schiachpercht/schiachpercht.gd" id="2_boss"]
+
+[sub_resource type="CapsuleShape3D" id="boss_shape"]
+radius = 0.68
+height = 3.1
+
+[node name="Schiachpercht" instance=ExtResource("1_base")]
+script = ExtResource("2_boss")
+
+[node name="Shape" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.55, 0)
+shape = SubResource("boss_shape")
+
+[node name="Voice" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, 0)
+volume_db = 7.0
+max_distance = 50.0

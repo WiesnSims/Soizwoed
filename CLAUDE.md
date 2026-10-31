@@ -37,8 +37,8 @@ The full game design is here and must be followed:
   - `tools/smoke_test.ps1` – headless main menu + solo session
   - `tools/mp_test.ps1 -Clients 3` (add `-HostLeavesFirst` for the host-quits case) – headless ENet host + clients playing a short shift
   - `tools/mp_test.ps1 -Coop` – headless co-op scenario: item sync, carrying together, death and spectating
-  - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, the host must see each use arrive
-  - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl)
+  - `tools/mp_test.ps1 -Tools` – headless: a client uses the M4 tools, shoots a dog, fires a flare and throws Dynamit; the host must see each use arrive
+  - `tools/mp_test.ps1 -Clients 2 -Section 2` – headless: a shift in Die Tiefe with every Tiefe creature (Percht, Salzweibl); add `-Boss` for the section's boss (Bergkini, D'Seemuada, Schiachpercht)
   - `tools/mp_test.ps1 -Boss` – headless: a shift with the Fundstück guarded by the boss; the client sees the salt shell, its end and the alarm
   - `godot --headless -s tools/balance_report.gd` – per shift and crew: enemy budget, health, boss chance, ammo; per section loot, Fundstück bonus, Rückweg-timer against the carrying time
   - `godot --audio-driver Dummy -- --solo --scenario=smooth --shots=build/shots` – measures how evenly the camera moves while walking (stutter check; add `--no-interp` for the old behaviour)

@@ -1,11 +1,12 @@
 class_name HudIcon
 extends Control
 ## Small vector icons for the HUD, drawn in code (no image files): a cross for health, a flame
-## for the lamp, chevrons for breath, a cartridge and a shotgun shell for ammo; for the shop's
+## for the lamp, chevrons for breath, a cartridge, a shotgun shell, a rifle round and a flare
+## for ammo; for the shop's
 ## shelves a pistol, a cartridge, a bomb, a bottle and a pick; a coin for money; a shield for
 ## armour and the upgrades shelf.
 
-enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN, ARMOUR }
+enum Kind { HEALTH, LAMP, STAMINA, BULLET, SHELL, GUN, BOMB, BOTTLE, PICK, COIN, ARMOUR, RIFLE, FLARE }
 
 @export var kind: Kind = Kind.HEALTH
 @export var color: Color = Color.WHITE:
@@ -82,11 +83,36 @@ func _draw() -> void:
 			draw_circle(s / 2.0 + Vector2(1.5, 1.5), s.x * 0.42, shadow)
 			draw_circle(s / 2.0, s.x * 0.42, Color(0.86, 0.66, 0.3))
 			draw_arc(s / 2.0, s.x * 0.3, 0.0, TAU, 24, Color(0.6, 0.42, 0.15), maxf(1.0, s.x * 0.06))
+		Kind.RIFLE:
+			# A long, slim rifle round with a bottleneck.
+			var w3: float = s.x * 0.26
+			var x3: float = (s.x - w3) / 2.0
+			draw_rect(Rect2(Vector2(x3, s.y * 0.36), Vector2(w3, s.y * 0.58)), Color(0.85, 0.65, 0.3))
+			draw_colored_polygon(PackedVector2Array([Vector2(x3, s.y * 0.36), Vector2(x3 + w3, s.y * 0.36), Vector2(x3 + w3 * 0.72, s.y * 0.26),
+					Vector2(x3 + w3 * 0.66, s.y * 0.14), Vector2(s.x / 2.0, s.y * 0.02), Vector2(x3 + w3 * 0.34, s.y * 0.14), Vector2(x3 + w3 * 0.28, s.y * 0.26)]), Color(0.72, 0.45, 0.28))
+		Kind.FLARE:
+			var w4: float = s.x * 0.5
+			var x4: float = (s.x - w4) / 2.0
+			draw_rect(Rect2(Vector2(x4, s.y * 0.26), Vector2(w4, s.y * 0.6)), Color(0.75, 0.75, 0.72))
+			draw_rect(Rect2(Vector2(x4, s.y * 0.1), Vector2(w4, s.y * 0.18)), Color(0.85, 0.12, 0.08))
+			draw_rect(Rect2(Vector2(x4 - 1.0, s.y * 0.84), Vector2(w4 + 2.0, s.y * 0.1)), Color(0.55, 0.55, 0.52))
 		Kind.ARMOUR:
 			var shield: PackedVector2Array = PackedVector2Array([Vector2(0.5, 0.06), Vector2(0.88, 0.2), Vector2(0.84, 0.56), Vector2(0.5, 0.94),
 					Vector2(0.16, 0.56), Vector2(0.12, 0.2)])
 			_polygon(shield, s, shadow, color)
 			draw_line(Vector2(s.x * 0.5, s.y * 0.2), Vector2(s.x * 0.5, s.y * 0.78), Color(0, 0, 0, 0.35), maxf(1.0, s.x * 0.06))
+
+
+## The icon of an ammo type's counter.
+static func ammo_kind(ammo_type: StringName) -> Kind:
+	match ammo_type:
+		&"schrot":
+			return Kind.SHELL
+		&"gewehr":
+			return Kind.RIFLE
+		&"leucht":
+			return Kind.FLARE
+	return Kind.BULLET
 
 
 ## A shape given in 0..1 of the icon, with a drop shadow.

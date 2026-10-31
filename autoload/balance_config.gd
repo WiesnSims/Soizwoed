@@ -149,6 +149,8 @@ extends Resource
 ## Most of each ammo type a miner can carry.
 @export var ammo_cap_pistole: int = 48
 @export var ammo_cap_schrot: int = 20
+@export var ammo_cap_gewehr: int = 20
+@export var ammo_cap_leucht: int = 6
 ## The company's ration at the start of every shift: whoever has less gets topped up to this.
 @export var ration_pistole: int = 24
 ## Handing ammo to a teammate (G while looking at them): how close, and the share of your
@@ -160,8 +162,10 @@ extends Resource
 ## plus spare) – only then; and how many rounds the drop holds.
 @export var notration_left_pistole: int = 4
 @export var notration_left_schrot: int = 1
+@export var notration_left_gewehr: int = 1
 @export var notration_pistole: int = 5
 @export var notration_schrot: int = 2
+@export var notration_gewehr: int = 2
 ## Ammo boxes lying in a mine per miner (at least one), before the section's share.
 @export var ammo_boxes_per_player: float = 3.5
 ## Moving while aiming down the sights is this much slower.
@@ -182,6 +186,50 @@ extends Resource
 @export var armour_absorb: float = 0.5
 ## The carrier of the Fundstück can still shove with an elbow (hands full): this much damage.
 @export var shove_damage: int = 6
+## A hit on a creature's weak spot (a dog's head) does this many times the damage; creatures
+## with armour and a special weak spot (Percht, Tatzelwurm, bosses) have their own numbers.
+@export var weak_spot_mult: float = 1.5
+
+@export_group("Leuchtpistole")
+## The flare (DESIGN.md §7): flies this fast with this share of gravity, hurts what it hits
+## and sets it alight (seconds, damage per second), then burns where it lies, lighting this far.
+@export var flare_speed: float = 30.0
+@export var flare_gravity_share: float = 0.35
+@export var flare_damage: int = 18
+@export var flare_burn_seconds: float = 5.0
+@export var flare_burn_dps: float = 7.0
+@export var flare_light_seconds: float = 20.0
+@export var flare_light_range: float = 11.0
+## Creatures (and firedamp) this close to a burning flare catch fire.
+@export var flare_ignite_radius: float = 1.4
+## A flare in the Schichtmeister's face stuns him this long.
+@export var flare_stun_seconds: float = 5.0
+
+@export_group("Dynamit")
+## The miners' own dynamite (thrown from slot 4): fuse, blast and how often the roof comes
+## down with it and blocks the tunnel (DESIGN.md §4: rockfall blocks pursuers).
+@export var dynamit_fuse_seconds: float = 3.0
+@export var dynamit_radius: float = 5.5
+@export var dynamit_damage: int = 110
+@export var dynamit_roof_chance: float = 0.6
+
+@export_group("Elites")
+## "Raunacht" variants (DESIGN.md §6): from this shift (0-based) a creature may spawn as one,
+## with this chance (growing per shift up to a limit); more health, faster, harder hits, and
+## it drops a box of ammo when it dies.
+@export var elite_first_shift: int = 4
+@export var elite_chance_base: float = 0.12
+@export var elite_chance_per_shift: float = 0.04
+@export var elite_chance_max: float = 0.4
+@export var elite_health_mult: float = 1.8
+@export var elite_speed_mult: float = 1.2
+@export var elite_damage_mult: float = 1.25
+
+@export_group("Knocked down")
+## A Percht's charge or a bell shockwave throws a miner: pushed this fast (m/s), on the floor
+## and unable to act this long.
+@export var knockdown_push: float = 7.0
+@export var knockdown_seconds: float = 1.3
 
 @export_group("Run upgrades")
 ## Everything the Waffenkammer sells besides items (DESIGN.md §7), for the whole crew and the
@@ -210,6 +258,38 @@ extends Resource
 ## Changes cover after this many seconds, or when hit this much.
 @export var bergkini_cover_seconds: float = 7.0
 @export var bergkini_cover_after_damage: int = 60
+
+@export_group("D'Seemuada")
+## The giant Tatzelwurm in the Salzsee Fundort's lake (DESIGN.md §6 bosses): swims under the
+## surface, comes up at the shore nearest a miner, bites whoever is within reach of the water
+## or spits brine at whoever is further, then goes under again.
+@export var seemuada_health: int = 520
+@export var seemuada_swim_speed: float = 3.5
+@export var seemuada_surface_seconds: float = 4.5
+@export var seemuada_under_seconds: float = 2.5
+@export var seemuada_bite_reach: float = 4.2
+@export var seemuada_bite_damage: int = 40
+@export var seemuada_bite_cooldown: float = 1.8
+@export var seemuada_spit_range: float = 20.0
+@export var seemuada_spit_damage: int = 14
+@export var seemuada_spit_cooldown: float = 1.6
+## Its head takes this many times the damage, the scaly neck this share; it dives after this
+## much in one go up.
+@export var seemuada_head_mult: float = 2.0
+@export var seemuada_neck_mult: float = 0.5
+@export var seemuada_pain_dive: int = 120
+
+@export_group("Die Schiachpercht")
+## The Percht as Die Tiefe's boss: more health, the bell shockwave (a wind-up, then everyone
+## within the radius is hurt and knocked down unless rock is between), and her pack of dogs.
+@export var schiachpercht_health: int = 1100
+@export var schiachpercht_shockwave_seconds: float = 9.0
+@export var schiachpercht_shockwave_windup: float = 1.3
+@export var schiachpercht_shockwave_radius: float = 7.0
+@export var schiachpercht_shockwave_damage: int = 30
+@export var schiachpercht_dogs_seconds: float = 18.0
+@export var schiachpercht_dogs: int = 3
+@export var schiachpercht_dogs_max: int = 5
 
 @export_group("Shout (Plärren)")
 @export var shout_radius: float = 14.0
@@ -358,21 +438,30 @@ extends Resource
 @export var ferry_seconds: float = 7.0
 
 @export_group("Tatzelwurm")
-@export var tatzelwurm_health: int = 120
+@export var tatzelwurm_health: int = 150
 @export var tatzelwurm_speed: float = 4.5
 @export var tatzelwurm_roam_speed: float = 1.5
-@export var tatzelwurm_surface_seconds: float = 6.0
+## Up out of the floor this long when nobody moves near it (the time to shoot its throat).
+@export var tatzelwurm_surface_seconds: float = 8.0
 @export var tatzelwurm_lunge_distance: float = 3.2
-@export var tatzelwurm_bite_damage: int = 55
+@export var tatzelwurm_bite_damage: int = 40
 ## Players moving faster than this near a surfaced Tatzelwurm get lunged at (crouching is safe).
 @export var tatzelwurm_motion_threshold: float = 2.2
 @export var tatzelwurm_dive_seconds: float = 10.0
+## Its soft throat takes this many times the damage, its scales this share; after this much
+## damage in one go up it dives.
+@export var tatzelwurm_throat_mult: float = 2.5
+@export var tatzelwurm_scale_mult: float = 0.35
+@export var tatzelwurm_pain_dive: int = 70
 
 @export_group("Kasermandl")
+@export var kasermandl_health: int = 70
 @export var kasermandl_creep_speed: float = 2.2
 @export var kasermandl_rush_speed: float = 4.8
-@export var kasermandl_strike_damage: int = 35
-@export var kasermandl_strike_cooldown: float = 12.0
+## Its touch drains this much health a second, for at most this long, then it slips away.
+@export var kasermandl_drain_dps: float = 16.0
+@export var kasermandl_drain_seconds: float = 2.5
+@export var kasermandl_strike_cooldown: float = 8.0
 ## A lamp freezes it up to this share of the lamp's range; a hanging lantern this far (m).
 @export var kasermandl_lamp_share: float = 0.9
 @export var kasermandl_lantern_range: float = 6.0
@@ -382,6 +471,8 @@ extends Resource
 @export var schichtmeister_delay: float = 12.0
 @export var schichtmeister_speed: float = 6.4
 @export var schichtmeister_damage: int = 100
+## Bullets and picks only make him stagger this long (he cannot be killed).
+@export var schichtmeister_hit_stagger: float = 0.4
 
 @export_group("Grubenhund")
 @export var grubenhund_health: int = 55
@@ -405,8 +496,26 @@ extends Resource
 @export var grubenhund_pack_radius: float = 20.0
 
 @export_group("Percht")
-## Near-unkillable: this much health before it gives up and goes back into the dark.
-@export var percht_health: int = 800
+## Killable in v2, but armoured: hits on the carved mask do this many times the damage, hits
+## anywhere else this share.
+@export var percht_health: int = 650
+@export var percht_mask_mult: float = 3.0
+@export var percht_armour_mult: float = 0.25
+## The charge: at a miner it sees between these distances, after a wind-up, in a straight
+## line, knocking down whoever it hits; it stands dazed after running into rock.
+@export var percht_charge_min: float = 5.0
+@export var percht_charge_max: float = 14.0
+@export var percht_charge_windup: float = 0.9
+@export var percht_charge_speed: float = 10.0
+@export var percht_charge_seconds: float = 1.2
+@export var percht_charge_damage: int = 45
+@export var percht_charge_cooldown: float = 7.0
+@export var percht_wall_daze: float = 1.8
+## It roars every this long while hunting and Grubenhunde come (this many, at most that many
+## around).
+@export var percht_roar_seconds: float = 22.0
+@export var percht_roar_dogs: int = 2
+@export var percht_roar_dogs_max: int = 4
 @export var percht_patrol_speed: float = 1.6
 @export var percht_investigate_speed: float = 2.4
 ## Faster than walking (3.4), slower than sprinting (5.8).
@@ -422,7 +531,12 @@ extends Resource
 @export var percht_strike_cooldown: float = 2.5
 
 @export_group("Salzweibl")
-@export var salzweibl_damage: int = 50
+@export var salzweibl_health: int = 45
+## Its grip: the miner it caught is pinned (can't move or act) and loses this much health a
+## second until a teammate shoots or shoves it off, or for at most this long (solo, co-op).
+@export var salzweibl_pin_dps: float = 9.0
+@export var salzweibl_pin_seconds_solo: float = 4.0
+@export var salzweibl_pin_seconds: float = 14.0
 @export var salzweibl_strike_distance: float = 2.0
 ## A miner with a teammate this close is not alone: it will not strike, it flees.
 @export var salzweibl_together_distance: float = 7.0
@@ -529,6 +643,10 @@ func ammo_cap(ammo_type: StringName, levels: Dictionary = {}) -> int:
 			cap = ammo_cap_pistole
 		&"schrot":
 			cap = ammo_cap_schrot
+		&"gewehr":
+			cap = ammo_cap_gewehr
+		&"leucht":
+			cap = ammo_cap_leucht
 	for upgrade: RunUpgrade in run_upgrades:
 		if upgrade.effect == RunUpgrade.Effect.AMMO_CAP and upgrade.target == ammo_type:
 			cap += roundi(upgrade.total(int(levels.get(upgrade.id, 0))))
@@ -553,14 +671,34 @@ func lamp_range_mult(levels: Dictionary) -> float:
 	return mult
 
 
-## Rounds of `ammo_type` left at which a miner counts as nearly out (Notration).
+## Rounds of `ammo_type` left at which a miner counts as nearly out (Notration). Flares are
+## no ammo to fight with: a flare gun never keeps anyone from counting as out.
 func notration_left(ammo_type: StringName) -> int:
-	return notration_left_schrot if ammo_type == &"schrot" else notration_left_pistole
+	match ammo_type:
+		&"schrot":
+			return notration_left_schrot
+		&"gewehr":
+			return notration_left_gewehr
+		&"leucht":
+			return 1 << 20
+	return notration_left_pistole
 
 
 ## How many rounds a Notration drop of `ammo_type` holds.
 func notration_rounds(ammo_type: StringName) -> int:
-	return notration_schrot if ammo_type == &"schrot" else notration_pistole
+	match ammo_type:
+		&"schrot":
+			return notration_schrot
+		&"gewehr":
+			return notration_gewehr
+	return notration_pistole
+
+
+## Chance that a creature of shift `shift` (0-based) spawns as a Raunacht elite.
+func elite_chance(shift: int) -> float:
+	if shift < elite_first_shift:
+		return 0.0
+	return minf(elite_chance_max, elite_chance_base + elite_chance_per_shift * (shift - elite_first_shift))
 
 
 ## Whether a miner with these rounds left per ammo type (magazines plus spare, one entry per type

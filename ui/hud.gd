@@ -729,7 +729,7 @@ func _update_gun(player: Player) -> void:
 		_ammo_magazine.text = str(item.rounds)
 		_ammo_magazine.add_theme_color_override("font_color", Color(1.0, 0.4, 0.3) if item.rounds == 0 else Color(1.0, 0.92, 0.72))
 		_ammo_spare.text = "/ %d" % spare
-		_ammo_icon.kind = HudIcon.Kind.SHELL if weapon.ammo_type == &"schrot" else HudIcon.Kind.BULLET
+		_ammo_icon.kind = HudIcon.ammo_kind(weapon.ammo_type)
 		_ammo_icon.queue_redraw()
 		var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
 		gap = clampf(WeaponMath.spread(weapon, gunner.aiming, moving, player.crouching) * 3.5, 4.0, 40.0)

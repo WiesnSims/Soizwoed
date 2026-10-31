@@ -1,0 +1,167 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.14, 0.14, 0.15, 1)
+metallic = 0.8
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="frame"]
+albedo_color = Color(0.36, 0.34, 0.31, 1)
+metallic = 0.85
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="grip"]
+albedo_color = Color(0.22, 0.12, 0.06, 1)
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="pad"]
+albedo_color = Color(0.05, 0.04, 0.035, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="alu"]
+albedo_color = Color(0.72, 0.72, 0.7, 1)
+metallic = 0.9
+roughness = 0.35
+
+[sub_resource type="StandardMaterial3D" id="redcap"]
+albedo_color = Color(0.8, 0.1, 0.07, 1)
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="sightmat"]
+albedo_color = Color(0.08, 0.08, 0.09, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="beadmat"]
+albedo_color = Color(0.95, 0.9, 0.75, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="CylinderMesh" id="barrel"]
+top_radius = 0.0145
+bottom_radius = 0.0155
+height = 0.17
+radial_segments = 16
+rings = 1
+
+[sub_resource type="CylinderMesh" id="bore"]
+top_radius = 0.0125
+bottom_radius = 0.0125
+height = 0.002
+radial_segments = 14
+rings = 1
+
+[sub_resource type="CylinderMesh" id="shell"]
+top_radius = 0.0123
+bottom_radius = 0.0123
+height = 0.06
+radial_segments = 14
+rings = 1
+
+[sub_resource type="CylinderMesh" id="rim"]
+top_radius = 0.014
+bottom_radius = 0.014
+height = 0.004
+radial_segments = 14
+rings = 1
+
+[sub_resource type="BoxMesh" id="lump"]
+size = Vector3(0.026, 0.014, 0.03)
+
+[sub_resource type="BoxMesh" id="frame"]
+size = Vector3(0.034, 0.04, 0.075)
+
+[sub_resource type="BoxMesh" id="grip"]
+size = Vector3(0.028, 0.1, 0.042)
+
+[sub_resource type="BoxMesh" id="guard"]
+size = Vector3(0.008, 0.025, 0.05)
+
+[sub_resource type="BoxMesh" id="hammer"]
+size = Vector3(0.01, 0.022, 0.012)
+
+[sub_resource type="BoxMesh" id="post"]
+size = Vector3(0.005, 0.009, 0.006)
+
+[sub_resource type="SphereMesh" id="bead"]
+radius = 0.0028
+height = 0.0056
+radial_segments = 8
+rings = 4
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.05, 0.15, 0.27)
+
+[node name="Leuchtpistole" type="RigidBody3D"]
+mass = 1.1
+script = ExtResource("1_item")
+
+[node name="Barrels" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.022, -0.03)
+
+[node name="Barrel" type="MeshInstance3D" parent="Barrels"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.022, -0.085)
+mesh = SubResource("barrel")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Bore" type="MeshInstance3D" parent="Barrels"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.022, -0.1705)
+mesh = SubResource("bore")
+surface_material_override/0 = SubResource("pad")
+
+[node name="ShellL" type="MeshInstance3D" parent="Barrels"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0.022, -0.03)
+visible = false
+mesh = SubResource("shell")
+surface_material_override/0 = SubResource("alu")
+
+[node name="Rim" type="MeshInstance3D" parent="Barrels/ShellL"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, 0)
+mesh = SubResource("rim")
+surface_material_override/0 = SubResource("redcap")
+
+[node name="Bead" type="MeshInstance3D" parent="Barrels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0392, -0.16)
+mesh = SubResource("bead")
+surface_material_override/0 = SubResource("beadmat")
+
+[node name="Lump" type="MeshInstance3D" parent="Barrels"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.007, -0.01)
+mesh = SubResource("lump")
+surface_material_override/0 = SubResource("frame")
+
+[node name="Frame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.008, 0.025)
+mesh = SubResource("frame")
+surface_material_override/0 = SubResource("frame")
+
+[node name="Hammer" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.34, 0, -0.34, 0.94, 0, 0.012, 0.062)
+mesh = SubResource("hammer")
+surface_material_override/0 = SubResource("steel")
+
+[node name="NotchL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, 0.0155, 0.045)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="NotchR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.005, 0.0155, 0.045)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="Grip" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.9659, -0.2588, 0, 0.2588, 0.9659, 0, -0.065, 0.065)
+mesh = SubResource("grip")
+surface_material_override/0 = SubResource("grip")
+
+[node name="Guard" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, 0.012)
+mesh = SubResource("guard")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.03, -0.05)
+shape = SubResource("shape")

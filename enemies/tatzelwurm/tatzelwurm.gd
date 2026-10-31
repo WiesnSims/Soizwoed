@@ -3,9 +3,12 @@ extends Creature
 ## The Tatzelwurm (DESIGN.md §6): a cat-headed worm that burrows through the salt. It hunts by
 ## vibration: sprinting, heavy things hitting the floor, loud voices, carts, bangs (Game.host_noise)
 ## draw it in. Underground it is only heard – grinding rock – then it bursts out of the floor
-## where the noise was and lunges at anything moving close by. Counter: walk slowly (crouch),
-## stand still, and it dives away again. Hitting it while it is out makes it dive at once.
-## It does not talk; it scrapes and hisses.
+## where the noise was and lunges at anything moving close by. Gunfire is the biggest vibration of
+## all, so shooting calls it.
+##
+## How to beat it (v2): stand still – it stays up, looking for whoever moved – and shoot the
+## soft throat under its head (its scales take little; underground it cannot be hit at all).
+## Hurt enough in one go up, it dives and comes back later. It does not talk; it scrapes and hisses.
 
 enum State { ROAM, HUNT, SURFACE, LUNGE, DIVE, REST }
 
@@ -26,6 +29,8 @@ var _goal: Vector3
 var _state_time: float = 0.0
 var _victim: Player
 var _bitten: bool = false
+## Damage taken since it last came up (it dives when that hurts too much).
+var _hurt_up: int = 0
 var _segments: Array[MeshInstance3D] = []
 var _hole: Node3D
 var _head: Node3D
@@ -37,7 +42,7 @@ var _scrape: MuffledAudio
 
 func _ready() -> void:
 	super()
-	health = _config.tatzelwurm_health
+	health = scaled_health(_config.tatzelwurm_health)
 	collision_mask = 0  # it goes through rock
 	if multiplayer.is_server():
 		global_position.y -= UNDERGROUND_DEPTH
@@ -124,17 +129,35 @@ func host_heard(where: Vector3, _reach: float) -> void:
 
 
 func host_hit(damage: int, from: Vector3) -> void:
-	if net_emerge < 0.5:
+	if net_emerge < 0.5 or state == State.DIVE:
 		return
-	health -= damage
+	if host_damage(damage, from, "tatzel_burst"):
+		return
 	play_sound.rpc("tatzel_hiss", 3.0)
-	if health <= 0:
-		# Gone for good, deep into the mountain.
-		_farewell.rpc(-1, "tatzel_burst")
-		queue_free()
+	_hurt_up += damage
+	if _hurt_up >= scaled_health(_config.tatzelwurm_pain_dive):
+		_dive()
 		return
 	_turn_to(from, 1.0)
-	_dive()
+	# Whoever shot it from close by gets the lunge.
+	for player: Player in Game.instance.players():
+		if player.alive and player.global_position.distance_to(from) < 1.5 and _flat_distance(player.global_position) < _config.tatzelwurm_lunge_distance and state == State.SURFACE:
+			_victim = player
+			_bitten = false
+			_set_state(State.LUNGE)
+			return
+
+
+## The soft throat under the cat's head is its weak spot; the scales everywhere else take little.
+func weak_spot_mult(point: Vector3) -> float:
+	if _head == null:
+		return 1.0
+	var throat: Vector3 = _head.global_position - _head.global_basis.y * 0.25
+	return _config.tatzelwurm_throat_mult if point.distance_to(throat) < 0.5 else _config.tatzelwurm_scale_mult
+
+
+func can_be_shot() -> bool:
+	return net_emerge >= 0.5
 
 
 func _surface() -> void:
@@ -143,6 +166,7 @@ func _surface() -> void:
 	net_moving = false
 	play_sound.rpc("tatzel_burst", 4.0)
 	Game.instance.host_noise(floor_point, _config.noise_landing)
+	_hurt_up = 0
 	_set_state(State.SURFACE)
 
 

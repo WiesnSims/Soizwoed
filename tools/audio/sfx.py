@@ -637,7 +637,65 @@ def stone_hit(v):
     return cave(d.mix(click(2400, 0.01, 0.9, ring=0.3), thud(260, 0.02, 0.5)), 1.0, 0.3)
 
 
+# --- M8: flares, D'Seemuada, the Schiachpercht ---------------------------------------------------
+
+def flare_burn(v):
+    """A flare burning on the rock (loop): a rough, spitting hiss with a crackle in it."""
+    s = 2.0
+    roar = d.bandpass(d.noise(s), 900, 6000) * (0.7 + 0.3 * d.smooth_noise(s, 6.0)) * 0.5
+    spits = d.mix(*[(d.rng.uniform(0, s - 0.02), click(3000 + d.rng.uniform(-1200, 1800), 0.003, d.rng.uniform(0.15, 0.5))) for _ in range(60)])
+    return d.loopable(d.mix(roar, spits, d.lowpass(d.brown(s), 300) * 0.3), 0.15)
+
+
+def flare_hiss(v):
+    """Something catching fire: a sharp whoosh that settles into crackling."""
+    s = 1.0
+    whoosh = d.bandpass(d.noise(s), 500, 5000) * d.env_points(s, [(0, 0), (0.08, 1.0), (0.3, 0.5), (1.0, 0)])
+    crackle = d.mix(*[(d.rng.uniform(0.1, 0.9), click(2500 + d.rng.uniform(-800, 1500), 0.004, d.rng.uniform(0.2, 0.6))) for _ in range(18)])
+    return d.mix(whoosh, crackle)
+
+
+def seemuada_roar(v):
+    """D'Seemuada coming up out of the lake: water pouring off, then a huge, gargling bellow."""
+    s = 2.6
+    voice = d.vowel_morph(d.glottal(d.glide(s, 48, 36), s, 0.12, 0.6), [(0.0, "u"), (0.8, "o"), (2.6, "a")], 0.6)
+    gargle = d.bandpass(d.noise(s), 200, 1400) * (0.5 + 0.5 * d.smooth_noise(s, 14.0)) * 0.6
+    env = d.env_points(s, [(0, 0), (0.25, 1.0), (1.8, 0.8), (2.6, 0)])
+    pour = d.lowpass(d.noise(s), 3000) * d.env_points(s, [(0, 0.8), (0.6, 0.4), (2.0, 0)]) * 0.5
+    return cave(d.mix(d.drive((voice + gargle) * env, 2.8), pour), 2.6, 0.5)
+
+
+def spit(v):
+    """A gob of brine flying: a wet hawk and a splat."""
+    s = 0.6
+    hawk = d.bandpass(d.noise(s), 400, 2400) * d.env_points(s, [(0, 0), (0.05, 1.0), (0.25, 0.2), (0.6, 0)])
+    return cave(d.mix(hawk, thud(110, 0.05, 0.6)), 1.4, 0.35)
+
+
+def bell_shock(v):
+    """The Schiachpercht's bell: a great cracked bronze bell struck hard, a boom you feel."""
+    s = 3.5
+    ring = d.partials(s, [(98, 1.0, 1.6), (230, 0.7, 1.2), (365, 0.5, 0.8), (523, 0.35, 0.5), (861, 0.2, 0.3)])
+    boom = d.sine(d.glide(s, 55, 30), s) * d.env_exp(s, 0.5)
+    crack = d.bandpass(d.noise(s), 1500, 6000) * d.env_exp(s, 0.15) * 0.4
+    return cave(d.drive(d.mix(ring, boom, crack), 1.8), 3.0, 0.5)
+
+
+def bell_windup(v):
+    """The bell swung back before the blow: chains rattling, a low rising hum."""
+    s = 1.3
+    rattle = d.mix(*[(d.rng.uniform(0, s - 0.05), click(1800 + d.rng.uniform(-400, 800), 0.01, d.rng.uniform(0.2, 0.6), ring=0.4)) for _ in range(20)])
+    hum = d.partials(s, [(98, 0.4, 2.0), (196, 0.2, 2.0)]) * d.env_points(s, [(0, 0), (1.3, 1.0)])
+    return cave(d.mix(rattle, hum), 1.6, 0.35)
+
+
 SOUNDS = {
+    "flare_burn": (flare_burn, 1),
+    "flare_hiss": (flare_hiss, 1),
+    "seemuada_roar": (seemuada_roar, 1),
+    "spit": (spit, 1),
+    "bell_shock": (bell_shock, 1),
+    "bell_windup": (bell_windup, 1),
     "shot_echo": (shot_echo, 2),
     "flesh_hit": (flesh_hit, 3),
     "ammo_pickup": (ammo_pickup, 1),
@@ -714,5 +772,5 @@ SOUNDS = {
     "mandl_steps": (mandl_steps, 3),
     "poof": (poof, 1),
 }
-LOOPS = {"percht_bells", "lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row"}
+LOOPS = {"percht_bells", "lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row", "flare_burn"}
 AMBIENCE = {"drip", "creak", "rumble", "deep_groan", "stone_settle", "water_lap"}

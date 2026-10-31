@@ -64,3 +64,12 @@ extends Resource
 @export var ejects_casing: bool = false
 ## Pushes a creature back (m/s) per pellet that hits.
 @export var knockback: float = 0.0
+## Fires a flare (Leuchtpistole) instead of hitscan pellets: it flies and burns (Flare).
+@export var projectile: bool = false
+## A bolt-action: after each shot the bolt is worked (this sound, starting this long after the
+## shot; the gun's "Bolt" node moves with it). The next shot waits for `fire_interval`.
+@export var cycle_sound: String = ""
+@export var cycle_delay: float = 0.25
+## Loaded round by round through the open action (the Stutzen's internal magazine): the left
+## hand pushes each round in from above.
+@export var top_loaded: bool = false

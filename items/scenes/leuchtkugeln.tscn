@@ -1,0 +1,69 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="card"]
+albedo_color = Color(0.55, 0.42, 0.18, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="alu"]
+albedo_color = Color(0.72, 0.72, 0.7, 1)
+metallic = 0.9
+roughness = 0.35
+
+[sub_resource type="StandardMaterial3D" id="redcap"]
+albedo_color = Color(0.8, 0.1, 0.07, 1)
+roughness = 0.5
+
+[sub_resource type="BoxMesh" id="box"]
+size = Vector3(0.09, 0.04, 0.09)
+
+[sub_resource type="CylinderMesh" id="shell"]
+top_radius = 0.0123
+bottom_radius = 0.0123
+height = 0.06
+radial_segments = 12
+rings = 1
+
+[sub_resource type="CylinderMesh" id="cap"]
+top_radius = 0.0124
+bottom_radius = 0.0124
+height = 0.012
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.09, 0.08, 0.09)
+
+[node name="Leuchtkugeln" type="RigidBody3D"]
+mass = 0.35
+script = ExtResource("1_item")
+
+[node name="Box" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02, 0)
+mesh = SubResource("box")
+surface_material_override/0 = SubResource("card")
+
+[node name="Shell1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.02, 0.06, -0.015)
+mesh = SubResource("shell")
+surface_material_override/0 = SubResource("alu")
+
+[node name="Cap1" type="MeshInstance3D" parent="Shell1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("cap")
+surface_material_override/0 = SubResource("redcap")
+
+[node name="Shell2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.02, 0.06, 0.012)
+mesh = SubResource("shell")
+surface_material_override/0 = SubResource("alu")
+
+[node name="Cap2" type="MeshInstance3D" parent="Shell2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("cap")
+surface_material_override/0 = SubResource("redcap")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, 0)
+shape = SubResource("shape")
