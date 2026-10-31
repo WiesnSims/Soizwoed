@@ -101,6 +101,9 @@ extends Resource
 @export var weapon_slots: int = 3
 @export var throwable_slots: int = 1
 @export var item_slots: int = 5
+## Extra pocket slots that start locked (keys 0 and ß): the Knappenbrief's Grubentaschn opens
+## the first for its owner, the Waffenkammer's Rucksack the second for the whole crew.
+@export var extra_slots: int = 2
 @export var solo_free_schubkarre: bool = true
 @export var walk_speed: float = 3.4
 @export var sprint_speed: float = 5.8
@@ -235,6 +238,36 @@ extends Resource
 ## Everything the Waffenkammer sells besides items (DESIGN.md §7), for the whole crew and the
 ## rest of the run.
 @export var run_upgrades: Array[RunUpgrade] = []
+
+@export_group("Knappenbrief")
+## The permanent upgrades bought with Ehrenzeichen (DESIGN.md §7), kept in each player's profile.
+@export var perks: Array[Perk] = []
+## Lamp colours a miner can wear (Perk target -> colour), mixed into the lamp's own colour.
+@export var lamp_colours: Dictionary = {&"mond": Color(0.7, 0.82, 1.0), &"gruenspan": Color(0.5, 1.0, 0.6)}
+
+@export_group("Crew")
+## Pings (middle mouse): how far they reach, how long the mark stays, how often a miner can ping.
+@export var ping_distance: float = 80.0
+@export var ping_seconds: float = 5.0
+@export var ping_cooldown: float = 0.4
+
+@export_group("Überstunden")
+## From this shift on (0-based) every shift adds a random modifier on top of the ones before
+## (DESIGN.md §8): the kinds, and their numbers.
+@export var overtime_first_shift: int = 9
+@export var overtime_kinds: Array[StringName] = [&"finster", &"bergmandl", &"eile", &"panzerhunde", &"knapp", &"frueh", &"raunacht", &"zaach"]
+## "eile": the Rückweg-timer is this much of what it would be.
+@export var overtime_timer_mult: float = 0.75
+## "panzerhunde": Grubenhunde take this share of the damage.
+@export var overtime_dog_damage_taken: float = 0.6
+## "knapp": this share of the ammo boxes lies in the mine.
+@export var overtime_ammo_mult: float = 0.6
+## "frueh": the Grubenpfeife blows after this share of the shift.
+@export var overtime_whistle_mult: float = 0.5
+## "raunacht": this much more elite chance.
+@export var overtime_elite_bonus: float = 0.25
+## "zaach": creatures have this many times the health.
+@export var overtime_health_mult: float = 1.25
 
 @export_group("Da Bergkini")
 @export var bergkini_health: int = 420
@@ -626,6 +659,88 @@ func ehrenzeichen(shift: int, section_bonus: int, boss: bool) -> int:
 func armour_split(amount: int, armour: int) -> Vector2i:
 	var absorbed: int = mini(armour, roundi(amount * armour_absorb))
 	return Vector2i(amount - absorbed, absorbed)
+
+
+## How long the lamp's carbide and the Stirnlampe's battery last, from the crew's upgrades.
+func lamp_fuel_mult(levels: Dictionary) -> float:
+	var mult: float = 1.0
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.effect == RunUpgrade.Effect.LAMP_BATTERY:
+			mult += upgrade.total(int(levels.get(upgrade.id, 0)))
+	return mult
+
+
+## Whether the crew's upgrades open the Rucksack slot.
+func crew_pocket_slot(levels: Dictionary) -> bool:
+	for upgrade: RunUpgrade in run_upgrades:
+		if upgrade.effect == RunUpgrade.Effect.POCKET_SLOT and int(levels.get(upgrade.id, 0)) > 0:
+			return true
+	return false
+
+
+func perk(id: StringName) -> Perk:
+	for entry: Perk in perks:
+		if entry.id == id:
+			return entry
+	return null
+
+
+## Perk id -> Perk, for checking a saved profile.
+func perks_by_id() -> Dictionary:
+	var known: Dictionary = {}
+	for entry: Perk in perks:
+		known[entry.id] = entry
+	return known
+
+
+## What the perks at `levels` (perk id -> level) with `effect` add up to (only those aimed at
+## `target`, when one is given).
+func perk_total(effect: Perk.Effect, levels: Dictionary, target: StringName = &"") -> float:
+	var sum: float = 0.0
+	for entry: Perk in perks:
+		if entry.effect == effect and (target == &"" or entry.target == target):
+			sum += entry.total(int(levels.get(entry.id, 0)))
+	return sum
+
+
+## A miner's most health with these perks.
+func max_health(levels: Dictionary) -> int:
+	return player_max_health + roundi(perk_total(Perk.Effect.MAX_HEALTH, levels))
+
+
+## Seconds to help a teammate up, for a helper with these perks.
+func help_up_time(levels: Dictionary) -> float:
+	return help_up_seconds * maxf(0.3, 1.0 - perk_total(Perk.Effect.REVIVE_SPEED, levels))
+
+
+## The kit's ration of `ammo_type` for a miner with these perks: the company's plus their own.
+func kit_ammo(ammo_type: StringName, levels: Dictionary) -> int:
+	return (ration_pistole if ammo_type == &"pistole" else 0) + roundi(perk_total(Perk.Effect.START_AMMO, levels, ammo_type))
+
+
+## The gun a start-weapon perk brings (empty for anything else or a perk not bought).
+func start_weapon_item(perk_id: StringName, levels: Dictionary) -> StringName:
+	var entry: Perk = perk(perk_id)
+	if entry == null or entry.effect != Perk.Effect.START_WEAPON or int(levels.get(perk_id, 0)) <= 0:
+		return &""
+	return entry.target
+
+
+## The colour a worn lamp-colour perk gives (white: none).
+func lamp_tint(perk_id: StringName) -> Color:
+	var entry: Perk = perk(perk_id)
+	if entry == null or entry.effect != Perk.Effect.LAMP_COLOUR:
+		return Color.WHITE
+	return lamp_colours.get(entry.target, Color.WHITE)
+
+
+## Picks the Überstunden modifier for a new shift: one of those not yet active (none left: none).
+func roll_overtime(active: Array, rng: RandomNumberGenerator) -> StringName:
+	var left: Array[StringName] = []
+	for kind: StringName in overtime_kinds:
+		if not active.has(kind):
+			left.append(kind)
+	return left[rng.randi_range(0, left.size() - 1)] if not left.is_empty() else &""
 
 
 func run_upgrade(id: StringName) -> RunUpgrade:

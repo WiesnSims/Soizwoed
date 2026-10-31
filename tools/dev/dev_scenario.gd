@@ -51,6 +51,25 @@ func run(game: Game, scenario: String) -> void:
 			await _snap("shop_%d" % category)
 		print("[scenario] shoplook done")
 		return
+	if scenario == "brieflook":
+		# The Knappenbrief with some Ehrenzeichen, both sheets, then the frame on the wall.
+		DisplayServer.window_set_size(Vector2i(1280, 720))
+		GameState.profile.earn(14)
+		GameState.profile.buy(Balance.config.perk(&"gsund"))
+		GameState.profile.buy(Balance.config.perk(&"lampe_gruenspan"))
+		for sheet: int in 2:
+			_game.hud._brief_sheet = sheet
+			_game.hud.open_knappenbrief()
+			await get_tree().create_timer(1.5).timeout
+			await _snap("knappenbrief_%d" % sheet)
+		_game.hud.close_panels()
+		var viewer: Player = _game.local_player()
+		viewer.teleport(_game.hub.global_transform * Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(6.0, 0.0, -1.3)))
+		viewer.head.rotation.x = 0.0
+		await get_tree().create_timer(1.0).timeout
+		await _snap("knappenbrief_wall")
+		print("[scenario] brieflook done")
+		return
 	if scenario == "notration":
 		await _notration()
 		return
@@ -80,6 +99,11 @@ func run(game: Game, scenario: String) -> void:
 		var pick: WorldItem = _game._spawn_item_at(&"spitzhacke", 0, _game.hub.counter_spot(), "ITestPick")
 		await get_tree().create_timer(0.5).timeout
 		_game.request_take(pick.get_path(), _game.local_player().peer_id)
+		# The host's Knappenbrief: the late-joining client must see it.
+		GameState.profile.earn(10)
+		GameState.profile.buy(Balance.config.perk(&"gsund"))
+		GameState.profile.buy(Balance.config.perk(&"hut_gamsbart"))
+		_game.local_player().submit_loadout.rpc_id(1, GameState.profile.loadout())
 		while _game._ready_peers.size() < 2:
 			await get_tree().process_frame
 	await get_tree().create_timer(0.5).timeout
@@ -97,6 +121,13 @@ func run(game: Game, scenario: String) -> void:
 		_game._force_boss = true
 	if scenario == "upgrades":
 		await _upgrades_hub()
+	if scenario == "knappenbrief":
+		await _knappenbrief_hub()
+	if scenario == "overtime":
+		GameState.run.overtime.assign([&"finster", &"frueh", &"eile", &"knapp", &"panzerhunde", &"zaach"])
+		_game._broadcast_run()
+		await get_tree().create_timer(0.3).timeout
+		print("[scenario] overtime board: %s" % _game.hub.board_text.text.get_slice("\n\n", _game.hub.board_text.text.get_slice_count("\n\n") - 1))
 	_game.request_lift()
 	while _game.phase != Game.Phase.SHIFT:
 		await get_tree().process_frame
@@ -181,6 +212,10 @@ func run(game: Game, scenario: String) -> void:
 			await _boss_look()
 		"upgrades":
 			await _upgrades_mine()
+		"knappenbrief":
+			await _knappenbrief_mine()
+		"overtime":
+			await _overtime_mine()
 		"weapons":
 			await _weapons()
 		"seemuada", "schiachpercht":
@@ -1408,6 +1443,93 @@ func _upgrades_hub() -> void:
 			pistol.weapon.damage, _game.ammo_cap(&"pistole"), player.armour, _game.lamp_mult, GameState.run.money])
 
 
+## M9: Ehrenzeichen buy perks on the Knappenbrief; the host learns what they bring.
+func _knappenbrief_hub() -> void:
+	var player: Player = _game.local_player()
+	var profile: PlayerProfile = GameState.profile
+	profile.earn(100)
+	for id: StringName in [&"gsund", &"gsund", &"eigene_flinte", &"munition_schrot", &"startgeld", &"lederweste", &"sanitaeter", &"grubentaschn", &"hut_knappe", &"lampe_mond"]:
+		profile.buy(Balance.config.perk(id))
+	var money_before: int = GameState.run.money
+	for sheet: int in 2:
+		_game.hud._brief_sheet = sheet
+		_game.hud.open_knappenbrief()
+	_game.hud._on_perk_choice(&"eigene_flinte", false)
+	_game.hud._on_perk_choice(&"eigene_flinte", true)  # sends the loadout to the host
+	_game.hud.close_panels()
+	GameState.run.add_cheat_money(1000)
+	for id: StringName in [&"rucksack", &"batterie"]:
+		_game.request_buy_upgrade(id)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] knappenbrief: honours %d left, max health %d, health %d, start money +%d, slots %d, help up %.1f s, armour %d, lamp %s" % [profile.ehrenzeichen,
+			player.max_health, player.health, GameState.run.money + _spent_on([&"rucksack", &"batterie"]) - money_before - 1000, player.inventory.open_slots,
+			player.interact_hold_seconds(player), player.armour, player.beam.light_color.b > player.beam.light_color.r])
+	# A second loadout (bought more) brings no second starting money.
+	money_before = GameState.run.money
+	player.submit_loadout.rpc_id(1, profile.loadout())
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] knappenbrief: again +%d" % (GameState.run.money - money_before))
+
+
+func _spent_on(ids: Array[StringName]) -> int:
+	var spent: int = 0
+	for id: StringName in ids:
+		spent += Balance.config.run_upgrade(id).price_after(0)
+	return spent
+
+
+func _knappenbrief_mine() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	await get_tree().create_timer(1.5).timeout
+	print("[scenario] knappenbrief kit: flinte %s, pistol %s, shells %d, pistol rounds %d, armour %d, battery %.0f s" % [player.has_tool(&"salzschrot_flinte"),
+			player.has_tool(&"dienstpistole"), player.ammo_count(&"schrot"), player.ammo_count(&"pistole"), player.armour, player.battery_max()])
+	var before: int = GameState.profile.ehrenzeichen
+	await _game.dev_deliver()
+	_game.request_lift()
+	while _game.phase != Game.Phase.HUB:
+		await get_tree().process_frame
+	print("[scenario] knappenbrief: delivered, honours %d -> %d" % [before, GameState.profile.ehrenzeichen])
+
+
+## M9: the Überstunden in force; a ping and the crew overlay.
+func _overtime_mine() -> void:
+	var lit: int = 0
+	for light: OmniLight3D in _game.mine.lights:
+		lit += 1 if light.visible else 0
+	var boxes: int = 0
+	for item: WorldItem in _game._items():
+		boxes += 1 if item.data.kind == ItemData.Kind.AMMO else 0
+	var dog: Creature = null
+	for creature: Creature in _game.creatures():
+		if creature.data.id == &"grubenhund" and dog == null:
+			dog = creature
+		elif creature.data.id != &"grubenhund":
+			creature.queue_free()
+	var player: Player = _game.local_player()
+	if dog == null:
+		dog = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, _out_of_station(8.0)))
+	await get_tree().create_timer(0.5).timeout
+	var health: int = dog.health
+	dog.host_damage(20, player.global_position)
+	print("[scenario] overtime: lanterns lit %d of %d, shift %.0f s, ammo boxes %d, dog health %d (base %d), hit 20 -> -%d" % [lit, _game.mine.lights.size(),
+			_game.shift_length, boxes, health, Balance.config.grubenhund_health, health - dog.health])
+	dog.process_mode = Node.PROCESS_MODE_DISABLED
+	player.look_at(dog.global_position + Vector3.UP * 0.4)
+	player.head.rotation.x = 0.0
+	player._place_camera()
+	player.ping()
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] ping: marks %d" % _game.hud.team.ping_count())
+	await _game.dev_deliver()
+	while not _game.alarm_on:
+		await get_tree().process_frame
+	var run: RunState = GameState.run
+	var usual: float = Balance.config.rueckweg_seconds(run.shift_index, run.player_count, _game._way_to_lift(_game._fundstueck_home))
+	print("[scenario] overtime alarm: %.2f of the usual" % (_game.alarm_length / usual))
+
+
 func _upgrades_mine() -> void:
 	for creature: Creature in _game.creatures():
 		creature.queue_free()
@@ -1486,9 +1608,13 @@ func _coop_client() -> void:
 	var pick: WorldItem = _game.items_root.get_node_or_null(^"ITestPick") as WorldItem
 	if pick != null:
 		print("[scenario] client sees ITestPick %s by P%d" % [WorldItem.State.keys()[pick.state], pick.holder_peer])
+	var host: Player = _game.player_by_peer(1)
+	if host != null:
+		print("[scenario] client sees the host: max health %d, hat %s" % [host.max_health, host.head.get_node_or_null(^"HatPoint/CosmeticHat") != null])
 	while _game.phase != Game.Phase.SHIFT:
 		await get_tree().process_frame
 	var me: Player = _game.local_player()
+	me.ping()
 	var seen: Dictionary = {}
 	_track_when_thrown()
 	_send_test_voice(me)

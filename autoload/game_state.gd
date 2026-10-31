@@ -7,12 +7,44 @@ signal run_changed
 signal run_ended(score: Dictionary)
 
 const SMOKE_ARG: String = "--smoke="
+## `--profile=<name>` keeps the profile in user://profile_<name>.cfg (several instances on one
+## PC); automated runs without it never touch the real profile.
+const PROFILE_ARG: String = "--profile="
+const AUTOMATED_ARGS: Array[String] = ["--smoke=", "--scenario=", "--auto-shift", "--shots=", "--wait-peers="]
 
 var run: RunState
+## This player's own profile: Ehrenzeichen and the Knappenbrief (DESIGN.md §7).
+var profile: PlayerProfile
 
 
 func _ready() -> void:
+	profile = PlayerProfile.new(_profile_path())
+	profile.load_from_file(Balance.config.perks_by_id())
 	_start_smoke_timer_if_requested()
+
+
+func _profile_path() -> String:
+	var automated: bool = DisplayServer.get_name() == "headless"
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(PROFILE_ARG):
+			return "user://profile_%s.cfg" % arg.trim_prefix(PROFILE_ARG).validate_filename()
+		for prefix: String in AUTOMATED_ARGS:
+			automated = automated or arg.begins_with(prefix)
+	return "" if automated else PlayerProfile.DEFAULT_PATH
+
+
+## The company honours this player: Ehrenzeichen into the profile, saved at once.
+func earn_ehrenzeichen(amount: int) -> void:
+	if amount <= 0:
+		return
+	profile.earn(amount)
+	profile.save()
+
+
+## The run is over for this player (fired after `shifts` shifts).
+func record_run(shifts: int) -> void:
+	profile.finish_run(shifts)
+	profile.save()
 
 
 func start_run(player_count: int) -> void:

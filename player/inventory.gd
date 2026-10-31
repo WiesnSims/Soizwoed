@@ -19,24 +19,40 @@ var hands_weight: int = ItemData.WeightClass.LIGHT
 ## True while the item in the hands is carried by two players together.
 var shared_carry: bool = false
 var selected: int = 0
+## Slots from this index on are locked (the extra pockets not yet earned): nothing goes in,
+## they cannot be selected.
+var open_slots: int = 0
 
 
 func _init(kinds: PackedInt32Array) -> void:
 	slot_kinds = kinds
 	slots.resize(kinds.size())
 	slot_weights.resize(kinds.size())
+	open_slots = kinds.size()
 
 
-## The slot layout from balance.tres: weapons, throwables, then items.
+## The slot layout from balance.tres: weapons, throwables, items, then the extra pockets.
 static func layout(config: BalanceConfig) -> PackedInt32Array:
 	var kinds: PackedInt32Array = []
 	for i: int in config.weapon_slots:
 		kinds.append(ItemData.SlotKind.WEAPON)
 	for i: int in config.throwable_slots:
 		kinds.append(ItemData.SlotKind.THROWABLE)
-	for i: int in config.item_slots:
+	for i: int in config.item_slots + config.extra_slots:
 		kinds.append(ItemData.SlotKind.ITEM)
 	return kinds
+
+
+## Slots without the extra pockets (always open).
+static func base_slots(config: BalanceConfig) -> int:
+	return config.weapon_slots + config.throwable_slots + config.item_slots
+
+
+func set_open_slots(count: int) -> void:
+	open_slots = clampi(count, 1, slots.size())
+	if selected >= open_slots:
+		selected = 0
+	changed.emit()
 
 
 ## Where an item would go: a slot index, HANDS, or NONE when it does not fit.
@@ -51,9 +67,9 @@ func place_for(weight: int, kind: int = ItemData.SlotKind.ITEM) -> int:
 
 ## A free slot of `kind`: the selected one if it fits, else the first.
 func free_slot(kind: int) -> int:
-	if slots[selected] == null and slot_kinds[selected] == kind:
+	if slots[selected] == null and slot_kinds[selected] == kind and selected < open_slots:
 		return selected
-	for i: int in slots.size():
+	for i: int in open_slots:
 		if slots[i] == null and slot_kinds[i] == kind:
 			return i
 	return NONE
@@ -103,15 +119,17 @@ func active_item() -> Object:
 
 
 func select(index: int) -> void:
-	selected = posmod(index, slots.size())
+	if index >= open_slots and index < slots.size():
+		return  # a locked pocket
+	selected = posmod(index, open_slots)
 	changed.emit()
 
 
 ## The mouse wheel: the next slot with something in it (`step` 1 or -1), like in other
 ## shooters; stays put when everything else is empty.
 func select_next(step: int) -> void:
-	for i: int in range(1, slots.size() + 1):
-		var index: int = posmod(selected + step * i, slots.size())
+	for i: int in range(1, open_slots + 1):
+		var index: int = posmod(selected + step * i, open_slots)
 		if slots[index] != null:
 			select(index)
 			return

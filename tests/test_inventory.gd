@@ -13,7 +13,9 @@ var inventory: Inventory
 
 
 func before_each() -> void:
-	inventory = Inventory.new(Inventory.layout(BalanceConfig.new()))
+	var config: BalanceConfig = BalanceConfig.new()
+	inventory = Inventory.new(Inventory.layout(config))
+	inventory.set_open_slots(Inventory.base_slots(config))  # the extra pockets are locked
 
 
 func _thing() -> RefCounted:
@@ -21,7 +23,9 @@ func _thing() -> RefCounted:
 
 
 func test_layout_is_three_one_five() -> void:
-	assert_eq(inventory.slot_kinds, PackedInt32Array([WEAPON, WEAPON, WEAPON, THROWABLE, ITEM, ITEM, ITEM, ITEM, ITEM]))
+	# Plus the two extra pockets (keys 0 and ß), locked until earned.
+	assert_eq(inventory.slot_kinds, PackedInt32Array([WEAPON, WEAPON, WEAPON, THROWABLE, ITEM, ITEM, ITEM, ITEM, ITEM, ITEM, ITEM]))
+	assert_eq(inventory.open_slots, 9)
 
 
 func test_weapons_fill_slots_1_to_3_then_stop() -> void:
@@ -80,8 +84,12 @@ func test_active_item_prefers_hands() -> void:
 func test_select_wraps() -> void:
 	inventory.select(-1)
 	assert_eq(inventory.selected, 8)
+	inventory.select(2)
 	inventory.select(9)
-	assert_eq(inventory.selected, 0)
+	assert_eq(inventory.selected, 2, "a locked extra pocket cannot be selected")
+	inventory.set_open_slots(10)
+	inventory.select(9)
+	assert_eq(inventory.selected, 9, "once open it can")
 
 
 func test_wheel_skips_empty_slots() -> void:

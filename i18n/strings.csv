@@ -371,3 +371,80 @@ CREATURE_SEEMUADA,D'Seemuada,D'Seemuada (the lake's mother)
 CREATURE_SCHIACHPERCHT,Die Schiachpercht,Die Schiachpercht (the ugly Percht)
 MSG_SEEMUADA_AWAKE,Im See rührt si wos! D'Seemuada is aufgwacht!,Something stirs in the lake! D'Seemuada has woken up!
 MSG_PLAYER_PINNED,%s hot's Salzweibl! Schiaßts es weg!,The Salzweibl has %s! Shoot it off!
+ACTION_PING,Do! (zeign fürs Team),Ping (mark for the crew)
+ACTION_SLOT_10,Grubentaschn,Extra pocket
+ACTION_SLOT_11,Rucksack,Backpack
+PROMPT_KNAPPENBRIEF,Knappenbrief – Ehrenzeichen einlösn,Knappenbrief – spend Ehrenzeichen
+KNAPPENBRIEF_TITLE,Knappenbrief,Knappenbrief (miner's certificate)
+KNAPPENBRIEF_HONOURS,%d Ehrenzeichen,%d Ehrenzeichen
+KNAPPENBRIEF_NOTE,"Insgesamt verdient: %d · Längste Schicht-Serie: %d · Bleibt für immer, a wenn's di kündign.","Earned in all: %d · Most shifts in a run: %d · Yours forever, even when you get fired."
+KNAPPENBRIEF_SHEET_0,Knappe,Miner
+KNAPPENBRIEF_SHEET_1,Gwand,Outfit
+KNAPPENBRIEF_BUY,Um %d Ehrenzeichen,For %d Ehrenzeichen
+KNAPPENBRIEF_TAKE,Mitnehma,Take along
+KNAPPENBRIEF_LEAVE,Dahoam lossn,Leave at home
+KNAPPENBRIEF_WEAR,Aufsetzn,Wear
+KNAPPENBRIEF_TAKE_OFF,Obnehma,Take off
+MSG_TOO_FEW_HONOURS,Do fehln da no Ehrenzeichen.,You need more Ehrenzeichen for that.
+MSG_PERK_BOUGHT,Eingetragn: %s,Entered on your certificate: %s
+MSG_START_MONEY,%s bringt %d S Startgeld mit.,%s brings %d S of starting money.
+MSG_OVERTIME,Überstund! %s – %s,Overtime! %s – %s
+RESULTS_HONOURS_TOTAL,Am Knappenbrief: %d Ehrenzeichen,On your Knappenbrief: %d Ehrenzeichen
+BOARD_OVERTIME,Überstund: %s,Overtime: %s
+PERK_GSUND,Gsund und zaach,Tough as nails
+PERK_GSUND_DESC,"+10 Lebn pro Stufe, für immer.","+10 max health per level, for good."
+PERK_EIGENE_FLINTE,Eigene Flintn,Your own Flinte
+PERK_EIGENE_FLINTE_DESC,"Jede Schicht kriagst a Salzschrot-Flintn dazua, wennst kane host.",Every shift you get a Salzschrot-Flinte if you have none.
+PERK_EIGENER_STUTZEN,Eigener Stutzen,Your own Stutzen
+PERK_EIGENER_STUTZEN_DESC,"Jede Schicht kriagst an Mannlicher-Stutzen dazua, wennst kan host.",Every shift you get a Mannlicher-Stutzen if you have none.
+PERK_MUNITION_PISTOLE,Patronen vom Vota,Dad's cartridges
+PERK_MUNITION_PISTOLE_DESC,"+8 Pistoln-Patronen zur Ration, pro Stufe.","+8 pistol rounds on top of the ration, per level."
+PERK_MUNITION_SCHROT,Schrot im Kastl,Shells in the cupboard
+PERK_MUNITION_SCHROT_DESC,Jede Schicht 4 Salzschrot pro Stufe.,"4 shells every shift, per level."
+PERK_MUNITION_GEWEHR,Jagerpatronen,Hunter's rounds
+PERK_MUNITION_GEWEHR_DESC,Jede Schicht 5 Gewehrpatronen pro Stufe.,"5 rifle rounds every shift, per level."
+PERK_STARTGELD,Erspartes,Savings
+PERK_STARTGELD_DESC,Bringst 100 S pro Stufe in jede neue Partie mit.,You bring 100 S per level into every new run.
+PERK_LEDERWESTE,Lederweste,Leather vest
+PERK_LEDERWESTE_DESC,"+15 Panzer am Schichtbeginn, pro Stufe.","+15 armour at the start of every shift, per level."
+PERK_SANITAETER,Sanitäter,First-aider
+PERK_SANITAETER_DESC,Kumpl aufhelfn geht 20 % schneller pro Stufe.,Helping a teammate up is 20 % quicker per level.
+PERK_GRUBENTASCHN,Grubentaschn,Miner's pouch
+PERK_GRUBENTASCHN_DESC,A zusätzliches Fach (Tastn 0).,One more pocket (key 0).
+PERK_HUT_GAMSBART,Gamsbart-Hut,Gamsbart hat
+PERK_HUT_GAMSBART_DESC,Da Hut mit'm Gamsbart – de andern segn'n auf deim Kopf.,The hat with the chamois tuft – the others see it on your head.
+PERK_HUT_KNAPPE,Schachthut,Parade hat
+PERK_HUT_KNAPPE_DESC,"Da schwoaze Paradehut vom Knappnverein, mit Federbusch.","The black parade hat of the miners' guild, with a plume."
+PERK_LAMPE_MOND,Mondliacht,Moonlight
+PERK_LAMPE_MOND_DESC,Dei Lampn leucht kalt und bläulich.,Your lamp shines cold and bluish.
+PERK_LAMPE_GRUENSPAN,Grünspan,Verdigris
+PERK_LAMPE_GRUENSPAN_DESC,"Dei Lampn leucht grünlich, wia a Kupferflamm.","Your lamp burns greenish, like a copper flame."
+UPG_STUTZEN_SPREAD,Diopter,Peep sight
+UPG_STUTZEN_SPREAD_DESC,Stutzen: 30 % weniger Streuung.,Stutzen: 30 % less spread.
+UPG_LEUCHT_RELOAD,Gschmierts Scharnier,Greased hinge
+UPG_LEUCHT_RELOAD_DESC,Leuchtpistoln: 30 % schneller nochlodn.,Flare gun: reloads 30 % faster.
+UPG_BATTERIE,Große Batterie,Big battery
+UPG_BATTERIE_DESC,Karbid und Batterie haltn 30 % länger pro Stufe.,Carbide and battery last 30 % longer per level.
+UPG_RUCKSACK,Rucksack,Backpack
+UPG_RUCKSACK_DESC,A zusätzliches Fach für olle (Tastn ß).,One more pocket for everyone (key ß).
+OVERTIME_FINSTER,Ka Liacht,No lights
+OVERTIME_FINSTER_DESC,De Latern im Berg san aus.,The lanterns in the mine are out.
+OVERTIME_BERGMANDL,Doppelte Bergmandl,Double Bergmandl
+OVERTIME_BERGMANDL_DESC,Jeds Bergmandl bringt sein Bruada mit.,Every Bergmandl brings its brother.
+OVERTIME_EILE,Eile,Hurry
+OVERTIME_EILE_DESC,Da Rückweg is a Viertl kürzer.,The way back has a quarter less time.
+OVERTIME_PANZERHUNDE,Panzerhunde,Armoured dogs
+OVERTIME_PANZERHUNDE_DESC,De Grubenhund haltn vü mehr aus.,The Grubenhunde take far more.
+OVERTIME_KNAPP,Knappe Munition,Scarce ammo
+OVERTIME_KNAPP_DESC,Im Berg liegt weniger Munition.,Less ammo lies in the mine.
+OVERTIME_FRUEH,Früher Pfiff,Early whistle
+OVERTIME_FRUEH_DESC,De Grubenpfeifn geht scho noch da hoibn Zeit.,The whistle blows at half time.
+OVERTIME_RAUNACHT,Raunacht,Raunacht
+OVERTIME_RAUNACHT_DESC,Vü mehr Viecher mit rote Augn.,Many more creatures with red eyes.
+OVERTIME_ZAACH,Zaache Viecher,Tough creatures
+OVERTIME_ZAACH_DESC,Olle Viecher haltn a Viertl mehr aus.,Every creature takes a quarter more.
+TEAM_DEAD,hin,dead
+TEAM_DOWNED,am Bodn (%d s),down (%d s)
+TEAM_PINNED,gfangen!,caught!
+TEAM_CARRYING,trogt wos,carrying
+TEAM_DOWNED_MARK,%s am Bodn · %d s · %d m,%s is down · %d s · %d m

@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://enemies/creature_spawn_rule.gd" id="2_spawn"]
 [ext_resource type="Script" path="res://world/chunks/biome_rule.gd" id="3_biome"]
 [ext_resource type="Script" path="res://progression/run_upgrade.gd" id="4_upgrade"]
+[ext_resource type="Script" path="res://progression/perk.gd" id="5_perk"]
 
 [sub_resource type="Resource" id="spawn_bergmandl"]
 script = ExtResource("2_spawn")
@@ -238,6 +239,171 @@ per_level = 0.2
 prices = Array[int]([90, 160])
 icon_item = &"stirnlampe"
 
+[sub_resource type="Resource" id="upgrade_stutzen_spread"]
+script = ExtResource("4_upgrade")
+id = &"stutzen_spread"
+name_key = "UPG_STUTZEN_SPREAD"
+effect = 3
+target = &"mannlicher_stutzen"
+per_level = 0.3
+prices = Array[int]([150])
+icon_item = &"mannlicher_stutzen"
+
+[sub_resource type="Resource" id="upgrade_leucht_reload"]
+script = ExtResource("4_upgrade")
+id = &"leucht_reload"
+name_key = "UPG_LEUCHT_RELOAD"
+effect = 2
+target = &"leuchtpistole"
+per_level = 0.3
+prices = Array[int]([90])
+icon_item = &"leuchtpistole"
+
+[sub_resource type="Resource" id="upgrade_batterie"]
+script = ExtResource("4_upgrade")
+id = &"batterie"
+name_key = "UPG_BATTERIE"
+effect = 7
+per_level = 0.3
+prices = Array[int]([80, 140])
+icon_item = &"karbidpatrone"
+
+[sub_resource type="Resource" id="upgrade_rucksack"]
+script = ExtResource("4_upgrade")
+id = &"rucksack"
+name_key = "UPG_RUCKSACK"
+effect = 8
+per_level = 1.0
+prices = Array[int]([260])
+
+[sub_resource type="Resource" id="perk_gsund"]
+script = ExtResource("5_perk")
+id = &"gsund"
+name_key = "PERK_GSUND"
+effect = 0
+per_level = 10.0
+prices = Array[int]([3, 4, 6, 8, 10])
+icon_item = &"obstler"
+
+[sub_resource type="Resource" id="perk_eigene_flinte"]
+script = ExtResource("5_perk")
+id = &"eigene_flinte"
+name_key = "PERK_EIGENE_FLINTE"
+effect = 1
+target = &"salzschrot_flinte"
+per_level = 1.0
+prices = Array[int]([8])
+icon_item = &"salzschrot_flinte"
+
+[sub_resource type="Resource" id="perk_eigener_stutzen"]
+script = ExtResource("5_perk")
+id = &"eigener_stutzen"
+name_key = "PERK_EIGENER_STUTZEN"
+effect = 1
+target = &"mannlicher_stutzen"
+per_level = 1.0
+prices = Array[int]([12])
+icon_item = &"mannlicher_stutzen"
+
+[sub_resource type="Resource" id="perk_munition_pistole"]
+script = ExtResource("5_perk")
+id = &"munition_pistole"
+name_key = "PERK_MUNITION_PISTOLE"
+effect = 2
+target = &"pistole"
+per_level = 8.0
+prices = Array[int]([2, 4])
+icon_item = &"pistolenpatronen"
+
+[sub_resource type="Resource" id="perk_munition_schrot"]
+script = ExtResource("5_perk")
+id = &"munition_schrot"
+name_key = "PERK_MUNITION_SCHROT"
+effect = 2
+target = &"schrot"
+per_level = 4.0
+prices = Array[int]([3, 5])
+icon_item = &"salzschrot"
+
+[sub_resource type="Resource" id="perk_munition_gewehr"]
+script = ExtResource("5_perk")
+id = &"munition_gewehr"
+name_key = "PERK_MUNITION_GEWEHR"
+effect = 2
+target = &"gewehr"
+per_level = 5.0
+prices = Array[int]([3, 5])
+icon_item = &"gewehrpatronen"
+
+[sub_resource type="Resource" id="perk_startgeld"]
+script = ExtResource("5_perk")
+id = &"startgeld"
+name_key = "PERK_STARTGELD"
+effect = 3
+per_level = 100.0
+prices = Array[int]([3, 5, 7])
+
+[sub_resource type="Resource" id="perk_lederweste"]
+script = ExtResource("5_perk")
+id = &"lederweste"
+name_key = "PERK_LEDERWESTE"
+effect = 4
+per_level = 15.0
+prices = Array[int]([4, 7])
+
+[sub_resource type="Resource" id="perk_sanitaeter"]
+script = ExtResource("5_perk")
+id = &"sanitaeter"
+name_key = "PERK_SANITAETER"
+effect = 5
+per_level = 0.2
+prices = Array[int]([3, 5])
+
+[sub_resource type="Resource" id="perk_grubentaschn"]
+script = ExtResource("5_perk")
+id = &"grubentaschn"
+name_key = "PERK_GRUBENTASCHN"
+effect = 6
+per_level = 1.0
+prices = Array[int]([10])
+
+[sub_resource type="Resource" id="perk_hut_gamsbart"]
+script = ExtResource("5_perk")
+id = &"hut_gamsbart"
+name_key = "PERK_HUT_GAMSBART"
+effect = 7
+target = &"gamsbart"
+per_level = 1.0
+prices = Array[int]([4])
+icon_item = &"gamsbart_hut"
+
+[sub_resource type="Resource" id="perk_hut_knappe"]
+script = ExtResource("5_perk")
+id = &"hut_knappe"
+name_key = "PERK_HUT_KNAPPE"
+effect = 7
+target = &"knappe"
+per_level = 1.0
+prices = Array[int]([6])
+
+[sub_resource type="Resource" id="perk_lampe_mond"]
+script = ExtResource("5_perk")
+id = &"lampe_mond"
+name_key = "PERK_LAMPE_MOND"
+effect = 8
+target = &"mond"
+per_level = 1.0
+prices = Array[int]([3])
+
+[sub_resource type="Resource" id="perk_lampe_gruenspan"]
+script = ExtResource("5_perk")
+id = &"lampe_gruenspan"
+name_key = "PERK_LAMPE_GRUENSPAN"
+effect = 8
+target = &"gruenspan"
+per_level = 1.0
+prices = Array[int]([3])
+
 [resource]
 script = ExtResource("1_balance")
 shift_base_seconds = 780.0
@@ -308,4 +474,5 @@ voice_max_distance = 25.0
 voice_idle_chance = 0.04
 creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht"), SubResource("spawn_grubenhund")])
 biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee"), SubResource("biome_die_tiefe")])
-run_upgrades = Array[ExtResource("4_upgrade")]([SubResource("upgrade_pistole_damage"), SubResource("upgrade_pistole_magazine"), SubResource("upgrade_pistole_reload"), SubResource("upgrade_pistole_spread"), SubResource("upgrade_flinte_damage"), SubResource("upgrade_flinte_reload"), SubResource("upgrade_flinte_spread"), SubResource("upgrade_cap_pistole"), SubResource("upgrade_cap_schrot"), SubResource("upgrade_stutzen_damage"), SubResource("upgrade_stutzen_reload"), SubResource("upgrade_cap_gewehr"), SubResource("upgrade_cap_leucht"), SubResource("upgrade_lederschurz"), SubResource("upgrade_grubenhelm"), SubResource("upgrade_reflektor")])
+run_upgrades = Array[ExtResource("4_upgrade")]([SubResource("upgrade_pistole_damage"), SubResource("upgrade_pistole_magazine"), SubResource("upgrade_pistole_reload"), SubResource("upgrade_pistole_spread"), SubResource("upgrade_flinte_damage"), SubResource("upgrade_flinte_reload"), SubResource("upgrade_flinte_spread"), SubResource("upgrade_cap_pistole"), SubResource("upgrade_cap_schrot"), SubResource("upgrade_stutzen_damage"), SubResource("upgrade_stutzen_reload"), SubResource("upgrade_cap_gewehr"), SubResource("upgrade_cap_leucht"), SubResource("upgrade_lederschurz"), SubResource("upgrade_grubenhelm"), SubResource("upgrade_reflektor"), SubResource("upgrade_stutzen_spread"), SubResource("upgrade_leucht_reload"), SubResource("upgrade_batterie"), SubResource("upgrade_rucksack")])
+perks = Array[ExtResource("5_perk")]([SubResource("perk_gsund"), SubResource("perk_eigene_flinte"), SubResource("perk_eigener_stutzen"), SubResource("perk_munition_pistole"), SubResource("perk_munition_schrot"), SubResource("perk_munition_gewehr"), SubResource("perk_startgeld"), SubResource("perk_lederweste"), SubResource("perk_sanitaeter"), SubResource("perk_grubentaschn"), SubResource("perk_hut_gamsbart"), SubResource("perk_hut_knappe"), SubResource("perk_lampe_mond"), SubResource("perk_lampe_gruenspan")])

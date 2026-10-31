@@ -25,8 +25,8 @@ const LANGUAGES: Array[String] = ["", "de", "en"]
 ## Input actions the player may put on other keys (Tastn tab), in the order shown.
 const REBINDABLE: Array[StringName] = [&"move_forward", &"move_back", &"move_left", &"move_right", &"jump", &"sprint",
 		&"crouch", &"interact", &"drop", &"use", &"aim", &"reload", &"lamp", &"shout", &"voice_talk", &"watch", &"emote_jodler",
-		&"emote_wave", &"emote_point", &"slot_1", &"slot_2", &"slot_3", &"slot_4",
-		&"slot_5", &"slot_6", &"slot_7", &"slot_8", &"slot_9"]
+		&"emote_wave", &"emote_point", &"ping", &"slot_1", &"slot_2", &"slot_3", &"slot_4",
+		&"slot_5", &"slot_6", &"slot_7", &"slot_8", &"slot_9", &"slot_10", &"slot_11"]
 
 # Audio (volumes 0–1, linear)
 var master_volume: float = 1.0

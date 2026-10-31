@@ -70,7 +70,8 @@ func _cell(index: int) -> PanelContainer:
 	item_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	item_name.clip_text = true
 	stack.add_child(item_name)
-	var key: Label = _label(str(index + 1), 12, HORIZONTAL_ALIGNMENT_LEFT)
+	# The extra pockets sit on keys 0 and ß by default (rebindable).
+	var key: Label = _label(str(index + 1) if index < 9 else Settings.key_label(StringName("slot_%d" % (index + 1))), 12, HORIZONTAL_ALIGNMENT_LEFT)
 	key.position = Vector2(2, -2)
 	key.add_theme_color_override("font_color", Color(0.85, 0.8, 0.7, 0.8))
 	stack.add_child(key)
@@ -95,6 +96,7 @@ func refresh(player: Player, delta: float) -> void:
 		_pictures[i].texture = picture
 		_names[i].text = item.display_name() if item != null and picture == null else ""
 		_counts[i].text = str(item.rounds) if item != null and item.data.weapon != null else ""
+		_cells[i].visible = i < inventory.open_slots  # locked extra pockets are not shown
 		var selected: bool = i == inventory.selected and not inventory.hands_busy()
 		_styles[i].bg_color = FRAME_SELECTED if selected else FRAME
 		_styles[i].border_color = BORDER_SELECTED if selected else BORDER
