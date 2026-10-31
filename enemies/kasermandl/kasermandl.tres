@@ -61,8 +61,8 @@ moment = 3
 stream = ExtResource("s7")
 
 [resource]
-blood_pool = 0.5
 script = ExtResource("1_data")
+blood_pool = 0.5
 id = &"kasermandl"
 name_key = "CREATURE_KASERMANDL"
 scene = ExtResource("3_scene")

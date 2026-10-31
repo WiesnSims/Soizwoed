@@ -54,9 +54,9 @@ moment = 5
 stream = ExtResource("s6")
 
 [resource]
+script = ExtResource("1_data")
 sting = "sting_schiachpercht"
 blood_pool = 2.6
-script = ExtResource("1_data")
 id = &"schiachpercht"
 name_key = "CREATURE_SCHIACHPERCHT"
 scene = ExtResource("3_scene")

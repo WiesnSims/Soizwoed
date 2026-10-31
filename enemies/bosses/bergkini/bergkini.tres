@@ -103,9 +103,9 @@ moment = 6
 stream = ExtResource("s13")
 
 [resource]
+script = ExtResource("1_data")
 sting = "sting_bergkini"
 blood_pool = 1.2
-script = ExtResource("1_data")
 id = &"bergkini"
 name_key = "CREATURE_BERGKINI"
 scene = ExtResource("3_scene")

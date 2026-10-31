@@ -4,9 +4,9 @@
 [ext_resource type="PackedScene" path="res://enemies/bosses/seemuada/seemuada.tscn" id="2_scene"]
 
 [resource]
+script = ExtResource("1_data")
 sting = "sting_seemuada"
 blood_pool = 0.0
-script = ExtResource("1_data")
 id = &"seemuada"
 name_key = "CREATURE_SEEMUADA"
 scene = ExtResource("2_scene")

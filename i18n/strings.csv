@@ -448,3 +448,5 @@ TEAM_DOWNED,am Bodn (%d s),down (%d s)
 TEAM_PINNED,gfangen!,caught!
 TEAM_CARRYING,trogt wos,carrying
 TEAM_DOWNED_MARK,%s am Bodn · %d s · %d m,%s is down · %d s · %d m
+CREATURE_PERCHT,Die Percht,The Percht
+CREATURE_SALZWEIBL,Des Salzweibl,The Salzweibl (salt woman)

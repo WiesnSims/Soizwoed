@@ -192,6 +192,16 @@ func play_sting(sting: String) -> void:
 	_sting.play()
 
 
+## Stops what plays here (a sting, one fading out, a UI sound). Call it a moment before quitting:
+## the audio server only lets go of a stopped playback on its next mix, and one still held at
+## exit leaks (GameState's smoke quit waits for it).
+func stop_all() -> void:
+	for child: Node in get_children():
+		var player: AudioStreamPlayer = child as AudioStreamPlayer
+		if player != null:
+			player.stop()
+
+
 func play_ui(sound: String) -> void:
 	var audio: AudioStream = stream(sound)
 	if audio == null:
