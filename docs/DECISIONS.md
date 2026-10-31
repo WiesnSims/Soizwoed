@@ -790,3 +790,7 @@ Decisions on questions not (or not clearly) answered in `DESIGN.md`. Newest at t
   - an item could ask a point that had just left the tree where to be (a rare error at the end of `mp_test -Tools`); it now waits;
   - the `smoke_overtime` pattern no longer depends on how the log's "Ü" is read.
 - Still seen under load (full smoke suite), as in M9: `smoke_fundstueck` (a wave with no free spot) and `smoke_weapons` (the flare's timing) can miss; both pass alone.
+
+## 2026-10-31 – M10 approved
+
+- **M10 approved by the owner** and merged into `main` (0.10.0). The balance numbers stay first guesses until longer playtests say otherwise.
