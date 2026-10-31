@@ -1,0 +1,206 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="steel"]
+albedo_color = Color(0.13, 0.13, 0.14, 1)
+metallic = 0.85
+roughness = 0.36
+
+[sub_resource type="StandardMaterial3D" id="action"]
+albedo_color = Color(0.3, 0.29, 0.28, 1)
+metallic = 0.9
+roughness = 0.4
+
+[sub_resource type="StandardMaterial3D" id="bright"]
+albedo_color = Color(0.62, 0.6, 0.57, 1)
+metallic = 0.95
+roughness = 0.25
+
+[sub_resource type="StandardMaterial3D" id="wood"]
+albedo_color = Color(0.27, 0.15, 0.07, 1)
+roughness = 0.45
+
+[sub_resource type="StandardMaterial3D" id="pad"]
+albedo_color = Color(0.05, 0.04, 0.035, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="sightmat"]
+albedo_color = Color(0.08, 0.08, 0.09, 1)
+metallic = 0.6
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="beadmat"]
+albedo_color = Color(0.95, 0.9, 0.75, 1)
+metallic = 0.8
+roughness = 0.25
+
+[sub_resource type="CylinderMesh" id="barrel"]
+top_radius = 0.0075
+bottom_radius = 0.0095
+height = 0.56
+radial_segments = 14
+rings = 1
+
+[sub_resource type="CylinderMesh" id="bore"]
+top_radius = 0.0045
+bottom_radius = 0.0045
+height = 0.002
+radial_segments = 10
+rings = 1
+
+[sub_resource type="CylinderMesh" id="boltbody"]
+top_radius = 0.0085
+bottom_radius = 0.0085
+height = 0.12
+radial_segments = 12
+rings = 1
+
+[sub_resource type="BoxMesh" id="handle"]
+size = Vector3(0.045, 0.007, 0.008)
+
+[sub_resource type="SphereMesh" id="knob"]
+radius = 0.009
+height = 0.018
+radial_segments = 10
+rings = 5
+
+[sub_resource type="BoxMesh" id="forend"]
+size = Vector3(0.036, 0.03, 0.5)
+
+[sub_resource type="BoxMesh" id="band"]
+size = Vector3(0.04, 0.046, 0.012)
+
+[sub_resource type="BoxMesh" id="receiver"]
+size = Vector3(0.03, 0.034, 0.15)
+
+[sub_resource type="BoxMesh" id="magazine"]
+size = Vector3(0.026, 0.03, 0.065)
+
+[sub_resource type="BoxMesh" id="guard"]
+size = Vector3(0.008, 0.022, 0.05)
+
+[sub_resource type="BoxMesh" id="wrist"]
+size = Vector3(0.03, 0.044, 0.12)
+
+[sub_resource type="BoxMesh" id="butt"]
+size = Vector3(0.042, 0.09, 0.24)
+
+[sub_resource type="BoxMesh" id="buttpad"]
+size = Vector3(0.044, 0.098, 0.014)
+
+[sub_resource type="BoxMesh" id="post"]
+size = Vector3(0.005, 0.009, 0.006)
+
+[sub_resource type="BoxMesh" id="frontpost"]
+size = Vector3(0.004, 0.014, 0.005)
+
+[sub_resource type="SphereMesh" id="bead"]
+radius = 0.0028
+height = 0.0056
+radial_segments = 8
+rings = 4
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.05, 0.14, 1.1)
+
+[node name="MannlicherStutzen" type="RigidBody3D"]
+mass = 3.2
+script = ExtResource("1_item")
+
+[node name="Barrel" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, -0.34)
+mesh = SubResource("barrel")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Bore" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, -0.6205)
+mesh = SubResource("bore")
+surface_material_override/0 = SubResource("pad")
+
+[node name="Forend" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.021, -0.33)
+mesh = SubResource("forend")
+surface_material_override/0 = SubResource("wood")
+
+[node name="BandFront" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.012, -0.55)
+mesh = SubResource("band")
+surface_material_override/0 = SubResource("steel")
+
+[node name="BandMid" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.012, -0.32)
+mesh = SubResource("band")
+surface_material_override/0 = SubResource("steel")
+
+[node name="FrontPost" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.012, -0.6)
+mesh = SubResource("frontpost")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="Bead" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0212, -0.6)
+mesh = SubResource("bead")
+surface_material_override/0 = SubResource("beadmat")
+
+[node name="NotchL" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.005, 0.0195, -0.07)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="NotchR" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.005, 0.0195, -0.07)
+mesh = SubResource("post")
+surface_material_override/0 = SubResource("sightmat")
+
+[node name="Receiver" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.008, 0.03)
+mesh = SubResource("receiver")
+surface_material_override/0 = SubResource("action")
+
+[node name="Bolt" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0.045)
+
+[node name="Body" type="MeshInstance3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0)
+mesh = SubResource("boltbody")
+surface_material_override/0 = SubResource("bright")
+
+[node name="Handle" type="MeshInstance3D" parent="Bolt"]
+transform = Transform3D(0.94, -0.34, 0, 0.34, 0.94, 0, 0, 0, 1, 0.024, -0.008, 0.05)
+mesh = SubResource("handle")
+surface_material_override/0 = SubResource("bright")
+
+[node name="Knob" type="MeshInstance3D" parent="Bolt"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.047, -0.017, 0.05)
+mesh = SubResource("knob")
+surface_material_override/0 = SubResource("bright")
+
+[node name="Magazine" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.038, 0.015)
+mesh = SubResource("magazine")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Guard" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.046, 0.08)
+mesh = SubResource("guard")
+surface_material_override/0 = SubResource("steel")
+
+[node name="Wrist" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.88295, -0.46947, 0, 0.46947, 0.88295, 0, -0.05, 0.15)
+mesh = SubResource("wrist")
+surface_material_override/0 = SubResource("wood")
+
+[node name="Butt" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.99027, -0.13917, 0, 0.13917, 0.99027, 0, -0.123, 0.31)
+mesh = SubResource("butt")
+surface_material_override/0 = SubResource("wood")
+
+[node name="ButtPad" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.99027, -0.13917, 0, 0.13917, 0.99027, 0, -0.133, 0.435)
+mesh = SubResource("buttpad")
+surface_material_override/0 = SubResource("pad")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.04, -0.1)
+shape = SubResource("shape")

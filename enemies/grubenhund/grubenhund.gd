@@ -12,6 +12,8 @@ enum State { ROAM, HUNT, BACK_OFF, INVESTIGATE, FLEE }
 
 const SIGHT_CHECK_SECONDS: float = 0.3
 const STEP_SECONDS: float = 0.18
+## Where the head sits in the body.
+const HEAD_AT: Vector3 = Vector3(0.0, 0.55, -0.5)
 
 var state: State = State.ROAM
 var _target: Player
@@ -215,6 +217,21 @@ func host_hit(damage: int, from: Vector3) -> void:
 			_set_state(State.HUNT)
 
 
+## Sent after `player` (a Percht's roar called it): hunts them at once.
+func hunt(player: Player) -> void:
+	if player == null or not is_instance_valid(player) or not player.alive:
+		return
+	_target = player
+	_last_seen = player.global_position
+	_unseen_time = 0.0
+	_set_state(State.HUNT)
+
+
+## The skull (where the head sits in the body) is the weak spot.
+func weak_spot_mult(point: Vector3) -> float:
+	return _config.weak_spot_mult if point.distance_to(body.to_global(HEAD_AT)) < 0.3 else 1.0
+
+
 func _nearest_player_to(point: Vector3) -> Player:
 	var best: Player = null
 	for player: Player in Game.instance.players():
@@ -237,7 +254,7 @@ func _build_body() -> void:
 		rib.ring_segments = 4
 		BodyParts.add(body, rib, bone, Vector3(0, 0.52, -0.12 + i * 0.08), Vector3(0, 0, 0), Vector3(1.0, 1.0, 0.4))
 	var head: Node3D = Node3D.new()
-	head.position = Vector3(0, 0.55, -0.5)
+	head.position = HEAD_AT
 	head.rotation_degrees = Vector3(-15, 0, 0)
 	body.add_child(head)
 	BodyParts.add(head, BodyParts.sphere(0.12, 12), fur, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 0.9, 1.1))

@@ -173,6 +173,46 @@ per_level = 8.0
 prices = Array[int]([100, 160])
 icon_item = &"salzschrot"
 
+[sub_resource type="Resource" id="upgrade_stutzen_damage"]
+script = ExtResource("4_upgrade")
+id = &"stutzen_damage"
+name_key = "UPG_STUTZEN_DAMAGE"
+effect = 0
+target = &"mannlicher_stutzen"
+per_level = 0.2
+prices = Array[int]([220, 340])
+icon_item = &"mannlicher_stutzen"
+
+[sub_resource type="Resource" id="upgrade_stutzen_reload"]
+script = ExtResource("4_upgrade")
+id = &"stutzen_reload"
+name_key = "UPG_STUTZEN_RELOAD"
+effect = 2
+target = &"mannlicher_stutzen"
+per_level = 0.25
+prices = Array[int]([170])
+icon_item = &"mannlicher_stutzen"
+
+[sub_resource type="Resource" id="upgrade_cap_gewehr"]
+script = ExtResource("4_upgrade")
+id = &"cap_gewehr"
+name_key = "UPG_CAP_GEWEHR"
+effect = 4
+target = &"gewehr"
+per_level = 10.0
+prices = Array[int]([110, 170])
+icon_item = &"gewehrpatronen"
+
+[sub_resource type="Resource" id="upgrade_cap_leucht"]
+script = ExtResource("4_upgrade")
+id = &"cap_leucht"
+name_key = "UPG_CAP_LEUCHT"
+effect = 4
+target = &"leucht"
+per_level = 3.0
+prices = Array[int]([90])
+icon_item = &"leuchtkugeln"
+
 [sub_resource type="Resource" id="upgrade_lederschurz"]
 script = ExtResource("4_upgrade")
 id = &"lederschurz"
@@ -268,4 +308,4 @@ voice_max_distance = 25.0
 voice_idle_chance = 0.04
 creature_spawn_rules = Array[ExtResource("2_spawn")]([SubResource("spawn_bergmandl"), SubResource("spawn_tatzelwurm"), SubResource("spawn_kasermandl"), SubResource("spawn_schichtmeister"), SubResource("spawn_salzweibl"), SubResource("spawn_percht"), SubResource("spawn_grubenhund")])
 biome_rules = Array[ExtResource("3_biome")]([SubResource("biome_oberer_stollen"), SubResource("biome_salzsee"), SubResource("biome_die_tiefe")])
-run_upgrades = Array[ExtResource("4_upgrade")]([SubResource("upgrade_pistole_damage"), SubResource("upgrade_pistole_magazine"), SubResource("upgrade_pistole_reload"), SubResource("upgrade_pistole_spread"), SubResource("upgrade_flinte_damage"), SubResource("upgrade_flinte_reload"), SubResource("upgrade_flinte_spread"), SubResource("upgrade_cap_pistole"), SubResource("upgrade_cap_schrot"), SubResource("upgrade_lederschurz"), SubResource("upgrade_grubenhelm"), SubResource("upgrade_reflektor")])
+run_upgrades = Array[ExtResource("4_upgrade")]([SubResource("upgrade_pistole_damage"), SubResource("upgrade_pistole_magazine"), SubResource("upgrade_pistole_reload"), SubResource("upgrade_pistole_spread"), SubResource("upgrade_flinte_damage"), SubResource("upgrade_flinte_reload"), SubResource("upgrade_flinte_spread"), SubResource("upgrade_cap_pistole"), SubResource("upgrade_cap_schrot"), SubResource("upgrade_stutzen_damage"), SubResource("upgrade_stutzen_reload"), SubResource("upgrade_cap_gewehr"), SubResource("upgrade_cap_leucht"), SubResource("upgrade_lederschurz"), SubResource("upgrade_grubenhelm"), SubResource("upgrade_reflektor")])

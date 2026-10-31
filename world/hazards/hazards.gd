@@ -250,6 +250,27 @@ func _host_rockfall() -> void:
 	game.host_noise(at, _config.noise_heavy_drop)
 
 
+## Host: a blast brought the roof down at `where` (Dynamit). Right away – the bang was the
+## warning; the pile blocks the tunnel if it may (same rules as a rockfall), else loose stones.
+func host_bring_down(where: Vector3) -> void:
+	var game: Game = Game.instance
+	var spot: int = _mine.nav.get_closest_point(where)
+	var at: Vector3 = _mine.nav.get_point_position(spot)
+	if at.distance_to(where) > 4.0 or _mine.nav.is_point_disabled(spot) or game.in_mine_cage(at):
+		_rock_fall.rpc(where, "", 0.0)
+		return
+	var block: bool = _can_block(spot)
+	for player: Player in game.players():
+		if player.global_position.distance_to(at) < _mine.chunk_set.passage_size.x:
+			block = false  # never bury anyone inside the pile
+	_next_rubble += 1
+	_rock_fall.rpc(at, "Rubble%d" % _next_rubble if block else "", _tunnel_yaw(spot))
+	for creature: Creature in game.creatures():
+		if creature.global_position.distance_to(at) < _config.rockfall_radius:
+			creature.host_hit(_config.rockfall_damage, at)
+	print("[hazards] the roof came down%s" % (" and blocks the tunnel" if block else ""))
+
+
 ## Only block a tunnel if every miner still has a way back to the lift around it.
 func _can_block(spot: int) -> bool:
 	var game: Game = Game.instance

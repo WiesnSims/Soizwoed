@@ -17,6 +17,9 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath(".:net_hunting")
 properties/2/spawn = true
 properties/2/replication_mode = 2
+properties/3/path = NodePath(".:net_pose")
+properties/3/spawn = true
+properties/3/replication_mode = 2
 
 [node name="Percht" type="CharacterBody3D"]
 floor_snap_length = 0.4

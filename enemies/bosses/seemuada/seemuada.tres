@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://enemies/enemy_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://enemies/bosses/seemuada/seemuada.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"seemuada"
+name_key = "CREATURE_SEEMUADA"
+scene = ExtResource("2_scene")

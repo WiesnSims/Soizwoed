@@ -5,14 +5,16 @@ extends Creature
 ## earlier in the voice chat (only from those who allow it), or a generic call when there is
 ## none (solo, ENet, or nobody allowed it).
 ##
-## Its rule: whoever comes to it alone, it takes (heavy damage). Two miners together it does
-## not dare: it shrieks and is gone. Counter: stick together, and call each other by name –
+## Its rule: whoever comes to it alone, it grabs and pins (v2): they cannot move or act and
+## their health drains away until a teammate shoots or shoves it off (alone, it lets go after a
+## few seconds). Two miners together it does not dare: it shrieks and is gone. It can be killed,
+## but it is quick to vanish when hurt. Counter: stick together, and call each other by name –
 ## the real teammate answers.
 ##
 ## It does not walk: it waits at a spot out of sight of the loneliest miner, calls every few
 ## seconds, and after a strike or a fright vanishes and waits somewhere new.
 
-enum State { WAIT, GONE }
+enum State { WAIT, GONE, PIN }
 
 const CHECK_SECONDS: float = 0.25
 ## Seen by a miner (lamp on it) closer than this, with a teammate by them: it flees.
@@ -32,13 +34,17 @@ var _far_time: float = 0.0
 var _alpha: float = 0.0
 var _materials: Array[StandardMaterial3D] = []
 var _hum_left: float = 0.0
+## The miner it holds (PIN), how long it may still hold them, and the drain not yet dealt.
+var _victim: Player
+var _pin_left: float = 0.0
+var _pin_carry: float = 0.0
 
 @onready var body: Node3D = $Body
 
 
 func _ready() -> void:
 	super()
-	health = 1
+	health = scaled_health(_config.salzweibl_health)
 	_build_body()
 	if multiplayer.is_server():
 		# Starts unseen and first picks a spot near the loneliest miner.
@@ -63,6 +69,9 @@ func _process(delta: float) -> void:
 
 
 func _think(delta: float) -> void:
+	if state == State.PIN:
+		_hold(delta)
+		return
 	if state == State.GONE:
 		_gone_left -= delta
 		if _gone_left <= 0.0:
@@ -118,12 +127,46 @@ func is_alone(player: Player) -> bool:
 	return true
 
 
+## Grabs a lone miner and holds them fast (DESIGN.md §6: pin).
 func _strike(player: Player) -> void:
 	say(VoiceLine.Moment.ACTION, true)
 	play_sound.rpc("salzweibl_shriek", 4.0)
-	Game.instance.host_damage_player(player, scaled_damage(_config.salzweibl_damage))
-	print("[salzweibl] took P%d" % player.peer_id)
-	_vanish()
+	state = State.PIN
+	_victim = player
+	_pin_carry = 0.0
+	var solo: bool = Game.instance.players().size() <= 1
+	_pin_left = _config.salzweibl_pin_seconds_solo if solo else _config.salzweibl_pin_seconds
+	var to: Vector3 = player.global_position - global_position
+	to.y = 0.0
+	if to.length() > 0.1:
+		look_at(global_position + to, Vector3.UP)
+	Game.instance.host_pin_player(player, true)
+	print("[salzweibl] pins P%d" % player.peer_id)
+
+
+## Holding its miner: their health drains away until it is driven off or lets go.
+func _hold(delta: float) -> void:
+	_halt(delta)
+	_pin_left -= delta
+	if _victim == null or not is_instance_valid(_victim) or not _victim.alive or _victim.downed:
+		_release()
+		_vanish()
+		return
+	_pin_carry += scaled_damage(roundi(_config.salzweibl_pin_dps)) * delta
+	if _pin_carry >= 3.0:
+		var due: int = floori(_pin_carry)
+		_pin_carry -= due
+		Game.instance.host_damage_player(_victim, due)
+	if _pin_left <= 0.0:
+		print("[salzweibl] lets go of P%d" % _victim.peer_id)
+		_release()
+		_vanish()
+
+
+func _release() -> void:
+	if _victim != null and is_instance_valid(_victim) and _victim.is_inside_tree() and not _victim.is_queued_for_deletion():
+		Game.instance.host_pin_player(_victim, false)
+	_victim = null
 
 
 func _flee() -> void:
@@ -226,12 +269,24 @@ func _seen_by_anyone() -> bool:
 	return false
 
 
-## A hit drives it off (it is only salt and spite).
-func host_hit(_damage: int, _from: Vector3) -> void:
-	if state == State.WAIT:
-		say(VoiceLine.Moment.HIT, true)
-		play_sound.rpc("salzweibl_shriek", 0.0)
-		_vanish()
+## A hit hurts it and drives it off – and lets go of whoever it holds.
+func host_hit(damage: int, from: Vector3) -> void:
+	if state == State.GONE:
+		return
+	var held: bool = state == State.PIN
+	_release()
+	if host_damage(damage, from, "salzweibl_shriek"):
+		return
+	say(VoiceLine.Moment.HIT, true)
+	play_sound.rpc("salzweibl_shriek", 0.0)
+	if held:
+		print("[salzweibl] driven off")
+	_vanish()
+
+
+func _exit_tree() -> void:
+	if multiplayer.is_server() and Game.instance != null:
+		_release()
 
 
 func _build_body() -> void:

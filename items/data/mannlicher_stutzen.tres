@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/mannlicherstutzen.tscn" id="2_scene"]
+[ext_resource type="Script" path="res://weapons/weapon_data.gd" id="3_weapon"]
+
+[sub_resource type="Resource" id="weapon"]
+script = ExtResource("3_weapon")
+ammo_type = &"gewehr"
+damage = 75
+pellets = 1
+fire_interval = 1.15
+magazine = 5
+reload_seconds = 0.7
+reload_per_round = true
+top_loaded = true
+spread_hip = 3.0
+spread_ads = 0.15
+range = 90.0
+falloff_start = 50.0
+falloff_min = 0.7
+recoil = 6.0
+noise = 55.0
+ads_zoom = 0.62
+sound = "shot_stutzen"
+reload_sound = "round_in"
+reload_open_sound = "bolt_open"
+reload_close_sound = "bolt_close"
+cycle_sound = "bolt_cycle"
+cycle_delay = 0.28
+dry_sound = "dry_click"
+knockback = 0.5
+kick_back = 0.08
+kick_angle = 12.0
+kick_time = 0.2
+shake = 0.2
+grip = Vector3(0, -0.066, 0.14)
+support = Vector3(0, -0.048, -0.22)
+muzzle = Vector3(0, 0, -0.63)
+flash_size = 1.4
+sight_height = 0.024
+aim_distance = 0.32
+
+[resource]
+script = ExtResource("1_data")
+id = &"mannlicher_stutzen"
+name_key = "ITEM_MANNLICHER_STUTZEN"
+kind = 1
+weight_class = 0
+price = 480
+spawn_weight = 0.0
+scene = ExtResource("2_scene")
+use = 14
+weapon = SubResource("weapon")

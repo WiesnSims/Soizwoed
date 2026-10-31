@@ -35,6 +35,19 @@ var _last_line_at: float = -INF
 var _net: NetInterpolator = NetInterpolator.new()
 ## Host: seconds left of being stunned (Alphorn); the AI does nothing meanwhile.
 var stunned_left: float = 0.0
+## A "Raunacht" elite (DESIGN.md §6): set by Game before the creature enters the tree, on every
+## peer. More health, faster, harder hits, red glowing eyes, and a box of ammo when it dies.
+var elite: bool = false
+## Host: the hit being applied right now landed on the creature's weak spot (Game.request_hit
+## sets it before calling host_hit; the shooter's screen decided, DESIGN.md §11).
+var hit_weak: bool = false
+## Host: seconds left burning (a flare set it alight) and the damage per second.
+var _burn_left: float = 0.0
+var _burn_dps: float = 0.0
+var _burn_carry: float = 0.0
+var _burn_tick: float = 0.0
+## Every peer: the flames on it while it burns.
+var _flames: Node3D
 
 @onready var voice: AudioStreamPlayer3D = $Voice
 @onready var sync: MultiplayerSynchronizer = $Sync
@@ -49,10 +62,15 @@ func _ready() -> void:
 	if not multiplayer.is_server():
 		sync.synchronized.connect(_on_synchronized)
 		physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+	if elite:
+		_mark_elite.call_deferred()  # after the creature has built its body
 
 
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server() and Game.instance != null and Game.instance.mine != null:
+		_tick_burning(delta)
+		if health <= 0 or is_queued_for_deletion():
+			return
 		if stunned_left > 0.0:
 			stunned_left -= delta
 			_halt(delta)
@@ -98,6 +116,112 @@ func host_stun(seconds: float) -> void:
 	stunned_left = maxf(stunned_left, seconds)
 
 
+## How much a shot landing at `point` (world space) counts: above 1 on a weak spot, below 1
+## on armour. Decided on the shooter's screen from the creature as it looks there. Override.
+func weak_spot_mult(_point: Vector3) -> float:
+	return 1.0
+
+
+## Whether bullets can touch it right now (a Kasermandl in the dark: they go straight through).
+func can_be_shot() -> bool:
+	return true
+
+
+## Hit by a flare (host): it hurts, and the creature catches fire. Override for creatures that
+## react to the light itself.
+func host_flared(damage: int, from: Vector3) -> void:
+	hit_weak = false
+	host_hit(damage, from)
+	if health > 0 and not is_queued_for_deletion():
+		host_ignite(_config.flare_burn_seconds, _config.flare_burn_dps)
+
+
+## Sets it alight for `seconds`, losing `dps` health a second (host).
+func host_ignite(seconds: float, dps: float) -> void:
+	if _burn_left <= 0.0:
+		_set_burning.rpc(true)
+	_burn_left = maxf(_burn_left, seconds)
+	_burn_dps = maxf(_burn_dps, dps)
+
+
+func _tick_burning(delta: float) -> void:
+	if _burn_left <= 0.0:
+		return
+	_burn_left -= delta
+	_burn_carry += _burn_dps * delta
+	_burn_tick -= delta
+	if _burn_tick <= 0.0 and _burn_carry >= 1.0:
+		_burn_tick = 0.5
+		var damage: int = floori(_burn_carry)
+		_burn_carry -= damage
+		hit_weak = false
+		host_hit(damage, global_position)
+	if _burn_left <= 0.0 and health > 0 and not is_queued_for_deletion():
+		_burn_dps = 0.0
+		_set_burning.rpc(false)
+
+
+@rpc("authority", "call_local", "reliable")
+func _set_burning(on: bool) -> void:
+	if not on:
+		if _flames != null:
+			_flames.queue_free()
+			_flames = null
+		return
+	if _flames != null:
+		return
+	_flames = Node3D.new()
+	_flames.name = "Flames"
+	add_child(_flames)
+	_flames.position = Vector3.UP * 0.6
+	var light: OmniLight3D = OmniLight3D.new()
+	light.light_color = Color(1.0, 0.55, 0.2)
+	light.light_energy = 1.6
+	light.omni_range = 4.0
+	_flames.add_child(light)
+	var fire: CPUParticles3D = CPUParticles3D.new()
+	fire.amount = 24
+	fire.lifetime = 0.6
+	fire.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	fire.emission_sphere_radius = 0.3
+	fire.direction = Vector3.UP
+	fire.spread = 20.0
+	fire.gravity = Vector3(0.0, 2.5, 0.0)
+	fire.initial_velocity_min = 0.3
+	fire.initial_velocity_max = 0.9
+	fire.scale_amount_min = 0.06
+	fire.scale_amount_max = 0.14
+	var flame: SphereMesh = BodyParts.sphere(0.5, 6)
+	flame.material = BodyParts.glow(Color(1.0, 0.5, 0.15), 3.0)
+	fire.mesh = flame
+	_flames.add_child(fire)
+	Audio.play_at("flare_hiss", global_position + Vector3.UP * 0.6, &"Creatures", -4.0, 18.0)
+
+
+## A Raunacht elite: red glowing eyes and a faint red glow about it (every peer).
+func _mark_elite() -> void:
+	var body: Node3D = get_node_or_null(^"Body") as Node3D
+	if body == null:
+		return
+	for node: Node in body.find_children("*", "MeshInstance3D", true, false):
+		var mesh: MeshInstance3D = node as MeshInstance3D
+		var material: StandardMaterial3D = mesh.material_override as StandardMaterial3D
+		if material != null and material.emission_enabled and material.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED:
+			var red: StandardMaterial3D = material.duplicate() as StandardMaterial3D
+			red.albedo_color = Color(1.0, 0.08, 0.05, material.albedo_color.a)
+			red.emission = Color(1.0, 0.08, 0.05)
+			red.emission_energy_multiplier = maxf(material.emission_energy_multiplier, 5.0)
+			mesh.material_override = red
+	var aura: OmniLight3D = OmniLight3D.new()
+	aura.name = "RaunachtGlow"
+	aura.light_color = Color(1.0, 0.15, 0.08)
+	aura.light_energy = 0.5
+	aura.omni_range = 2.5
+	aura.position = Vector3.UP * 0.8
+	body.add_child(aura)
+	body.scale *= 1.08
+
+
 ## Whether a point lies in the smoke of a "Bierzelt" bomb, which creatures avoid.
 func in_smoke(point: Vector3) -> bool:
 	return Game.instance != null and Game.instance.in_smoke(point)
@@ -107,6 +231,7 @@ func in_smoke(point: Vector3) -> bool:
 
 ## Walks towards `goal` along the waypoint graph; true once there.
 func walk_to(goal: Vector3, speed: float, delta: float) -> bool:
+	speed *= speed_mult()
 	var to_goal: Vector3 = goal - global_position
 	if Vector2(to_goal.x, to_goal.z).length() < ARRIVE_DISTANCE:
 		_halt(delta)
@@ -309,12 +434,19 @@ func _farewell(line_index: int, sound: String) -> void:
 ## `base` health scaled for the crew size (solo creatures are weaker) and the shift (DESIGN.md §8).
 func scaled_health(base: int) -> int:
 	var run: RunState = GameState.run
-	return maxi(1, roundi(base * _config.enemy_health_mult(run.player_count if run != null else 1, run.shift_index if run != null else 0)))
+	var elite_mult: float = _config.elite_health_mult if elite else 1.0
+	return maxi(1, roundi(base * elite_mult * _config.enemy_health_mult(run.player_count if run != null else 1, run.shift_index if run != null else 0)))
 
 
 ## `base` damage of an attack, growing with the shift (DESIGN.md §8).
 func scaled_damage(base: int) -> int:
-	return maxi(1, roundi(base * _config.enemy_damage_mult(GameState.run.shift_index if GameState.run != null else 0)))
+	var elite_mult: float = _config.elite_damage_mult if elite else 1.0
+	return maxi(1, roundi(base * elite_mult * _config.enemy_damage_mult(GameState.run.shift_index if GameState.run != null else 0)))
+
+
+## Elites move faster (applied to every walk).
+func speed_mult() -> float:
+	return _config.elite_speed_mult if elite else 1.0
 
 
 ## Generic damage (host): health down, a flinch everyone sees, death at 0. True if it died.
@@ -337,6 +469,8 @@ func host_die(sound: String = "") -> void:
 	print("[creature] %s %s killed" % [data.id, name])
 	if Game.instance != null:
 		Game.instance.host_boss_died(self)
+		if elite:
+			Game.instance.host_elite_drop(global_position)
 	queue_free()
 
 

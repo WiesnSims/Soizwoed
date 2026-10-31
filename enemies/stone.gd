@@ -1,13 +1,16 @@
 class_name Stone
 extends Node3D
-## A stone a creature threw: every peer flies the same arc from the same start and velocity;
-## only the host decides whether it hit a miner (DESIGN.md §11: enemy attacks belong to the host).
+## A stone a creature threw (or a gob of brine D'Seemuada spat): every peer flies the same arc
+## from the same start and velocity; only the host decides whether it hit a miner (DESIGN.md §11:
+## enemy attacks belong to the host).
 
 const LIFETIME: float = 3.0
 const RADIUS: float = 0.12
 
 var velocity: Vector3 = Vector3.ZERO
 var damage: int = 0
+## A gob of brine instead of a stone.
+var brine: bool = false
 ## Who threw it, so it does not hit the thrower.
 var thrower: Node3D
 
@@ -17,6 +20,14 @@ var _done: bool = false
 
 
 func _ready() -> void:
+	if brine:
+		var gob: StandardMaterial3D = StandardMaterial3D.new()
+		gob.albedo_color = Color(0.2, 0.32, 0.3, 0.75)
+		gob.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		gob.roughness = 0.05
+		BodyParts.add(self, BodyParts.sphere(RADIUS * 1.3, 10), gob, Vector3.ZERO)
+		Audio.play_at("spit", global_position, &"Creatures", 0.0, 25.0)
+		return
 	var rock: StandardMaterial3D = StandardMaterial3D.new()
 	rock.albedo_color = Color(0.45, 0.42, 0.38)
 	rock.roughness = 0.95
@@ -44,7 +55,7 @@ func _physics_process(delta: float) -> void:
 		return
 	global_position = hit.position
 	_done = true
-	Audio.play_at("stone_hit", global_position, &"SFX", -2.0, 20.0, randf_range(0.9, 1.1))
+	Audio.play_at("wade" if brine else "stone_hit", global_position, &"SFX", -2.0, 20.0, randf_range(0.9, 1.1))
 	var player: Player = hit.collider as Player
 	if player != null and multiplayer.is_server() and Game.instance != null:
 		Game.instance.host_damage_player(player, damage)

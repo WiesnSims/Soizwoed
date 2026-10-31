@@ -1,0 +1,55 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://items/world_item.gd" id="1_item"]
+
+[sub_resource type="StandardMaterial3D" id="card"]
+albedo_color = Color(0.3, 0.33, 0.24, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="label"]
+albedo_color = Color(0.85, 0.8, 0.65, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="brass"]
+albedo_color = Color(0.8, 0.62, 0.25, 1)
+metallic = 0.85
+roughness = 0.35
+
+[sub_resource type="BoxMesh" id="box"]
+size = Vector3(0.1, 0.045, 0.09)
+
+[sub_resource type="BoxMesh" id="labelmesh"]
+size = Vector3(0.07, 0.046, 0.05)
+
+[sub_resource type="CylinderMesh" id="round"]
+top_radius = 0.0035
+bottom_radius = 0.005
+height = 0.075
+radial_segments = 8
+rings = 1
+
+[sub_resource type="BoxShape3D" id="shape"]
+size = Vector3(0.1, 0.05, 0.09)
+
+[node name="Gewehrpatronen" type="RigidBody3D"]
+mass = 0.45
+script = ExtResource("1_item")
+
+[node name="Box" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0225, 0)
+mesh = SubResource("box")
+surface_material_override/0 = SubResource("card")
+
+[node name="Label" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.023, 0)
+mesh = SubResource("labelmesh")
+surface_material_override/0 = SubResource("label")
+
+[node name="Round" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.01, 0.05, 0.02)
+mesh = SubResource("round")
+surface_material_override/0 = SubResource("brass")
+
+[node name="Shape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.025, 0)
+shape = SubResource("shape")

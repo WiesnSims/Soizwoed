@@ -45,6 +45,12 @@ const MAG_RELOAD_OFFSET: Vector3 = Vector3(-0.07, 0.05, 0.06)
 const MAG_RELOAD_ROTATION: Vector3 = Vector3(14.0, 10.0, 28.0)
 const BREAK_RELOAD_OFFSET: Vector3 = Vector3(-0.08, 0.07, 0.08)
 const BREAK_RELOAD_ROTATION: Vector3 = Vector3(-14.0, 12.0, 18.0)
+## The Stutzen rolled onto its side, the open action towards the left hand.
+const TOP_RELOAD_OFFSET: Vector3 = Vector3(-0.07, 0.06, 0.08)
+const TOP_RELOAD_ROTATION: Vector3 = Vector3(6.0, 12.0, 32.0)
+## The bolt pulled back (m) and turned up (degrees) when open.
+const BOLT_BACK: float = 0.06
+const BOLT_TURN: float = 65.0
 const RELOAD_POSE_SPEED: float = 7.0
 ## How far the Flinte's barrels drop when broken open (degrees), and how fast.
 const BREAK_ANGLE: float = 34.0
@@ -151,14 +157,15 @@ func update(delta: float, item: WorldItem, aiming: bool, reloading: bool = false
 	var climb: float = deg_to_rad((_kick_weapon.kick_angle if _kick_weapon != null else 0.0) * kick * lerpf(1.0, 0.5, eased_aim))
 	# Reload pose and the broken-open barrels.
 	var breaks: bool = item != null and item.find_child("Barrels", false, false) != null
+	var top: bool = weapon != null and weapon.top_loaded
 	if reloading and not _was_reloading and item != null:
 		_begin_reload(item, breaks)
 	_was_reloading = reloading
 	_reload_pose = move_toward(_reload_pose, 1.0 if reloading and weapon != null else 0.0, RELOAD_POSE_SPEED * delta)
-	_open = move_toward(_open, 1.0 if reloading and breaks else 0.0, (BREAK_OPEN_SPEED if reloading else BREAK_CLOSE_SPEED) * delta)
+	_open = move_toward(_open, 1.0 if reloading and (breaks or top) else 0.0, (BREAK_OPEN_SPEED if reloading else BREAK_CLOSE_SPEED) * delta)
 	var pose: float = smoothstep(0.0, 1.0, _reload_pose)
-	var pose_offset: Vector3 = (BREAK_RELOAD_OFFSET if breaks else MAG_RELOAD_OFFSET) * pose
-	var pose_rotation: Vector3 = (BREAK_RELOAD_ROTATION if breaks else MAG_RELOAD_ROTATION) * pose
+	var pose_offset: Vector3 = (BREAK_RELOAD_OFFSET if breaks else (TOP_RELOAD_OFFSET if top else MAG_RELOAD_OFFSET)) * pose
+	var pose_rotation: Vector3 = (BREAK_RELOAD_ROTATION if breaks else (TOP_RELOAD_ROTATION if top else MAG_RELOAD_ROTATION)) * pose
 	# Close to a wall: pulled back and lowered.
 	var reach: float = -base.z + (-weapon.muzzle.z if weapon != null else 0.45)
 	_wall = move_toward(_wall, _wall_share(reach) if item != null else 0.0, 4.0 * delta)
@@ -170,6 +177,8 @@ func update(delta: float, item: WorldItem, aiming: bool, reloading: bool = false
 	if item != null and weapon != null:
 		if breaks:
 			_animate_break(item, reloading, reload)
+		elif top:
+			_animate_top(item, reloading, reload)
 		else:
 			_animate_magazine(item, reloading, reload)
 	_tick_swing(delta, melee)
@@ -249,6 +258,18 @@ func fire(item: WorldItem) -> void:
 		tween.tween_property(slide, "position", rest, weapon.kick_time * 0.7).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if weapon.ejects_casing:
 		_eject(item.global_transform * Vector3(0.018, 0.02, -0.02), Vector3(1.8, 1.4, 0.4), false)
+	var bolt: Node3D = item.find_child("Bolt", false, false) as Node3D
+	if bolt != null and weapon.cycle_sound != "" and item.rounds > 0:
+		# Working the bolt: up, back (the case flies out), forward, down.
+		var rest: Vector3 = bolt.get_meta(&"rest", bolt.position)
+		bolt.set_meta(&"rest", rest)
+		var tween: Tween = bolt.create_tween()
+		tween.tween_interval(weapon.cycle_delay)
+		tween.tween_property(bolt, "rotation:z", deg_to_rad(BOLT_TURN), 0.07)
+		tween.tween_property(bolt, "position", rest + Vector3(0.0, 0.0, BOLT_BACK), 0.1)
+		tween.tween_callback(func() -> void: _eject(item.global_transform * (rest + Vector3(0.02, 0.012, -0.03)), Vector3(1.6, 1.2, 0.2), false))
+		tween.tween_property(bolt, "position", rest, 0.1)
+		tween.tween_property(bolt, "rotation:z", 0.0, 0.07)
 
 
 # --- reloads ---------------------------------------------------------------------------------------
@@ -258,8 +279,15 @@ func _begin_reload(item: WorldItem, breaks: bool) -> void:
 	if breaks:
 		# Breaking it open throws out the fired hulls, up and back past the shoulder.
 		for i: int in maxi(0, item.data.weapon.magazine - item.rounds):
-			var x: float = -0.0135 if i == 0 else 0.0135
+			var x: float = _chamber(item, i).x
 			_eject(item.global_transform * Vector3(x, 0.02, -0.02), Vector3(0.6 + x * 20.0, 1.9, 1.2), true)
+
+
+## Where chamber `index` of a break-action is (the shell nodes ShellL, ShellR), in the barrels'
+## own space.
+func _chamber(item: WorldItem, index: int) -> Vector3:
+	var shell: Node3D = item.find_child("ShellL" if index == 0 else "ShellR", true, false) as Node3D
+	return shell.position if shell != null else Vector3(0.0, 0.028, 0.0)
 
 
 ## Pistol: the magazine slides out, the left hand drops away and comes back with a full one,
@@ -324,8 +352,8 @@ func _animate_break(item: WorldItem, reloading: bool, p: float) -> void:
 		_left_target = support
 		return
 	# The chamber that gets this shell, in the gun's space: its mouth and a bit behind it.
-	var chamber_x: float = -0.0135 if item.rounds == 0 else 0.0135
-	var mouth: Vector3 = barrels.transform * Vector3(chamber_x, 0.028, 0.0)
+	var chamber: Vector3 = _chamber(item, mini(item.rounds, 1))
+	var mouth: Vector3 = barrels.transform * Vector3(chamber.x, chamber.y, 0.0)
 	var behind: Vector3 = mouth + barrels.basis * Vector3(0.0, 0.0, 0.07)
 	var belt: Vector3 = support + Vector3(-0.04, -0.24, 0.16)
 	if p < 0.2:
@@ -338,6 +366,36 @@ func _animate_break(item: WorldItem, reloading: bool, p: float) -> void:
 		_hand_shell.visible = p < 0.8
 	else:
 		_left_target = mouth + Vector3(-0.03, -0.05, 0.06)
+
+
+## Stutzen: the bolt is up and back for the whole reload; per round the left hand goes down to
+## the cartridge pouch and comes back over the open action to press one in from above.
+func _animate_top(item: WorldItem, reloading: bool, p: float) -> void:
+	var support: Vector3 = item.data.weapon.support
+	_hand_shell.visible = false
+	var bolt: Node3D = item.find_child("Bolt", false, false) as Node3D
+	if bolt != null:
+		var rest: Vector3 = bolt.get_meta(&"rest", bolt.position)
+		bolt.set_meta(&"rest", rest)
+		var open: float = smoothstep(0.0, 1.0, _open)
+		if reloading or _open > 0.0:
+			bolt.position = rest + Vector3(0.0, 0.0, BOLT_BACK * open)
+			bolt.rotation.z = deg_to_rad(BOLT_TURN) * minf(1.0, open * 1.5)
+	if not reloading:
+		_left_target = support
+		return
+	var port: Vector3 = (bolt.get_meta(&"rest", bolt.position) as Vector3) + Vector3(-0.01, 0.03, -0.04) if bolt != null else Vector3(0.0, 0.04, 0.0)
+	var pouch: Vector3 = support + Vector3(-0.05, -0.2, 0.25)
+	if p < 0.25:
+		_left_target = pouch
+	elif p < 0.45:
+		_left_target = pouch
+		_hand_shell.visible = true
+	elif p < 0.8:
+		_left_target = port + Vector3(0.0, 0.03 * (1.0 - remap(p, 0.45, 0.8, 0.0, 1.0)), 0.0)
+		_hand_shell.visible = p < 0.75
+	else:
+		_left_target = port + Vector3(-0.02, 0.02, 0.03)
 
 
 # --- the Spitzhacke ----------------------------------------------------------------------------------

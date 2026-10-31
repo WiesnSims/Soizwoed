@@ -32,12 +32,12 @@ if ($HostLeavesFirst) {
     $hostExpect = @("host: ITestFall fell [1-9]", "voice snippets from the client 1", "host: block holder 1 helper \d+, speed 0\.95", "after letting go, block holder \d+ helper 0", "host: handed ammo, client \+[1-9][0-9]*, host -[1-9]", "host: 1 corpse\(s\), client alive false", "\[salzweibl\] fled from a pair", "friendly fire, client health 90", "client downed true, alive true", "helped up, downed false, health 30", "revived by P1", "client alive after the salve true, health 40", "\[game\] shift ended")
     $clientExpect = @("client sees ITestPick STORED by P1", "client saw ITestFall fall", "client sent 1 s of voice", "client carrying together with P1, speed 0\.95", "client took the block over", "client downed, crouching true", "client up again, health 30", "client dead, spectating P1", "client revived, health 40, own camera true", "\[game\] shift ended")
 } elseif ($Tools) {
-    $hostSeconds = 36
-    $clientSeconds = 32
+    $hostSeconds = 46
+    $clientSeconds = 42
     $hostArgs += @("--scenario=mptools", "--wait-peers=1")
     $clientExtra = @("--scenario=mptoolsclient")
-    $hostExpect = @("Alphorn by P[0-9]{2,}", "Bierzelt cloud", "Hunt called by P[0-9]{2,}", "host sees P[0-9]+: lamp electric true, health 55", "dog shot dead by the client true", "grubenhund C[0-9]+ killed", "\[game\] shift ended")
-    $clientExpect = @("client used stirnlampe", "client health after obstler 55", "client used boeller", "client used funkgeraet", "client saw the hunt roll [1-9]", "client fired, rounds", "\[game\] shift ended")
+    $hostExpect = @("Alphorn by P[0-9]{2,}", "Bierzelt cloud", "Hunt called by P[0-9]{2,}", "host sees P[0-9]+: lamp electric true, health 55", "dog shot dead by the client true", "grubenhund C[0-9]+ killed", "\[game\] flare fired by P[0-9]{2,}", "\[game\] Dynamit went off", "\[game\] shift ended")
+    $clientExpect = @("client used stirnlampe", "client health after obstler 55", "client used boeller", "client used funkgeraet", "client saw the hunt roll [1-9]", "client fired, rounds", "client used leuchtpistole", "\[game\] Flare[0-9]+ flying", "client used dynamit", "\[game\] shift ended")
 } else {
     $hostSeconds = 26
     $clientSeconds = 19
@@ -46,7 +46,7 @@ if ($HostLeavesFirst) {
     $clientExpect = @("\[game\] shift started", "\[game\] alarm on", "\[game\] shift ended")
     if ($Boss) {
         $hostArgs += @("--boss")
-        $hostExpect += @("boss bergkini", "boss dead, Fundst")
+        $hostExpect += @("boss $(@('bergkini', 'seemuada', 'schiachpercht')[$Section])", "boss dead, Fundst")
         $clientExpect += @("\[fundstueck\] [a-z_]+ locked true", "\[fundstueck\] [a-z_]+ locked false")
     }
     if ($Section -eq 2) { $hostExpect += @("(dev: percht spawned|spawned [0-9]+ percht)", "(dev: salzweibl spawned|spawned [0-9]+ salzweibl)") }

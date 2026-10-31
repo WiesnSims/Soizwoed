@@ -21,6 +21,11 @@ extends Node
 ##            Bergmandl; dead, the Fundstück is free.
 ##   upgrades – buys run upgrades in the Gasthaus, checks guns, caps, armour and lamp, and the
 ##            armour taking its share down in the mine.
+##   weapons – M8: the Stutzen on a dog's head, a flare by a Kasermandl and in the Schichtmeister's
+##            face, Dynamit bringing the roof down.
+##   seemuada / schiachpercht – the Salzsee and Die Tiefe bosses at their Fundort: awake,
+##            fighting, then killed.
+##   elites – a Raunacht Grubenhund next to a plain one, killed: its box of ammo.
 
 var _game: Game
 var _log_left: float = 0.0
@@ -83,6 +88,12 @@ func run(game: Game, scenario: String) -> void:
 	if scenario in ["tiefe", "percht", "tiefelook"]:
 		_game.biome_index = 2
 	if scenario in ["boss", "bosslook"]:
+		_game._force_boss = true
+	if scenario == "seemuada":
+		_game.biome_index = 1
+		_game._force_boss = true
+	if scenario == "schiachpercht":
+		_game.biome_index = 2
 		_game._force_boss = true
 	if scenario == "upgrades":
 		await _upgrades_hub()
@@ -170,6 +181,12 @@ func run(game: Game, scenario: String) -> void:
 			await _boss_look()
 		"upgrades":
 			await _upgrades_mine()
+		"weapons":
+			await _weapons()
+		"seemuada", "schiachpercht":
+			await _boss_fight(scenario)
+		"elites":
+			await _elites()
 		_:
 			push_warning("unknown scenario %s" % scenario)
 
@@ -533,6 +550,30 @@ func _tatzel() -> void:
 	for i: int in 40:
 		player.velocity = Vector3(Balance.config.sprint_speed, 0.0, 0.0)
 		await get_tree().physics_frame
+	# v2: up out of the floor it can be shot – the throat is soft, the scales are not.
+	player.velocity = Vector3.ZERO
+	await get_tree().create_timer(1.5).timeout  # the lunge lands first
+	print("[scenario] after the lunge: player health %d" % player.health)
+	player.set_meta(&"invulnerable_until", INF)
+	var wurm: Tatzelwurm = null
+	for creature: Creature in _game.creatures():
+		wurm = creature as Tatzelwurm if creature is Tatzelwurm else wurm
+	if wurm == null:
+		return
+	while wurm.state != Tatzelwurm.State.SURFACE and wurm.state != Tatzelwurm.State.LUNGE:
+		_game.host_noise(player.global_position, Balance.config.noise_sprint)
+		await get_tree().create_timer(0.5).timeout
+	while wurm.net_emerge < 1.0:
+		await get_tree().physics_frame
+	var throat: Vector3 = wurm._head.global_position - wurm._head.global_basis.y * 0.25
+	var scales: Vector3 = wurm.global_position + Vector3.UP * 0.3
+	print("[scenario] tatzelwurm shootable %s: throat x%.2f, scales x%.2f" % [wurm.can_be_shot(), wurm.weak_spot_mult(throat), wurm.weak_spot_mult(scales)])
+	var before: int = wurm.health
+	_game.request_hit(wurm.get_path(), 20, player.global_position, true)
+	print("[scenario] tatzelwurm hit while up: health %d -> %d, %s" % [before, wurm.health, Tatzelwurm.State.keys()[wurm.state]])
+	_game.request_hit(wurm.get_path(), 5000, player.global_position, true)
+	await get_tree().physics_frame
+	print("[scenario] tatzelwurm dead %s" % (not is_instance_valid(wurm) or wurm.is_queued_for_deletion()))
 
 
 func _kaser() -> void:
@@ -551,8 +592,18 @@ func _kaser() -> void:
 		if is_instance_valid(kaser):
 			player.look_at(Vector3(kaser.global_position.x, player.global_position.y, kaser.global_position.z))
 			player.head.rotation.x = 0.0
+	# v2: in the light it can be shot, in the dark everything goes through it.
+	if is_instance_valid(kaser):
+		var lit_health: int = kaser.health
+		_game.request_hit(kaser.get_path(), 10, player.global_position)
+		print("[scenario] kasermandl shot while lit: health %d -> %d, shootable %s" % [lit_health, kaser.health, kaser.can_be_shot()])
 	print("[scenario] lamp off")
 	player.lamp_on = false
+	await get_tree().create_timer(0.5).timeout
+	if is_instance_valid(kaser):
+		var dark_health: int = kaser.health
+		_game.request_hit(kaser.get_path(), 10, player.global_position)
+		print("[scenario] kasermandl shot in the dark: health %d -> %d, shootable %s" % [dark_health, kaser.health, kaser.can_be_shot()])
 
 
 func _meister() -> void:
@@ -699,6 +750,30 @@ func _percht() -> void:
 	player.teleport(Transform3D(Basis.IDENTITY, percht.global_position - percht.global_basis.z * 1.5 + Vector3.UP * 0.1))
 	await get_tree().create_timer(2.0).timeout
 	print("[scenario] percht: face to face, player health %d" % player.health)
+	# v2: the mask is its weak spot, the hide is armour.
+	var mask: Vector3 = percht._mask.global_position
+	print("[scenario] percht: mask x%.2f, body x%.2f" % [percht.weak_spot_mult(mask), percht.weak_spot_mult(percht.global_position + Vector3.UP * 0.8)])
+	# A few metres off in plain sight, lamp on: it lowers its horns and charges.
+	player.set_health(config.player_max_health)
+	player.set_meta(&"invulnerable_until", 0.0)
+	percht._charge_left = 0.0
+	# Back where they first saw each other: the miner near the station, the Percht down the tunnel.
+	percht.global_position = at + Vector3.UP * 0.2
+	percht.velocity = Vector3.ZERO
+	percht.look_at(Vector3(stand.x, percht.global_position.y, stand.z), Vector3.UP)
+	player.teleport(Transform3D(_game.mine_cage.global_basis, stand))
+	print("[scenario] percht: miner %.1f m away in plain sight" % player.global_position.distance_to(percht.global_position))
+	var saw_windup: bool = false
+	var saw_charge: bool = false
+	for frame: int in 240:
+		await get_tree().physics_frame
+		saw_windup = saw_windup or percht.state == Percht.State.WINDUP
+		saw_charge = saw_charge or percht.state == Percht.State.CHARGE
+	print("[scenario] percht: windup %s, charge %s, player health %d, knocked %s" % [saw_windup, saw_charge, player.health, player.knocked_left > 0.0 or player.health < config.player_max_health])
+	var before: int = percht.health
+	_game.request_hit(percht.get_path(), 5000, player.global_position, true)
+	await get_tree().physics_frame
+	print("[scenario] percht: killed %s (had %d)" % [not is_instance_valid(percht) or percht.is_queued_for_deletion(), before])
 
 
 ## The Salzweibl in solo: calls with its own lines (no voice to copy), takes a lone miner.
@@ -714,7 +789,13 @@ func _weibl() -> void:
 	print("[scenario] salzweibl waits %.0f m away, shown %s" % [weibl.global_position.distance_to(player.global_position), weibl.net_shown])
 	player.teleport(Transform3D(Basis.IDENTITY, weibl.global_position + Vector3(0.8, 0.1, 0.0)))
 	await get_tree().create_timer(1.0).timeout
-	print("[scenario] salzweibl: lone miner health %d, shown %s" % [player.health, weibl.net_shown])
+	var can_act: bool = player.can_act()
+	player.inventory.select(0)
+	var fired: bool = player.gunner.fire() if player.gunner != null else false
+	print("[scenario] salzweibl: lone miner pinned %s, can act %s, could shoot %s, health %d" % [player.pinned, can_act, fired, player.health])
+	# Solo it lets go after a few seconds.
+	await get_tree().create_timer(Balance.config.salzweibl_pin_seconds_solo + 0.5).timeout
+	print("[scenario] salzweibl let go: pinned %s, health %d, shown %s" % [player.pinned, player.health, weibl.net_shown])
 
 
 ## M6 combat: the kit from the company, a pack of Grubenhunde shot down (aiming like a player
@@ -1184,6 +1265,12 @@ func _mp_tools() -> void:
 	dog.host_stun(60.0)
 	await get_tree().create_timer(6.0).timeout
 	print("[scenario] host: dog shot dead by the client %s" % (not is_instance_valid(dog)))
+	# M8: the client fires a flare and throws Dynamit.
+	for id: StringName in [&"leuchtpistole", &"dynamit"]:
+		var tool: WorldItem = _game._spawn_item_at(id, 0, client.global_transform.translated(Vector3.UP * 1.0), "ITool_%s" % id)
+		await get_tree().create_timer(0.5).timeout
+		_game.request_take(tool.get_path(), client.peer_id)
+		await get_tree().create_timer(4.0).timeout
 	host.teleport(_game.mine_cage.player_spot(0))
 	await _game.dev_deliver()
 	_game.request_lift()
@@ -1267,7 +1354,9 @@ func _boss() -> void:
 	print("[scenario] taking it while he lives: %s, alarm %s" % [WorldItem.State.keys()[item.state], _game.alarm_on])
 	# In sight of him at the mouth of his hall.
 	var mouth: Vector3 = boss.global_position - (boss.global_position - _game.mine_cage.global_position).normalized() * 0.0
-	var best: Vector3 = boss.global_position
+	# The mouth of his hall if no waypoint 6–9 m off has him in sight (never on top of him).
+	var fundort: Chunk = _game.mine.chunks[_game.mine.layout.fundort]
+	var best: Vector3 = (fundort.find_child("Nav_Mouth", true, false) as Marker3D).global_position
 	for id: int in _game.mine.nav.get_point_ids():
 		var point: Vector3 = _game.mine.nav.get_point_position(id)
 		var gap: float = point.distance_to(mouth)
@@ -1275,6 +1364,7 @@ func _boss() -> void:
 			best = point
 	player.teleport(Transform3D(Basis.IDENTITY, best + Vector3.UP * 0.1))
 	player.set_meta(&"invulnerable_until", INF)
+	print("[scenario] miner %.1f m from the boss" % best.distance_to(boss.global_position))
 	var bergmandl_before: int = _game.alive_count(&"bergmandl")
 	await get_tree().create_timer(9.0).timeout
 	print("[scenario] boss state %s, bergmandl %d -> %d" % [Bergkini.State.keys()[(boss as Bergkini).state], bergmandl_before, _game.alive_count(&"bergmandl")])
@@ -1339,7 +1429,7 @@ func _mp_tools_client() -> void:
 	var me: Player = _game.local_player()
 	var used: Dictionary = {}
 	var cart_from: Vector3 = Vector3.INF
-	for i: int in 160:
+	for i: int in 220:
 		await get_tree().create_timer(0.2).timeout
 		if _game.phase != Game.Phase.SHIFT:
 			break
@@ -1487,6 +1577,163 @@ func _track_when_thrown() -> void:
 	me._drop_active()
 	await get_tree().create_timer(0.4).timeout
 	Input.action_release(&"move_forward")
+
+
+## Points the local player's eyes at `point`.
+func _aim_at(player: Player, point: Vector3) -> void:
+	player.look_at(Vector3(point.x, player.global_position.y, point.z))
+	await get_tree().physics_frame
+	var aim: Vector3 = point - player.camera.global_position
+	player.head.rotation.x = atan2(aim.y, Vector2(aim.x, aim.z).length())
+	player._place_camera()  # process_frame comes before the player's own _process
+	await get_tree().process_frame
+
+
+## Aims down the sights at point and pulls the trigger (like a player would).
+func _shoot_at(player: Player, point: Vector3) -> bool:
+	Input.action_press(&"aim")
+	await get_tree().create_timer(0.6).timeout
+	await _aim_at(player, point)
+	player.gunner._cooldown = 0.0
+	var fired: bool = player.gunner.fire()
+	Input.action_release(&"aim")
+	return fired
+
+
+## A spot `metres` in front of the player along the tunnel with nothing in between.
+func _ahead(player: Player, metres: float) -> Vector3:
+	var nav: AStar3D = _game.mine.nav
+	var best: Vector3 = player.global_position - player.global_basis.z * metres
+	var best_gap: float = INF
+	for id: int in nav.get_point_ids():
+		var point: Vector3 = nav.get_point_position(id)
+		var gap: float = absf(point.distance_to(player.global_position) - metres)
+		if gap < best_gap and _game.clear_line(player.camera.global_position, point + Vector3.UP * 0.6):
+			best_gap = gap
+			best = point
+	return best
+
+
+## M8 weapons: the Stutzen (a dog's head, the bolt, round-by-round reloading), the Leuchtpistole
+## (a flare that burns, lights a Kasermandl and blinds the Schichtmeister) and Dynamit (the blast,
+## the roof).
+func _weapons() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	var config: BalanceConfig = Balance.config
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(5.0)))
+	player.set_meta(&"invulnerable_until", INF)
+	for light: OmniLight3D in _game.mine.lights:
+		light.visible = false
+	await get_tree().create_timer(0.5).timeout
+	# The Stutzen, loaded round by round.
+	var stutzen: WorldItem = await _give(&"mannlicher_stutzen")
+	_game._to_peer(player.peer_id, player, &"give_ammo", [&"gewehr", 10, false])
+	await get_tree().create_timer(0.2).timeout
+	player.gunner.start_reload()
+	await get_tree().create_timer(stutzen.data.weapon.reload_seconds * 5.0 + 1.0).timeout
+	print("[scenario] stutzen loaded %d, spare %d" % [stutzen.rounds, player.ammo_count(&"gewehr")])
+	var spot: Vector3 = _ahead(player, 7.0)
+	var dog: Grubenhund = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, spot + Vector3.UP * 0.3)) as Grubenhund
+	dog.host_stun(30.0)
+	await get_tree().create_timer(0.6).timeout
+	dog.look_at(Vector3(player.global_position.x, dog.global_position.y, player.global_position.z), Vector3.UP)
+	await get_tree().physics_frame
+	var head: Vector3 = dog.body.to_global(Grubenhund.HEAD_AT)
+	print("[scenario] dog head x%.2f, flank x%.2f" % [dog.weak_spot_mult(head), dog.weak_spot_mult(dog.global_position + Vector3.UP * 0.3 + dog.global_basis.z * 0.4)])
+	var fired: bool = await _shoot_at(player, head)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] stutzen fired %s, rounds %d, dog dead %s" % [fired, stutzen.rounds, not is_instance_valid(dog) or dog.is_queued_for_deletion()])
+	# The Leuchtpistole: a flare by a Kasermandl in the dark lights it up.
+	_game.request_drop(stutzen.get_path(), player.hand_point.global_transform, Vector3.ZERO)  # a weapon slot for it
+	await get_tree().create_timer(0.3).timeout
+	player.lamp_on = false
+	var flare_gun: WorldItem = await _give(&"leuchtpistole")
+	_game._to_peer(player.peer_id, player, &"give_ammo", [&"leucht", 3, false])
+	await get_tree().create_timer(0.2).timeout
+	player.gunner.start_reload()
+	await get_tree().create_timer(flare_gun.data.weapon.reload_seconds + 0.6).timeout
+	var kaser_at: Vector3 = _ahead(player, 8.0)
+	var kaser: Kasermandl = _game.spawn_creature(&"kasermandl", Transform3D(Basis.IDENTITY, kaser_at + Vector3.UP * 0.2)) as Kasermandl
+	kaser.host_stun(30.0)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] kasermandl in the dark: lit %s" % kaser._is_lit())
+	var shot: bool = await _shoot_at(player, kaser_at + (player.global_position - kaser_at).normalized() * 1.2)
+	await get_tree().create_timer(1.5).timeout
+	print("[scenario] flare fired %s, burning %d, kasermandl lit %s, leucht left %d" % [shot, _game.flares.size(), kaser._is_lit(), player.ammo_count(&"leucht")])
+	kaser.queue_free()
+	# A flare in the Schichtmeister's face blinds him.
+	player.gunner.start_reload()
+	await get_tree().create_timer(flare_gun.data.weapon.reload_seconds + 0.6).timeout
+	var meister: Creature = _game.spawn_creature(&"schichtmeister", Transform3D(Basis.IDENTITY, _ahead(player, 6.0) + Vector3.UP * 0.2))
+	meister.host_stun(1.0)
+	await get_tree().create_timer(0.3).timeout
+	await _shoot_at(player, meister.global_position + Vector3.UP * 1.2)
+	await get_tree().create_timer(0.8).timeout
+	print("[scenario] schichtmeister after the flare: stunned %.1f s" % meister.stunned_left)
+	meister.queue_free()
+	# Dynamit: the blast, and the roof comes down.
+	config.dynamit_roof_chance = 1.0
+	await _give(&"dynamit")
+	player.head.rotation.x = 0.2
+	player._use_cooldown = 0.0
+	player._use_active()
+	await get_tree().create_timer(config.dynamit_fuse_seconds + 1.0).timeout
+	print("[scenario] dynamit thrown, items left in slot 4: %s" % (player.inventory.slots[3] != null))
+
+
+## A Fundort boss for the scenario `kind` ("seemuada", "schiachpercht"): she wakes, fights a
+## miner who stands in her hall, then is killed and the Fundstück is free.
+func _boss_fight(kind: String) -> void:
+	var player: Player = _game.local_player()
+	var boss: Creature = _game._boss
+	for creature: Creature in _game.creatures():
+		if creature != boss:
+			creature.queue_free()
+	if boss == null:
+		print("[scenario] no boss")
+		return
+	var fundort: Chunk = _game.mine.chunks[_game.mine.layout.fundort]
+	var centre: Marker3D = fundort.find_child("Nav_C", true, false) as Marker3D
+	player.teleport(Transform3D(Basis.IDENTITY, centre.global_position + Vector3.UP * 0.1))
+	player.set_meta(&"invulnerable_until", INF)
+	player.lamp_on = true
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] boss %s, health %d, fundstueck locked %s" % [boss.data.id, boss.health, _game.fundstueck.locked])
+	for i: int in 40:
+		await get_tree().create_timer(0.5).timeout
+		if is_instance_valid(boss):
+			player.look_at(Vector3(boss.global_position.x, player.global_position.y, boss.global_position.z))
+		if kind == "seemuada" and (boss as Seemuada).state == Seemuada.State.UP and i > 16:
+			break
+	if kind == "seemuada":
+		var queen: Seemuada = boss as Seemuada
+		print("[scenario] seemuada %s, shootable %s, head x%.2f, neck x%.2f" % [Seemuada.State.keys()[queen.state], queen.can_be_shot(),
+				queen.weak_spot_mult(queen._head.global_position), queen.weak_spot_mult(queen.global_position + Vector3.UP * 0.6)])
+	_game.request_hit(boss.get_path(), 50000, player.global_position, true)
+	await get_tree().create_timer(0.8).timeout
+	print("[scenario] boss dead %s, fundstueck locked %s" % [not is_instance_valid(boss), _game.fundstueck.locked])
+
+
+## Raunacht elites: tougher than the plain ones, and a box of ammo when they die.
+func _elites() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(5.0)))
+	await get_tree().create_timer(0.5).timeout
+	var at: Vector3 = _out_of_station(14.0) + Vector3.UP * 0.3
+	var plain: Creature = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, at))
+	var elite: Creature = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, at + Vector3(1.0, 0.0, 0.0)), true)
+	plain.host_stun(10.0)
+	elite.host_stun(10.0)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] elite health %d vs %d, speed x%.2f, glow %s" % [elite.health, plain.health, elite.speed_mult(), elite.find_child("RaunachtGlow", true, false) != null])
+	var boxes: int = _ammo_boxes()
+	_game.request_hit(elite.get_path(), 5000, player.global_position)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] elite dead, ammo boxes +%d" % (_ammo_boxes() - boxes))
 
 
 ## Measures, after every other node has processed (just before drawing), how far a held gun is

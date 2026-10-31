@@ -1,12 +1,13 @@
 class_name Kasermandl
 extends Creature
-## The ghost of an old Alm herder (DESIGN.md §6). Only seen in darkness: lit by a lamp or a
-## lantern it freezes, falls silent and fades away (the weeping-angel rule). In the dark it creeps
-## after the nearest miner, and rushes when their lamp is out. A touch chills you to the bone,
-## then it slips back into the dark for a while. Counter: keep a light on it – which is a problem
-## in firedamp, where the carbide lamp has to go out.
+## The ghost of an old Alm herder (DESIGN.md §6). It only moves in darkness: caught in a lamp's
+## beam, a lantern's or a flare's light it freezes and falls silent (the weeping-angel rule) – and
+## only then can it be hurt; in the dark bullets and picks go straight through it. In the dark it
+## is a faint shape with pale eyes that creeps after the nearest miner, and rushes when their lamp
+## is out. Its touch drains the warmth out of you, then it slips back into the dark for a while.
+## How to beat it (v2): one keeps a light on it, another shoots – a flare does both.
 
-enum State { STALK, RETREAT }
+enum State { STALK, DRAIN, RETREAT }
 
 const STRIKE_DISTANCE: float = 1.3
 const LIT_CHECK_SECONDS: float = 0.15
@@ -24,22 +25,24 @@ var _spotted: Dictionary = {}
 var _materials: Array[StandardMaterial3D] = []
 var _alpha: float = 0.0
 var _breath_left: float = 0.0
+var _drain_left: float = 0.0
+var _drain_carry: float = 0.0
 
 @onready var body: Node3D = $Body
 
 
 func _ready() -> void:
 	super()
-	health = 1
+	health = scaled_health(_config.kasermandl_health)
 	_build_body()
 
 
 func _process(delta: float) -> void:
 	super(delta)
-	# Seen only in the dark: fades out under light, back in when it is dark again.
-	_alpha = move_toward(_alpha, 0.0 if net_lit else 1.0, delta * (4.0 if net_lit else 0.8))
+	# Caught in the light it stands out pale and solid; in the dark it is barely there.
+	_alpha = move_toward(_alpha, 1.0 if net_lit else 0.25, delta * (5.0 if net_lit else 0.8))
 	for material: StandardMaterial3D in _materials:
-		material.albedo_color.a = _alpha * 0.55
+		material.albedo_color.a = _alpha * 0.75
 	body.visible = _alpha > 0.01
 	body.position.y = sin(Time.get_ticks_msec() / 900.0) * 0.05
 	_breathe(delta)
@@ -73,6 +76,9 @@ func _think(delta: float) -> void:
 		if walk_to(_goal_far, _config.kasermandl_rush_speed, delta) or _strike_left <= 0.0:
 			state = State.STALK
 		return
+	if state == State.DRAIN:
+		_drain(delta)
+		return
 	_target = _nearest_player()
 	if _target == null:
 		_halt(delta)
@@ -83,9 +89,26 @@ func _think(delta: float) -> void:
 	var speed: float = _config.kasermandl_rush_speed if _target.light_range() <= 0.0 else _config.kasermandl_creep_speed
 	walk_to(_target.global_position, speed, delta)
 	if _strike_left <= 0.0 and global_position.distance_to(_target.global_position) < STRIKE_DISTANCE:
-		_strike_left = _config.kasermandl_strike_cooldown
 		say(VoiceLine.Moment.ACTION, true)
-		Game.instance.host_damage_player(_target, scaled_damage(_config.kasermandl_strike_damage))
+		_drain_left = _config.kasermandl_drain_seconds
+		_drain_carry = 0.0
+		state = State.DRAIN
+
+
+## Its cold hand on the miner: health drains away while it stays dark and they stay close.
+func _drain(delta: float) -> void:
+	_halt(delta)
+	_drain_left -= delta
+	if _target == null or not is_instance_valid(_target) or not _target.alive or global_position.distance_to(_target.global_position) > STRIKE_DISTANCE + 0.8:
+		_drain_left = 0.0
+	else:
+		_drain_carry += scaled_damage(roundi(_config.kasermandl_drain_dps)) * delta
+		if _drain_carry >= 4.0:
+			var due: int = floori(_drain_carry)
+			_drain_carry -= due
+			Game.instance.host_damage_player(_target, due)
+	if _drain_left <= 0.0:
+		_strike_left = _config.kasermandl_strike_cooldown
 		_goal_far = far_point(18.0)
 		state = State.RETREAT
 
@@ -97,6 +120,8 @@ func _is_lit() -> bool:
 		# In the beam (or the glow right around the miner), with nothing in between.
 		if player.lights_point(chest, _config.kasermandl_lamp_share) and _clear(player.beam.global_position, chest):
 			return true
+	if Game.instance.flare_lights(chest):
+		return true
 	for light: OmniLight3D in Game.instance.mine.lights:
 		if is_instance_valid(light) and light.is_visible_in_tree() and light.global_position.distance_to(chest) < _config.kasermandl_lantern_range \
 				and _clear(light.global_position, chest):
@@ -127,9 +152,24 @@ func _hush() -> void:
 	voice.stop()
 
 
-func host_hit(_damage: int, _from: Vector3) -> void:
+## In the light it can be hurt; in the dark everything goes straight through it.
+func host_hit(damage: int, from: Vector3) -> void:
 	if not net_lit:
-		say(VoiceLine.Moment.HIT, true)  # the pick goes right through it
+		say(VoiceLine.Moment.HIT, true)
+		return
+	if host_damage(damage, from, "poof"):
+		return
+	say(VoiceLine.Moment.HIT)
+
+
+## A flare lights it up before it hurts it.
+func host_flared(damage: int, from: Vector3) -> void:
+	net_lit = true
+	super(damage, from)
+
+
+func can_be_shot() -> bool:
+	return net_lit
 
 
 func _build_body() -> void:

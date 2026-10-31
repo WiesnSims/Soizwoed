@@ -1,10 +1,11 @@
 class_name Throwable
 extends WorldItem
 ## Something you light and throw (DESIGN.md §7): the Böller (a bang that draws creatures and
-## scares Bergmandl) and the Rauchbombe "Bierzelt" (a stinking cloud creatures keep out of).
+## scares Bergmandl), the Rauchbombe "Bierzelt" (a stinking cloud creatures keep out of) and
+## Dynamit (a big blast that often brings the roof down).
 ## The host lights it when thrown, every peer hears the fuse, the host sets it off.
 
-enum Effect { BANG, SMOKE }
+enum Effect { BANG, SMOKE, DYNAMIT }
 
 @export var effect: Effect = Effect.BANG
 
@@ -35,7 +36,12 @@ func interaction_text(player: Player) -> String:
 
 
 func fuse_seconds() -> float:
-	return Balance.config.boeller_fuse_seconds if effect == Effect.BANG else Balance.config.rauchbombe_fuse_seconds
+	match effect:
+		Effect.BANG:
+			return Balance.config.boeller_fuse_seconds
+		Effect.DYNAMIT:
+			return Balance.config.dynamit_fuse_seconds
+	return Balance.config.rauchbombe_fuse_seconds
 
 
 ## Host: thrown from `at` with `velocity`; goes off when the fuse has burnt down.
@@ -45,10 +51,13 @@ func host_throw(at: Transform3D, velocity: Vector3) -> void:
 	await get_tree().create_timer(fuse_seconds()).timeout
 	if not is_inside_tree() or state != State.FREE:
 		return
-	if effect == Effect.BANG:
-		Game.instance.host_bang(global_position)
-	else:
-		Game.instance.host_smoke(global_position)
+	match effect:
+		Effect.BANG:
+			Game.instance.host_bang(global_position)
+		Effect.DYNAMIT:
+			Game.instance.host_dynamit(global_position)
+		_:
+			Game.instance.host_smoke(global_position)
 	host_vanish()
 
 

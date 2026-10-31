@@ -103,7 +103,39 @@ def dry_click_flinte(v):
     return d.mix(pitched(take("dry_click_1"), 0.7), thud(260, 0.01, 0.3))
 
 
+def shot_stutzen(v):
+    """Mannlicher-Stutzen: the bolt-action takes (Tikka T3, two cuts, three variants). A sharp,
+    high-pressure crack: less boom than the Flinte, more slaps and a longer tail."""
+    return mine_shot(take(f"shot_stutzen_{[1, 2, 1][v]}"), [1.0, 0.97, 1.03][v], [78, 70, 84][v], 0.07, 0.7, 0.45, 16, 1.7)
+
+
+def bolt_cycle(v):
+    """Working the Stutzen's bolt after a shot: up and back (the case rings on the rock), forward
+    and down."""
+    case = d.mix(click(2600, 0.01, 0.4, ring=0.3), (0.06, click(2300, 0.01, 0.25, ring=0.3)))
+    return d.mix(take("bolt_open_1"), (0.2, take("bolt_close_1")), (0.32, case))
+
+
+def round_in(v):
+    """A rifle round pressed down into the magazine through the open action."""
+    slide = d.bandpass(d.noise(0.09), 1500, 5000) * d.env_points(0.09, [(0, 0), (0.02, 0.6), (0.09, 0)])
+    return d.mix(slide * 0.5, (0.08, click(2100 + 150 * v, 0.006, 0.8, ring=0.35)), (0.085, thud(400, 0.01, 0.3)))
+
+
+def shot_leucht(v):
+    """The Leuchtpistole: a big, soft, low-pressure "plopp" and the flare's charge catching with
+    a hiss as it leaves."""
+    plop = d.lowpass(pitched(take("shot_pistole_1"), 0.55), 1600) * 0.6
+    hiss = d.bandpass(d.noise(0.9), 2200, 7000) * d.env_points(0.9, [(0, 0), (0.03, 0.5), (0.9, 0)])
+    body = d.mix(boom(105, 0.05) * 0.9, plop, (0.02, hiss * 0.4))
+    return d.fade(d.reverb(d.drive(d.normalize(body), 1.6), 0.6, 0.25, 2400, 0.012), 0.0005, 0.4)
+
+
 SOUNDS = {
+    "shot_stutzen": (shot_stutzen, 3),
+    "bolt_cycle": (bolt_cycle, 1),
+    "round_in": (round_in, 3),
+    "shot_leucht": (shot_leucht, 1),
     "shot_pistole": (shot_pistole, 3),
     "shot_flinte": (shot_flinte, 4),
     "flinte_open": (flinte_open, 1),

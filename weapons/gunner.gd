@@ -38,7 +38,7 @@ func _ready() -> void:
 ## The gun in the selected pocket, if the hands are free for it (or the miner is downed –
 ## then only a light gun).
 func weapon_item() -> WorldItem:
-	if player.inventory.hands_busy():
+	if player.inventory.hands_busy() or not player.can_act():
 		return null
 	var item: WorldItem = player.inventory.slots[player.inventory.selected] as WorldItem
 	if item == null or item.data.weapon == null or (player.downed and not item.data.weapon.usable_downed):
@@ -106,15 +106,23 @@ func fire() -> bool:
 	var forward: Vector3 = -player.camera.global_basis.z
 	var moving: bool = Vector2(player.velocity.x, player.velocity.z).length() > 0.6
 	var cone: float = WeaponMath.spread(weapon, aiming, moving, player.crouching)
+	var game: Game = player.game()
+	var muzzle: Vector3 = item.global_transform * weapon.muzzle
+	if weapon.projectile:
+		# A flare: it flies and burns; the host's copy decides what it hits.
+		var direction: Vector3 = WeaponMath.pellet_directions(forward, cone, 1, _rng)[0]
+		game.request_flare.rpc_id(1, item.get_path(), item.rounds, muzzle, origin, direction * Balance.config.flare_speed + player.velocity * 0.5)
+		Audio.play_at(weapon.sound, muzzle, &"SFX", -1.0, 60.0, randf_range(0.97, 1.03))
+		_after_shot(item, weapon)
+		return true
 	var space: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
 	var creature_damage: Dictionary = {}  # Creature -> int
+	var creature_weak: Dictionary = {}  # Creature -> true when a pellet hit its weak spot
 	var player_damage: Dictionary = {}  # peer id -> int
 	var ends: PackedVector3Array = []
 	var flesh: PackedByteArray = []
 	for direction: Vector3 in WeaponMath.pellet_directions(forward, cone, weapon.pellets, _rng):
-		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(origin, origin + direction * weapon.range, RAY_MASK)
-		query.exclude = [player.get_rid()]
-		var hit: Dictionary = space.intersect_ray(query)
+		var hit: Dictionary = _ray(space, origin, origin + direction * weapon.range)
 		if hit.is_empty():
 			ends.append(origin + direction * weapon.range)
 			flesh.append(0)
@@ -126,23 +134,53 @@ func fire() -> bool:
 		var other: Player = hit.collider as Player
 		flesh.append(1 if creature != null or other != null else 0)
 		if creature != null:
-			creature_damage[creature] = int(creature_damage.get(creature, 0)) + damage
+			var mult: float = creature.weak_spot_mult(at)
+			if mult > 1.0:
+				creature_weak[creature] = true
+			creature_damage[creature] = int(creature_damage.get(creature, 0)) + roundi(damage * mult)
 		elif other != null and other != player:
 			player_damage[other.peer_id] = int(player_damage.get(other.peer_id, 0)) + damage
-	var game: Game = player.game()
 	# No hit marker (owner decision): a hit shows as blood on the creature and its cry.
 	for creature: Creature in creature_damage:
-		game.request_hit.rpc_id(1, creature.get_path(), int(creature_damage[creature]), player.global_position)
+		game.request_hit.rpc_id(1, creature.get_path(), int(creature_damage[creature]), player.global_position, creature_weak.has(creature))
 	for peer: int in player_damage:
 		game.request_shoot_player.rpc_id(1, peer, int(player_damage[peer]))
-	var muzzle: Vector3 = item.global_transform * weapon.muzzle
 	ShotFx.play(muzzle, ends, flesh, weapon.sound, false)  # the gun in hand shows its own flash
 	game.request_fire.rpc_id(1, item.get_path(), item.rounds, muzzle, ends, flesh)
+	_after_shot(item, weapon)
+	return true
+
+
+## The ray of one pellet: through anything bullets cannot touch (a Kasermandl in the dark).
+func _ray(space: PhysicsDirectSpaceState3D, from: Vector3, to: Vector3) -> Dictionary:
+	var exclude: Array[RID] = [player.get_rid()]
+	for attempt: int in 4:
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(from, to, RAY_MASK)
+		query.exclude = exclude
+		var hit: Dictionary = space.intersect_ray(query)
+		var creature: Creature = _creature_of(hit.collider as Node) if not hit.is_empty() else null
+		if creature == null or creature.can_be_shot():
+			return hit
+		exclude.append(creature.get_rid())
+	return {}
+
+
+## Kick, the gun in hand, the view shake, and a bolt-action's bolt being worked.
+func _after_shot(item: WorldItem, weapon: WeaponData) -> void:
+	if weapon.cycle_sound != "" and item.rounds > 0:
+		get_tree().create_timer(weapon.cycle_delay).timeout.connect(func() -> void:
+			if is_instance_valid(player) and player.alive:
+				Audio.play_at(weapon.cycle_sound, player.camera.global_position, &"SFX", -3.0, 12.0))
 	_kick(weapon.recoil)
 	view.fire(item)
 	if weapon.shake > 0.0:
 		player.shake(weapon.shake)
-	return true
+
+
+## Grabbed or thrown down: no aiming, the reload is lost.
+func cancel() -> void:
+	aiming = false
+	_stop_reload()
 
 
 func _creature_of(node: Node) -> Creature:

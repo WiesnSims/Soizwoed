@@ -349,3 +349,25 @@ UPG_GRUBENHELM,Grubenhelm,Miner's helmet
 UPG_GRUBENHELM_DESC,"30 Panzer mehr für jeden, wie da Lederschurz.","30 more armour for everyone, like the apron."
 UPG_REFLEKTOR,Reflektor,Reflector
 UPG_REFLEKTOR_DESC,Lampn leuchtn 20 % weiter pro Stufe.,Lamps reach 20 % further per level.
+ITEM_MANNLICHER_STUTZEN,Mannlicher-Stutzen,Mannlicher carbine
+ITEM_MANNLICHER_STUTZEN_DESC,"Repetierer, 5 Schuss. Haut gwaltig ein, trifft weit – zielts auf de schwochn Stelln.","Bolt-action, 5 rounds. Hits very hard and far – aim for the weak spots."
+ITEM_LEUCHTPISTOLE,Leuchtpistoln,Flare gun
+ITEM_LEUCHTPISTOLE_DESC,"A Leuchtkugl: brennt 20 Sekundn, zündt Viecher und Grubngas an, hoit des Kasermandl im Liacht fest.","One flare: burns 20 seconds, sets creatures and firedamp alight, holds the Kasermandl frozen in its light."
+ITEM_DYNAMIT,Dynamit,Dynamite
+ITEM_DYNAMIT_DESC,Klick: anzündn und schmeißn. Reißt ois weg – und oft kummt de Deckn mit oba.,Click: light and throw. Blows everything away – and often brings the roof down too.
+ITEM_GEWEHRPATRONEN,Schachtl Gewehrpatronen,Box of rifle rounds
+ITEM_GEWEHRPATRONEN_DESC,6 Patronen für'n Stutzen.,6 rounds for the carbine.
+ITEM_LEUCHTKUGELN,Schachtl Leuchtkugeln,Box of flares
+ITEM_LEUCHTKUGELN_DESC,3 Leuchtkugeln für de Leuchtpistoln.,3 flares for the flare gun.
+UPG_STUTZEN_DAMAGE,Stutzen: Teilmantel,Carbine: soft-point rounds
+UPG_STUTZEN_DAMAGE_DESC,20 % mehr Schodn pro Stufe.,20 % more damage per level.
+UPG_STUTZEN_RELOAD,Stutzen: Ladestreifen,Carbine: stripper clips
+UPG_STUTZEN_RELOAD_DESC,25 % schneller nochladn.,Reloads 25 % faster.
+UPG_CAP_GEWEHR,Patronenleiste,Cartridge belt
+UPG_CAP_GEWEHR_DESC,10 Gewehrpatronen mehr tragn pro Stufe.,Carry 10 more rifle rounds per level.
+UPG_CAP_LEUCHT,Leuchtkugltaschn,Flare pouch
+UPG_CAP_LEUCHT_DESC,3 Leuchtkugeln mehr tragn.,Carry 3 more flares.
+CREATURE_SEEMUADA,D'Seemuada,D'Seemuada (the lake's mother)
+CREATURE_SCHIACHPERCHT,Die Schiachpercht,Die Schiachpercht (the ugly Percht)
+MSG_SEEMUADA_AWAKE,Im See rührt si wos! D'Seemuada is aufgwacht!,Something stirs in the lake! D'Seemuada has woken up!
+MSG_PLAYER_PINNED,%s hot's Salzweibl! Schiaßts es weg!,The Salzweibl has %s! Shoot it off!

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" format=3]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_data"]
+[ext_resource type="PackedScene" path="res://items/scenes/leuchtkugeln.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"leuchtkugeln"
+name_key = "ITEM_LEUCHTKUGELN"
+kind = 3
+weight_class = 0
+price = 50
+spawn_weight = 0.5
+scene = ExtResource("2_scene")
+ammo_type = &"leucht"
+ammo_amount = 3
