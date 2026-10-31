@@ -5,6 +5,7 @@ bass and chords in the left. Written as a seamless loop."""
 import numpy as np
 
 import dsp as d
+from sfx import cowbell, thud
 
 SR = d.SR
 BPM = 152.0
@@ -94,3 +95,84 @@ def stubenmusi(_v):
     tail = x[loop_len:]
     body[:len(tail)] += tail[:len(body)]
     return d.normalize(body, 0.8)
+
+
+# --- M10: boss stings (DESIGN.md §10: the only music in the mine) ------------------------------------
+# A few seconds when a boss wakes, and one when a boss falls. Played flat (not from a place) on the
+# Music bus; built with the mine's long room so they sound as if they came out of the rock.
+
+def brass(midi, seconds, level=1.0, dark=1.0):
+    """A brass note: buzzy harmonics that open up as the note swells, a breath of air on top."""
+    f = freq(midi)
+    n = d.n_of(seconds)
+    swell = d.env_points(seconds, [(0, 0), (min(0.08, seconds * 0.3), 1.0), (seconds * 0.7, 0.85), (seconds, 0)])[:n]
+    bright = 0.45 + 0.35 * swell
+    x = d.harmonics(f, seconds, [1.0, 0.8, 0.65, 0.5, 0.38, 0.28, 0.2, 0.14, 0.1, 0.07], bright)[:n]
+    x = d.lowpass(x, 1800.0 * dark) + d.bandpass(d.noise(seconds), f * 2, min(f * 8, 9000))[:n] * 0.04
+    return x * swell * level
+
+
+def drum(level=1.0, deep=1.0):
+    """A big low drum (a Perchtenlauf drum or a Blasmusik bass drum)."""
+    return d.mix(thud(58 * deep, 0.14, 1.0), d.lowpass(d.noise(0.5), 600) * d.env_exp(0.5, 0.04) * 0.4) * level
+
+
+def room(x, seconds=3.0):
+    return d.normalize(d.reverb(x, seconds, 0.45, damp=2600.0, pre=0.03), 0.8)
+
+
+def sting_bergkini(_v):
+    """Da Bergkini: a crooked little Blasmusik fanfare in minor – tuba oom-pa, a bass drum and a
+    trumpet call that ends a semitone too low, like a king laughing at you."""
+    beat = 60.0 / 132.0
+    track = np.zeros(d.n_of(beat * 12 + 4.0))
+    for i, note in enumerate([38, 45, 38, 45, 37, 44, 38, 38]):
+        place(track, brass(note, beat * 0.7, 0.9, 0.6), i * beat)
+        if i % 2 == 0:
+            place(track, drum(0.7), i * beat)
+    call = [(62, 0.5), (65, 0.5), (69, 1.0), (68, 0.5), (65, 0.5), (61, 2.5)]
+    t = beat * 2
+    for note, beats in call:
+        place(track, brass(note, beats * beat * 0.95, 0.55, 1.2), t)
+        t += beats * beat
+    place(track, d.mix(drum(1.0), cowbell(780, 0.8, 0.25)), beat * 8)
+    return room(track, 2.6)
+
+
+def sting_seemuada(_v):
+    """D'Seemuada: something huge rising in black water – a sub swell, a low horn cluster that
+    slides down, bubbles of glassy harmonics, one deep blow."""
+    s = 7.0
+    swell = d.sine(d.glide(s, 36, 31), s) * d.env_points(s, [(0, 0), (2.5, 1.0), (5.5, 0.6), (7.0, 0)])
+    horns = d.mix(*[(0.6 + i * 0.25, brass(m, 5.0, 0.35, 0.45)) for i, m in enumerate([33, 40, 46])])
+    glass = d.mix(*[(d.rng.uniform(0.3, 5.0), d.partials(1.2, [(d.rng.uniform(900, 2400), 0.12, 0.4)])) for _ in range(9)])
+    blow = d.mix((2.4, drum(1.0, 0.75)), (2.42, d.lowpass(d.noise(1.5), 300) * d.env_exp(1.5, 0.3) * 0.5))
+    return room(d.mix(swell * 0.9, horns, glass, blow), 3.5)
+
+
+def sting_schiachpercht(_v):
+    """Die Schiachpercht: a Perchtenlauf breaking loose – bells clanging out of time, heavy drums
+    speeding up, a dissonant horn blast over it all."""
+    track = np.zeros(d.n_of(7.0))
+    t = 0.0
+    gap = 0.55
+    while t < 4.2:
+        place(track, drum(0.9, 0.9), t)
+        t += gap
+        gap = max(0.2, gap * 0.86)
+    for _ in range(28):
+        at = d.rng.uniform(0.0, 4.6)
+        place(track, cowbell(d.rng.uniform(320, 700), 0.6, d.rng.uniform(0.15, 0.4)), at)
+    blast = d.mix(brass(41, 2.6, 0.7, 0.9), brass(47, 2.6, 0.55, 0.9), brass(48, 2.6, 0.4, 0.9))
+    place(track, blast, 3.9)
+    place(track, drum(1.2, 0.7), 3.9)
+    return room(track, 3.0)
+
+
+def sting_boss_down(_v):
+    """A boss falls: the drum stops, one low horn chord resolves upward into major and dies away
+    in the rock – relief, not triumph (the way back is still ahead)."""
+    s = 6.0
+    first = d.mix(brass(41, 2.2, 0.6, 0.7), brass(44, 2.2, 0.45, 0.7), brass(48, 2.2, 0.35, 0.7))
+    second = d.mix(brass(41, 3.6, 0.6, 0.8), brass(45, 3.6, 0.45, 0.8), brass(48, 3.6, 0.35, 0.8), brass(53, 3.6, 0.25, 0.9))
+    return room(d.mix(drum(0.8), (0.1, first), (1.9, second)), 3.5)

@@ -16,8 +16,8 @@ extends Resource
 @export var ehrenzeichen_boss: int = 1
 ## Rückweg-timer (DESIGN.md §2): a base plus seconds per metre of the way from the Fundort to
 ## the lift, shrinking per shift down to a share; the extra share for small crews.
-@export var rueckweg_base_seconds: float = 90.0
-@export var rueckweg_seconds_per_metre: float = 1.25
+@export var rueckweg_base_seconds: float = 60.0
+@export var rueckweg_seconds_per_metre: float = 1.1
 @export var rueckweg_shrink_per_shift: float = 0.04
 @export var rueckweg_min_share: float = 0.65
 @export var rueckweg_bonus_by_players: Array[float] = [0.4, 0.15, 0.0, 0.0]
@@ -43,14 +43,14 @@ extends Resource
 @export var boss_health_by_players: Array[float] = [0.5, 0.7, 0.85, 1.0]
 @export var boss_health_per_shift: float = 0.12
 ## Creature health and damage grow by these shares per shift, up to these factors.
-@export var enemy_health_per_shift: float = 0.05
+@export var enemy_health_per_shift: float = 0.04
 @export var enemy_health_max: float = 2.0
 @export var enemy_damage_per_shift: float = 0.04
 @export var enemy_damage_max: float = 1.6
 ## Ammo boxes in the mine: per crew size (per miner) and scarcer every shift down to a share.
 @export var ammo_found_by_players: Array[float] = [1.2, 1.0, 0.9, 0.8]
-@export var ammo_scarcity_per_shift: float = 0.05
-@export var ammo_scarcity_min: float = 0.5
+@export var ammo_scarcity_per_shift: float = 0.035
+@export var ammo_scarcity_min: float = 0.6
 
 @export_group("Shift")
 @export var shift_base_seconds: float = 780.0
@@ -271,6 +271,8 @@ extends Resource
 
 @export_group("Da Bergkini")
 @export var bergkini_health: int = 420
+## A hit on his head under the crown (his weak spot).
+@export var bergkini_head_mult: float = 2.0
 @export var bergkini_speed: float = 3.0
 ## It wakes when a miner comes this close in sight, or anyone hits it.
 @export var bergkini_wake_distance: float = 16.0

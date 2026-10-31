@@ -138,6 +138,10 @@ func _fight(delta: float) -> void:
 		_set_state(State.SINK)
 
 
+func boss_fighting() -> bool:
+	return state != State.SLEEP
+
+
 func _wake() -> void:
 	if state != State.SLEEP:
 		return

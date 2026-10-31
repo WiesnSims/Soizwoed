@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://enemies/tatzelwurm/tatzelwurm.tscn" id="2_scene"]
 
 [resource]
+blood_pool = 1.8
 script = ExtResource("1_data")
 id = &"tatzelwurm"
 name_key = "CREATURE_TATZELWURM"

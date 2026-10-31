@@ -6,7 +6,8 @@ extends SceneTree
 ## The same estimates back tests/test_balance.gd. They are expectations over the loot table (an
 ## average depth of AVERAGE_DEPTH steps, relics counted with how often their chunk turns up) and
 ## an estimate of the way back (the main path, cell centre to cell centre, times WAY_FACTOR), not
-## a simulation of real mines.
+## a simulation of real mines. Below that: hits to kill per creature and gun, and the ammo
+## economy of a shift.
 
 const AVERAGE_DEPTH: int = 3
 const MAX_DEPTH: int = 6
@@ -41,7 +42,67 @@ func _initialize() -> void:
 						shift_value(config, catalog, section, shift, players), config.fundstueck_bonus(shift, rule.loot_value_mult),
 						way, config.rueckweg_seconds(shift, players, way), carry_seconds(config, way, players == 1)]
 			print(line)
+	print_fights(config)
 	quit()
+
+
+## Hits to kill per creature and gun (no upgrades, inside the falloff range): body / weak spot,
+## for a few shifts and crew sizes – and the ammo economy of a shift: what the crew's pockets and
+## the mine's boxes hold against the creature health of the shift's budget and its waves.
+static func print_fights(config: BalanceConfig) -> void:
+	var guns: Array[WeaponData] = []
+	var gun_names: PackedStringArray = []
+	for id: String in ["dienstpistole", "salzschrot_flinte", "mannlicher_stutzen"]:
+		var data: ItemData = load("res://items/data/%s.tres" % id)
+		guns.append(data.weapon)
+		gun_names.append(id.get_slice("_", 0))
+	# id, health, body multiplier, weak-spot multiplier
+	var creatures: Array = [
+		["grubenhund", config.grubenhund_health, 1.0, config.weak_spot_mult],
+		["bergmandl", config.bergmandl_health, 1.0, 1.0],
+		["kasermandl", config.kasermandl_health, 1.0, 1.0],
+		["salzweibl", config.salzweibl_health, 1.0, 1.0],
+		["tatzelwurm", config.tatzelwurm_health, config.tatzelwurm_scale_mult, config.tatzelwurm_throat_mult],
+		["percht", config.percht_health, config.percht_armour_mult, config.percht_mask_mult],
+	]
+	var bosses: Array = [
+		["bergkini", config.bergkini_health, 1.0, config.bergkini_head_mult],
+		["seemuada", config.seemuada_health, config.seemuada_neck_mult, config.seemuada_head_mult],
+		["schiachpercht", config.schiachpercht_health, config.percht_armour_mult, config.percht_mask_mult],
+	]
+	print("\nhits to kill (body / weak spot; pistol, Flinte shell with every pellet in, Stutzen):")
+	for players: int in [1, 4]:
+		for shift: int in [0, 4, 9]:
+			var line: String = "  %d miner(s), shift %2d:" % [players, shift + 1]
+			for c: Array in creatures + bosses:
+				var boss: bool = bosses.has(c)
+				var health: float = float(c[1]) * (config.boss_health_mult(shift, players) if boss else config.enemy_health_mult(players, shift))
+				line += "  %s %d hp" % [c[0], roundi(health)]
+				for i: int in guns.size():
+					var hit: float = guns[i].damage * guns[i].pellets
+					line += " %s %s/%s" % [gun_names[i].left(2), _hits(health, hit * float(c[2])), _hits(health, hit * float(c[3]))]
+			print(line)
+	print("\nammo economy per shift (pistol damage only, %d %% of shots hitting; waves for the expected way back):" % roundi(HIT_SHARE * 100.0))
+	var box: ItemData = load("res://items/data/pistolenpatronen.tres")
+	var dog: float = float(config.grubenhund_health)
+	for players: int in [1, 2, 4]:
+		for shift: int in [0, 2, 4, 6, 9]:
+			var waves: int = ceili(EXPECTED_ALARM_SECONDS / config.wave_seconds)
+			var creature_health: float = dog * config.enemy_health_mult(players, shift) * (config.enemy_budget(shift, players) + waves * config.wave_budget(shift, players))
+			var rounds: int = config.ration_pistole * players + config.ammo_box_count(shift, players) * box.ammo_amount
+			var damage: float = rounds * guns[0].damage * HIT_SHARE
+			print("  %d miner(s), shift %2d: creature health ~%5.0f (%d waves), rounds %3d (ration + %d boxes) = %5.0f damage -> %3.0f %%" % [players, shift + 1,
+					creature_health, waves, rounds, config.ammo_box_count(shift, players), damage, damage / creature_health * 100.0])
+
+
+## Guesses for the economy table: share of pistol shots that hit, time between the alarm and the
+## cage (fights included).
+const HIT_SHARE: float = 0.6
+const EXPECTED_ALARM_SECONDS: float = 120.0
+
+
+static func _hits(health: float, per_hit: float) -> String:
+	return "-" if per_hit <= 0.0 else str(ceili(health / per_hit))
 
 
 ## Estimated length of the way from the Fundort to the lift (m) in shift `shift`.

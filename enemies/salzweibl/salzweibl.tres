@@ -61,6 +61,7 @@ moment = 3
 stream = ExtResource("s7")
 
 [resource]
+blood_pool = 0.0
 script = ExtResource("1_data")
 id = &"salzweibl"
 name_key = "CREATURE_SALZWEIBL"

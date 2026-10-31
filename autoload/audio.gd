@@ -6,6 +6,8 @@ extends Node
 const BUSES: PackedStringArray = ["Music", "SFX", "Creatures", "Voice", "Ambience"]
 const ROOT: String = "res://assets/audio/"
 const FOLDERS: PackedStringArray = ["sfx", "ambience"]
+## The stings sit a little under the mine's sounds: a shot must still be louder.
+const STING_DB: float = -4.0
 
 ## Setting "Gegner reden": creature speech on/off. Non-speech creature sounds always play.
 var creature_lines_enabled: bool = true
@@ -13,6 +15,7 @@ var creature_lines_enabled: bool = true
 var voice_open_mic: bool = false
 
 var _variants: Dictionary = {}  # name -> Array[AudioStream]
+var _sting: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -167,6 +170,26 @@ func play_on(player: AudioStreamPlayer3D, sound: String, pitch_jitter: float = 0
 	player.stream = audio
 	player.pitch_scale = 1.0 + randf_range(-pitch_jitter, pitch_jitter)
 	player.play()
+
+
+## A music sting (DESIGN.md §10: the bosses' stings are the only music in the mine), flat on the
+## Music bus. A new sting fades out the one still playing.
+func play_sting(sting: String) -> void:
+	var audio: AudioStream = stream("music/" + sting)
+	if audio == null:
+		return
+	if is_instance_valid(_sting):
+		var old: AudioStreamPlayer = _sting
+		var fade: Tween = old.create_tween()
+		fade.tween_property(old, "volume_db", -40.0, 0.6)
+		fade.tween_callback(old.queue_free)
+	_sting = AudioStreamPlayer.new()
+	_sting.stream = audio
+	_sting.bus = &"Music"
+	_sting.volume_db = STING_DB
+	add_child(_sting)
+	_sting.finished.connect(_sting.queue_free)
+	_sting.play()
 
 
 func play_ui(sound: String) -> void:

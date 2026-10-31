@@ -45,6 +45,9 @@ extends Resource
 ## and snapped shut when the reload ends or is cut short.
 @export var reload_open_sound: String = ""
 @export var reload_close_sound: String = ""
+## A reload from empty ends by racking the slide (the pistol), at `rack_share` of the reload.
+@export var rack_sound: String = ""
+@export var rack_share: float = 0.7
 ## Pulling the trigger on an empty gun.
 @export var dry_sound: String = "dry_click"
 ## Can be fired while downed (the pistol).

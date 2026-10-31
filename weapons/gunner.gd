@@ -206,6 +206,8 @@ func start_reload() -> void:
 		_play_later(weapon.reload_sound, weapon.reload_seconds * 0.5)
 	else:
 		Audio.play_at(weapon.reload_sound, player.camera.global_position, &"SFX", -4.0, 12.0)
+	if weapon.rack_sound != "" and item.rounds == 0:
+		_play_later(weapon.rack_sound, weapon.reload_seconds * weapon.rack_share)
 
 
 func _tick_reload(delta: float, item: WorldItem) -> void:

@@ -9,6 +9,10 @@ extends Resource
 @export var scene: PackedScene
 ## Spoken lines; empty for creatures that do not talk (Tatzelwurm).
 @export var voice_lines: Array[VoiceLine] = []
+## Width of the blood pool where it dies (m; 0: it does not bleed – the Salzweibl is salt).
+@export var blood_pool: float = 1.0
+## Bosses: the music sting (assets/audio/music) when it starts to fight (DESIGN.md §10).
+@export var sting: String = ""
 
 
 func lines_for(moment: VoiceLine.Moment) -> Array[VoiceLine]:

@@ -52,6 +52,8 @@ def jobs():
             file = f"{name}_{v + 1}.ogg" if variants > 1 else f"{name}.ogg"
             yield name, AUDIO / folder / file, fn, v, name in sfx.LOOPS
     yield "stubenmusi", AUDIO / "music" / "stubenmusi.ogg", music.stubenmusi, 0, True
+    for sting in ["sting_bergkini", "sting_seemuada", "sting_schiachpercht", "sting_boss_down"]:
+        yield sting, AUDIO / "music" / f"{sting}.ogg", getattr(music, sting), 0, False
     if voices.espeak():
         for folder, name, fn in voices.voice_jobs():
             yield name, AUDIO / folder / f"{name}.ogg", fn, 0, False

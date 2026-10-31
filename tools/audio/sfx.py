@@ -697,6 +697,40 @@ def bell_windup(v):
     return cave(d.mix(rattle, hum), 1.6, 0.35)
 
 
+# --- M10: impacts and spawn holes ---------------------------------------------------------------------
+
+def impact_rock(v):
+    """A bullet striking salt rock: a hard chip, grit pattering down, a short dusty room."""
+    s = 0.6
+    chip = d.mix(click(2800 + 400 * v, 0.004, 1.0, ring=0.15), thud(300 + 60 * v, 0.008, 0.5))
+    grit = d.mix(*[(d.rng.uniform(0.03, 0.4), click(4200 + d.rng.uniform(-1500, 1500), 0.002, d.rng.uniform(0.08, 0.25))) for _ in range(9)])
+    return cave(d.mix(chip, grit, d.bandpass(d.noise(s), 1500, 6000) * d.env_exp(s, 0.03) * 0.3), 0.9, 0.3)
+
+
+def impact_wood(v):
+    """A bullet going into old timber: a dull knock and a splintering crack."""
+    knock = d.mix(*[g * d.resonator(np.pad(np.array([1.0]), (0, d.n_of(0.25))), f, q) for f, q, g in WOOD])
+    knock = d.normalize(knock, 0.8)
+    return cave(d.mix(knock, click(1700 + 300 * v, 0.006, 0.7), (0.01, stick_slip(0.06, 400, WOOD, 0.35))), 0.8, 0.25)
+
+
+def impact_metal(v):
+    """A bullet off iron: a clang and a ricochet whining away."""
+    s = 0.7
+    clang = d.partials(0.5, [(1450 + 120 * v, 0.6, 0.12), (2380 + 90 * v, 0.4, 0.08), (3900, 0.25, 0.05)])
+    whine = d.sine(d.glide(s, 3600 + 500 * v, 1500, 0.7), s) * d.env_points(s, [(0, 0), (0.03, 0.4), (0.5, 0.12), (0.7, 0)])
+    return cave(d.mix(click(5000, 0.003, 0.9), clang, (0.02, whine * (0.9 if v != 1 else 0.2))), 1.1, 0.35)
+
+
+def hole_burst(v):
+    """Something breaking out of a hole in the rock: a crack, rubble spilling, a scrabble."""
+    s = 1.4
+    crack = d.mix(click(1200, 0.02, 1.0, ring=0.2), thud(70, 0.12, 1.0))
+    spill = d.bandpass(d.noise(s), 300, 3000) * d.env_points(s, [(0, 0), (0.04, 1), (0.5, 0.35), (1.4, 0)])
+    stones = d.mix(*[(d.rng.uniform(0.05, 1.0), thud(180 + d.rng.uniform(0, 280), 0.02, 0.35)) for _ in range(8)])
+    return cave(d.mix(crack, spill * 0.45, stones), 1.8, 0.4)
+
+
 SOUNDS = {
     "flare_burn": (flare_burn, 1),
     "flare_hiss": (flare_hiss, 1),
@@ -780,6 +814,10 @@ SOUNDS = {
     "rumble": (rumble, 2),
     "mandl_steps": (mandl_steps, 3),
     "poof": (poof, 1),
+    "impact_rock": (impact_rock, 3),
+    "impact_wood": (impact_wood, 2),
+    "impact_metal": (impact_metal, 3),
+    "hole_burst": (hole_burst, 2),
 }
 LOOPS = {"percht_bells", "lamp_hiss", "lift_motor", "cart_rattle", "tatzel_scrape", "boeller_fuse", "radio_static", "row", "flare_burn"}
 AMBIENCE = {"drip", "creak", "rumble", "deep_groan", "stone_settle", "water_lap"}

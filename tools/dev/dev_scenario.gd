@@ -218,6 +218,8 @@ func run(game: Game, scenario: String) -> void:
 			await _overtime_mine()
 		"weapons":
 			await _weapons()
+		"impacts":
+			await _impacts()
 		"seemuada", "schiachpercht":
 			await _boss_fight(scenario)
 		"elites":
@@ -1738,6 +1740,69 @@ func _ahead(player: Player, metres: float) -> Vector3:
 			best_gap = gap
 			best = point
 	return best
+
+
+## M10 feel: what the mine's bodies are made of (rock, timber, iron), a shot leaving its hole, a
+## dead dog its pool, Da Bergkini's head, and a weapon coming up when taken in hand.
+func _impacts() -> void:
+	for creature: Creature in _game.creatures():
+		creature.queue_free()
+	var player: Player = _game.local_player()
+	player.set_meta(&"invulnerable_until", INF)
+	var counts: Array[int] = [0, 0, 0]
+	var bodies: Array[Node] = _game.mine.find_children("*", "StaticBody3D", true, false)
+	bodies.append(_game.mine_cage.get_node(^"Floor"))
+	for body: Node in bodies:
+		counts[ImpactFx.surface_of(body)] += 1
+	print("[scenario] surfaces: rock %d, wood %d, metal %d, cage floor %s" % [counts[0], counts[1], counts[2],
+			ImpactFx.Surface.keys()[ImpactFx.surface_of(_game.mine_cage.get_node(^"Floor"))]])
+	player.teleport(Transform3D(_game.mine_cage.global_basis, _out_of_station(5.0)))
+	await get_tree().create_timer(0.5).timeout
+	var pistol: WorldItem = null
+	var pick: WorldItem = null
+	for item: Variant in player.inventory.slots:
+		if item is WorldItem and (item as WorldItem).data.id == &"dienstpistole":
+			pistol = item
+		elif item is WorldItem and (item as WorldItem).data.id == &"spitzhacke":
+			pick = item
+	player.inventory.select(player.inventory.slots.find(pick))
+	await get_tree().create_timer(0.5).timeout
+	player.inventory.select(player.inventory.slots.find(pistol))
+	await get_tree().process_frame
+	await get_tree().process_frame
+	print("[scenario] draw: just taken %.2f" % player.gunner.view._draw)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] draw: after 0.5 s %.2f" % player.gunner.view._draw)
+	# A shot into the rock beside the tunnel.
+	var space: PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
+	var from: Vector3 = player.camera.global_position
+	var wall: Dictionary = {}
+	for i: int in 16:
+		var out: Vector3 = (-player.global_basis.z).rotated(Vector3.UP, TAU * i / 16.0)
+		var hit: Dictionary = space.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + out * 12.0, 1))
+		if not hit.is_empty() and from.distance_to(hit.position) > 1.5 and ImpactFx.surface_of(hit.collider) == ImpactFx.Surface.ROCK:
+			wall = hit
+			break
+	var marks_before: int = ImpactFx._marks.size()
+	var fired: bool = not wall.is_empty() and await _shoot_at(player, wall.position)
+	await get_tree().create_timer(0.3).timeout
+	print("[scenario] shot the rock %s: marks %d -> %d" % [fired, marks_before, ImpactFx._marks.size()])
+	# A dog dies: its pool spreads under it.
+	var dog: Creature = _game.spawn_creature(&"grubenhund", Transform3D(Basis.IDENTITY, _ahead(player, 4.0) + Vector3.UP * 0.3))
+	dog.host_stun(30.0)
+	await get_tree().create_timer(0.8).timeout
+	marks_before = ImpactFx._marks.size()
+	dog.host_damage(999, player.global_position)
+	await get_tree().create_timer(0.5).timeout
+	print("[scenario] dog died: marks %d -> %d" % [marks_before, ImpactFx._marks.size()])
+	# Da Bergkini's head under the crown.
+	var king: Bergkini = _game.spawn_creature(&"bergkini", Transform3D(Basis.IDENTITY, _ahead(player, 6.0) + Vector3.UP * 0.3)) as Bergkini
+	await get_tree().create_timer(0.5).timeout
+	var crown: Node3D = king.body.get_node(^"Crown") as Node3D
+	var head: Vector3 = crown.global_position - king.body.global_basis.y.normalized() * 0.12 * king.body.global_basis.get_scale().x
+	print("[scenario] bergkini head x%.2f, belly x%.2f" % [king.weak_spot_mult(head), king.weak_spot_mult(king.global_position + Vector3.UP * 0.5)])
+	king.queue_free()
+	print("[scenario] impacts done")
 
 
 ## M8 weapons: the Stutzen (a dog's head, the bolt, round-by-round reloading), the Leuchtpistole
